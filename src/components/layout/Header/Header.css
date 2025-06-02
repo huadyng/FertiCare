@@ -52,18 +52,18 @@ body {
 
 /* Button */
 .button button {
-  padding: 8px 10px;
-  background-color: #ff696d;
+  padding: 10px 15px;
+  background-color: #f43f5e;
   color: white;
   border: none;
   border-radius: 20px;
   cursor: pointer;
   font-weight: 500;
   font-size: 14px;
-  transition: background-color 0.3s ease;
+  transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
 .button button:hover {
-  text-decoration: underline;
-  background-color: grey;
+  background-color: #ff696d;
+  transform: translateY(-4px);
 }

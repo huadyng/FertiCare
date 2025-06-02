@@ -1,6 +1,7 @@
 .hero-section {
-  background: linear-gradient(to left, #ffe4e6, #fff1f2, #ffffff);
-  padding: 10px 20px;
+  /* background: linear-gradient(to left, #ffe4e6, #fff1f2, #ffffff); */
+  background: #ffeef3;
+  padding: 10px 20px 0px 20px;
   text-align: center;
 }
 
@@ -10,15 +11,15 @@
 }
 
 .hero-content h1 {
-  font-size: 2.5rem;
+  font-size: 2.8rem;
   font-weight: bold;
-  color: #1f2937;
+  color: #c2185b;
   margin-bottom: 20px;
 }
 
 .hero-content p {
-  font-size: 1.125rem;
-  color: #4b5563;
+  font-size: 1.2rem;
+  color: black;
   margin-bottom: 20px;
   line-height: 1.6;
 }
@@ -39,11 +40,12 @@
   border-radius: 30px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
 .btn-primary:hover {
-  text-decoration: underline;
-  background-color: #e11d48;
+  background-color: #ff696d;
+  transform: translateY(-4px);
 }
 
 .btn-outline {
@@ -54,11 +56,13 @@
   border-radius: 30px;
   border: 2px solid #f43f5e;
   cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
 .btn-outline:hover {
   text-decoration: underline;
   background-color: #ffe4e6;
+  transform: translateY(-4px);
 }
 .hero-search {
   margin-bottom: 30px;
