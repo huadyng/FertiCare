@@ -1,0 +1,89 @@
+.hero-section {
+  /* background: linear-gradient(to left, #ffe4e6, #fff1f2, #ffffff); */
+  background: #ffeef3;
+  padding: 10px 20px 0px 20px;
+  text-align: center;
+}
+
+.hero-content {
+  max-width: 768px;
+  margin: 0 auto;
+}
+
+.hero-content h1 {
+  font-size: 2.8rem;
+  font-weight: bold;
+  color: #c2185b;
+  margin-bottom: 20px;
+}
+
+.hero-content p {
+  font-size: 1.2rem;
+  color: black;
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+.hero-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 50px;
+  flex-wrap: wrap;
+}
+
+.btn-primary {
+  background-color: #f43f5e;
+  color: white;
+  padding: 12px 24px;
+  font-weight: 600;
+  border: none;
+  border-radius: 30px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.btn-primary:hover {
+  background-color: #ff696d;
+  transform: translateY(-4px);
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: #f43f5e;
+  padding: 12px 24px;
+  font-weight: 600;
+  border-radius: 30px;
+  border: 2px solid #f43f5e;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.btn-outline:hover {
+  text-decoration: underline;
+  background-color: #ffe4e6;
+  transform: translateY(-4px);
+}
+.hero-search {
+  margin-bottom: 30px;
+}
+
+.hero-search input {
+  padding: 12px 24px;
+  width: 80%;
+  max-width: 400px;
+  border: 2px solid #f43f5e;
+  border-radius: 30px;
+  font-size: 1rem;
+  outline: none;
+  transition: box-shadow 0.3s, border-color 0.3s; /* <-- thiếu chữ 's' sau 0.3 */
+}
+
+.hero-search input::placeholder {
+  color: #9ca3af;
+}
+
+.hero-search input:focus {
+  border-color: #e11d48;
+  box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.2);
+}

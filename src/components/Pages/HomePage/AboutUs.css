@@ -1,0 +1,97 @@
+.about-container {
+  margin: 0 auto;
+  padding: 40px 20px;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  color: #333;
+  background: #ffeef3;
+}
+
+.about-hero {
+  text-align: center;
+  /* margin-bottom: 60px; */
+  /* background: linear-gradient(to left, #ffe4e6, #fff1f2, #ffffff); */
+  padding: 20px;
+  border-radius: 20px;
+  display: flex;
+  justify-content: center;
+  gap: 50px;
+}
+
+.about-description h1 {
+  font-size: 3rem;
+  color: #c2185b;
+  margin-bottom: 10px;
+}
+.about-description p {
+  font-size: 1rem;
+  max-width: 700px;
+  margin: 20px auto 0;
+  color: black;
+  line-height: 1.6;
+  text-align: left;
+}
+
+.about-video {
+  width: 100%;
+  max-width: 700px;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.about-values h2,
+.about-numbers h2,
+.about-team h2 {
+  font-size: 30px;
+  color: #d94a77;
+  margin-bottom: 20px;
+  text-align: center;
+}
+.about-values ul {
+  list-style: none;
+  padding-left: 0;
+}
+.about-values li {
+  margin-bottom: 15px;
+  padding-left: 30px;
+  position: relative;
+}
+
+.about-values li::before {
+  content: "✔";
+  position: absolute;
+  left: 0;
+  color: #d94a77;
+  font-weight: bold;
+}
+
+.stats {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.stat-box {
+  flex: 1 1 200px;
+  background-color: #ffe4ec;
+  padding: 30px 20px;
+  text-align: center;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.stat-box h3 {
+  font-size: 2.5rem;
+  color: #d94a77;
+}
+
+.about-team {
+  margin-top: 40px;
+}
+
+.about-team .team-gallery {
+  display: flex;
+  gap: 20px;
+  flex-wrap: flex;
+  margin-top: 20px;
+}
