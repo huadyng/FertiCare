@@ -9,11 +9,16 @@ import DoctorCarousel from "./components/Pages/HomePage/DoctorCarousel";
 import AchievementPage from "./components/Pages/HomePage/AchievementPage";
 import NewsPage from "./components/Pages/HomePage/NewsPage";
 import FeedbackPage from "./components/Pages/HomePage/FeedbackPage";
+<<<<<<< HEAD
 import Register from "./components/Pages/Register/Register";
+=======
+import Doctor from "./components/Pages/DoctorTeam/Doctor";
+>>>>>>> 4dc01644 (doctorList)
 
 
 function AppContent() {
   const location = useLocation();
+<<<<<<< HEAD
   const isAuthPage = location.pathname === "/login" || location.pathname == "/register";
   return (
     <>
@@ -30,6 +35,29 @@ function AppContent() {
       {!isAuthPage && <NewsPage />}
       {!isAuthPage && <FeedbackPage />}
       {!isAuthPage && <Footer />}
+=======
+  const isLoginPage = location.pathname === "/login";
+
+
+  return (
+    <>
+      {!isLoginPage && <Header />}
+
+      <Routes>
+        <Route path="/" element={<HeroSection />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/doctor" element={<Doctor />} />
+      </Routes>
+      
+      {!isLoginPage && <AboutUs />}
+      {!isLoginPage && <Service />}
+      {!isLoginPage && <DoctorCarousel />}
+      {!isLoginPage && <AchievementPage />}
+      {!isLoginPage && <NewsPage />}
+      {!isLoginPage && <FeedbackPage />}
+
+      {!isLoginPage && <Footer />}
+>>>>>>> 4dc01644 (doctorList)
     </>
   );
 }

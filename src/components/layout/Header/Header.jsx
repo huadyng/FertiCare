@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import "./Header.css";
 import logo from "../../../assets/img/logo.png";
@@ -24,8 +25,7 @@ export default function Header() {
             <li>
               <a href="">Dịch vụ</a>
             </li>
-            <li>
-              <a href="">Chuyên gia - bác sĩ</a>
+            <li><Link to="/doctor">Chuyên gia - bác sĩ</Link>
             </li>
             <li>
               <a href="">Thành tựu</a>
