@@ -37,6 +37,7 @@ function AppContent() {
       {!isAuthPage && <Footer />}
 =======
   const isLoginPage = location.pathname === "/login";
+  const isDoctorPage = location.pathname === "/doctor";
 
 
   return (
@@ -49,12 +50,12 @@ function AppContent() {
         <Route path="/doctor" element={<Doctor />} />
       </Routes>
       
-      {!isLoginPage && <AboutUs />}
-      {!isLoginPage && <Service />}
-      {!isLoginPage && <DoctorCarousel />}
-      {!isLoginPage && <AchievementPage />}
-      {!isLoginPage && <NewsPage />}
-      {!isLoginPage && <FeedbackPage />}
+      {!isLoginPage && !isDoctorPage && <AboutUs />}
+      {!isLoginPage && !isDoctorPage && <Service />}
+      {!isLoginPage && !isDoctorPage && <DoctorCarousel />}
+      {!isLoginPage && !isDoctorPage && <AchievementPage />}
+      {!isLoginPage && !isDoctorPage && <NewsPage />}
+      {!isLoginPage && !isDoctorPage && <FeedbackPage />}
 
       {!isLoginPage && <Footer />}
 >>>>>>> 4dc01644 (doctorList)
