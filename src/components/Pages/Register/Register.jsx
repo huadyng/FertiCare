@@ -46,7 +46,7 @@ export default function Register() {
         {/* Image Section */}
         <div className="register-image col-lg-6 d-none d-lg-block text-center">
           <img
-            src="/src/assets/img/mon&baby.jpg"
+            src="/src/assets/img/mom&baby.jpg"
             alt="Visual"
             className="img-fluid"
             style={{ maxHeight: "90vh", objectFit: "contain" }}
