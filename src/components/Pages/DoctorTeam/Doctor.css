@@ -6,10 +6,10 @@
 }
 
 .doctor-list {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* 3 cột bằng nhau */
   gap: 40px;
+  justify-items: center; /* căn giữa mỗi thẻ */
 }
 .title {
   font-size: 2.5em;
