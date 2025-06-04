@@ -1,0 +1,67 @@
+/* Đặt toàn bộ khối giữa trang */
+.register-container {
+  min-height: 100vh;
+  background-color: rgb(247, 227, 236);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  padding: 40px;
+}
+
+/* Form bố trí đẹp, đổ bóng nhẹ */
+.register-form {
+  background-color: rgb(255, 255, 255);
+  padding: 50px;
+  border-radius: 16px;
+  box-shadow: 10 20px 30px rgba(202, 17, 174, 0.05);
+}
+.register-form h2 {
+  color: #ec4899;
+  letter-spacing: 1px;
+}
+.register-form .form-label {
+  color: #000000;
+  font-size: 16px;
+}
+/* Field input */
+.form-control {
+  border-radius: 30px !important;
+  padding: 12px 20px;
+  font-size: 15px;
+  border: 1px solid #9f53cb;
+}
+
+.btn-register {
+  background: linear-gradient(135deg, #f9a8d4 0%, #93c5fd 100%);
+  color: white;
+  border: none;
+  font-weight: bold;
+  padding: 12px 20px;
+  font-size: 16px;
+  transition: all 0.3s ease-in-out;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  
+}
+
+.btn-register:hover {
+  transform: scale(1.03);
+  background: linear-gradient(135deg, #ffbee2 0%, #9fcafc 100%);
+  box-shadow: 0 6px 14px rgba(190, 9, 9, 0.15);
+}
+
+
+/* Ảnh bên phải */
+.register-image img {
+  border-radius: 20px;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+
+/* Responsive: ẩn ảnh khi trên thiết bị nhỏ */
+@media (max-width: 991px) {
+  .register-image-col {
+    display: none;
+  }
+}
