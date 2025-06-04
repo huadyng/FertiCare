@@ -10,11 +10,11 @@ import AchievementPage from "./components/Pages/HomePage/AchievementPage";
 import NewsPage from "./components/Pages/HomePage/NewsPage";
 import FeedbackPage from "./components/Pages/HomePage/FeedbackPage";
 import Register from "./components/Pages/Register/Register";
-
+import Doctor from "./components/Pages/DoctorTeam/Doctor";
 
 function AppContent() {
   const location = useLocation();
-  const isAuthPage = location.pathname === "/login" || location.pathname == "/register";
+  const isAuthPage = location.pathname === "/login" || location.pathname == "/register" || location.pathname === "/doctor";
   return (
     <>
       {!isAuthPage && <Header />}
@@ -22,14 +22,18 @@ function AppContent() {
         <Route path="/" element={<HeroSection />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/doctor" element={<Doctor />} />
       </Routes>
       {!isAuthPage && <AboutUs />}
-      {!isAuthPage && <Service />}
-      {!isAuthPage && <DoctorCarousel />}
+      {!isAuthPage && <DoctorCarousel/>}
+      {!isAuthPage  && <AchievementPage />}
       {!isAuthPage && <AchievementPage />}
-      {!isAuthPage && <NewsPage />}
-      {!isAuthPage && <FeedbackPage />}
+      {!isAuthPage  && <NewsPage />}
+      {!isAuthPage  && <FeedbackPage />}
       {!isAuthPage && <Footer />}
+
+
+
     </>
   );
 }
