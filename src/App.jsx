@@ -10,6 +10,7 @@ import AchievementPage from "./components/Pages/HomePage/AchievementPage";
 import NewsPage from "./components/Pages/HomePage/NewsPage";
 import FeedbackPage from "./components/Pages/HomePage/FeedbackPage";
 <<<<<<< HEAD
+<<<<<<< HEAD
 import Register from "./components/Pages/Register/Register";
 =======
 import Doctor from "./components/Pages/DoctorTeam/Doctor";
@@ -18,6 +19,10 @@ import Doctor from "./components/Pages/DoctorTeam/Doctor";
 =======
 <<<<<<< Updated upstream
 >>>>>>> 6f5cf66d (fix conflict)
+=======
+import Doctor from "./components/Pages/DoctorTeam/Doctor";
+<<<<<<< Updated upstream
+>>>>>>> 6f5cf66df2909cca5c03a017443eff56d5b917b8
 
 =======
 >>>>>>> Stashed changes

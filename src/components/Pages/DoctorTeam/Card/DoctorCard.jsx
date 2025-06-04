@@ -1,4 +1,6 @@
 import React from "react";
+
+
 import "./DoctorCard.css"; // Nếu có style riêng
 
 const DoctorCard = ({ name, expYears, cases, pic }) => {
@@ -11,5 +13,6 @@ const DoctorCard = ({ name, expYears, cases, pic }) => {
     </div>
   );
 };
+
 
 export default DoctorCard;

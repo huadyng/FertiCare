@@ -21,12 +21,14 @@ export default function Header() {
 
         <div className="navbar">
           <ul>
+
             <li><Link to="/">Giới thiệu</Link></li>
           <li><Link to="/">Dịch vụ</Link></li>
           <li><Link to="/doctor">Chuyên gia - bác sĩ</Link></li>
           <li><Link to="/">Thành tựu</Link></li>
           <li><Link to="/">Tin tức</Link></li>
           <li><Link to="/">Liên hệ</Link></li>
+
           </ul>
         </div>
         <div className="button">
