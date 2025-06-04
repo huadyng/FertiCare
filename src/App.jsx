@@ -13,8 +13,14 @@ import FeedbackPage from "./components/Pages/HomePage/FeedbackPage";
 import Register from "./components/Pages/Register/Register";
 =======
 import Doctor from "./components/Pages/DoctorTeam/Doctor";
+<<<<<<< HEAD
 >>>>>>> 4dc01644 (doctorList)
+=======
+<<<<<<< Updated upstream
+>>>>>>> 6f5cf66d (fix conflict)
 
+=======
+>>>>>>> Stashed changes
 
 function AppContent() {
   const location = useLocation();
@@ -49,6 +55,7 @@ function AppContent() {
         <Route path="/login" element={<Login />} />
         <Route path="/doctor" element={<Doctor />} />
       </Routes>
+<<<<<<< Updated upstream
       
       {!isLoginPage && !isDoctorPage && <AboutUs />}
       {!isLoginPage && !isDoctorPage && <Service />}
@@ -56,6 +63,15 @@ function AppContent() {
       {!isLoginPage && !isDoctorPage && <AchievementPage />}
       {!isLoginPage && !isDoctorPage && <NewsPage />}
       {!isLoginPage && !isDoctorPage && <FeedbackPage />}
+=======
+
+      {!isLoginPage && <AboutUs />}
+      {!isLoginPage && <Service />}
+      {!isLoginPage && <DoctorCarousel />}
+      {!isLoginPage && <AchievementPage />}
+      {!isLoginPage && <NewsPage />}
+      {!isLoginPage && <FeedbackPage />}
+>>>>>>> Stashed changes
 
       {!isLoginPage && <Footer />}
 >>>>>>> 4dc01644 (doctorList)
