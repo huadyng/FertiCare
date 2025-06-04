@@ -70,13 +70,6 @@ function AppContent() {
       {!isLoginPage && !isDoctorPage && <FeedbackPage />}
 =======
 
-      {!isLoginPage && <AboutUs />}
-      {!isLoginPage && <Service />}
-      {!isLoginPage && <DoctorCarousel />}
-      {!isLoginPage && <AchievementPage />}
-      {!isLoginPage && <NewsPage />}
-      {!isLoginPage && <FeedbackPage />}
->>>>>>> Stashed changes
 
       {!isLoginPage && <Footer />}
 >>>>>>> 4dc01644 (doctorList)
