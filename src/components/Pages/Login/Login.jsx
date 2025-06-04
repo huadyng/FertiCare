@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import axios from "axios";
 import "./Login.css";
+import 'bootstrap/dist/css/bootstrap.min.css';
+import { Link } from "react-router-dom";
+
 
 export default function Login() {
   const [taikhoan, setTaikhoan] = useState("");
@@ -75,7 +78,7 @@ export default function Login() {
 
           <div className="register-link">
             <p>
-              Don't have an account? <a href="#">Register</a>
+              Don't have an account? <Link to="/register">Register</Link>
             </p>
           </div>
         </form>
