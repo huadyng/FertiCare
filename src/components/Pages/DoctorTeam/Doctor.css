@@ -1,8 +1,12 @@
 .doctor-container {
   padding: 40px;
-  text-align: center;
   background-color: #ffe4ec;
+  text-align: center;
+}
 
+.title {
+  font-size: 2.5em;
+  margin-bottom: 20px;
 }
 
 .doctor-list {
@@ -10,9 +14,4 @@
   grid-template-columns: repeat(3, 1fr); /* 3 cột bằng nhau */
   gap: 40px;
   justify-items: center; /* căn giữa mỗi thẻ */
-}
-.title {
-  font-size: 2.5em;
-  margin-bottom: 20px;
-  text-align: center;
 }

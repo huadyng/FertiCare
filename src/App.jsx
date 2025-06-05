@@ -14,7 +14,10 @@ import Doctor from "./components/Pages/DoctorTeam/Doctor";
 
 function AppContent() {
   const location = useLocation();
-  const isAuthPage = location.pathname === "/login" || location.pathname == "/register" || location.pathname === "/doctor";
+  const isAuthPage = location.pathname === "/login" || location.pathname == "/register";
+  const isDoctorPage = location.pathname === "/doctor";
+
+  const hideSections = isAuthPage || isDoctorPage;
   return (
     <>
       {!isAuthPage && <Header />}
@@ -24,13 +27,13 @@ function AppContent() {
         <Route path="/register" element={<Register />} />
         <Route path="/doctor" element={<Doctor />} />
       </Routes>
-      {!isAuthPage && <AboutUs />}
-      {!isAuthPage && <DoctorCarousel/>}
-      {!isAuthPage  && <AchievementPage />}
-      {!isAuthPage && <AchievementPage />}
-      {!isAuthPage  && <NewsPage />}
-      {!isAuthPage  && <FeedbackPage />}
-      {!isAuthPage && <Footer />}
+      {!hideSections && <AboutUs />}
+      {!hideSections && <DoctorCarousel/>}
+      {!hideSections  && <AchievementPage />}
+      {!hideSections && <AchievementPage />}
+      {!hideSections  && <NewsPage />}
+      {!hideSections  && <FeedbackPage />}
+      {!hideSections && <Footer />}
 
 
 
