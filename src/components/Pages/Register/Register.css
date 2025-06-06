@@ -1,82 +1,131 @@
-/* Overlay full màn hình, mờ nền */
+/* Overlay full màn hình + fade + zoom + slide */
 .popup-overlay {
   position: fixed;
-  inset: 0; /* top:0; right:0; bottom:0; left:0 */
-  background-color: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 9999;
+  animation: popupEnter 0.7s ease forwards;
 }
 
-/* Popup chính giữa, chiều cao cố định */
+@keyframes popupEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(-50px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Container */
 .popup-container {
-  background-color: rgb(247, 227, 236);
-  width: 850px;
-  height: 480px;
-  border-radius: 20px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  background-color: #fff;
+  width: 1000px;
+  max-width: 95%;
+  height: 620px;
+  border-radius: 18px;
   display: flex;
   overflow: hidden;
   position: relative;
-  font-family: Arial, sans-serif;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  transition: all 0.5s ease;
 }
 
-/* Nút đóng góc trên phải */
+/* Close button */
 .btn-close {
   position: absolute;
   top: 15px;
   right: 20px;
   background: transparent;
   border: none;
-  font-size: 24px;
+  font-size: 28px;
   cursor: pointer;
   color: #ec4899;
   z-index: 10;
+  transition: transform 0.3s ease;
 }
 
-/* Bên trái: ảnh */
+.btn-close:hover {
+  transform: rotate(360deg) scale(1.2);
+  animation: shake 0.5s;
+}
+
+@keyframes shake {
+  0% { transform: rotate(360deg) translateX(0); }
+  25% { transform: rotate(360deg) translateX(-3px); }
+  50% { transform: rotate(360deg) translateX(3px); }
+  75% { transform: rotate(360deg) translateX(-3px); }
+  100% { transform: rotate(360deg) translateX(0); }
+}
+
+/* Left side */
 .popup-left {
-  flex: 1;
-  background-color: #f8f0f7;
+  flex: 1.2;
+  background-color: #fdf1f7;
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 20px;
+  overflow: hidden;
+  position: relative;
 }
 
-.popup-image {
-  max-height: 420px;
-  max-width: 100%;
-  object-fit: contain;
-  border-radius: 12px;
+.popup-left img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 1s ease;
+  will-change: transform;
 }
 
-/* Bên phải: form */
+.popup-left:hover img {
+  transform: scale(1.08) translateY(-10px);
+}
+
+/* Right side - form */
 .popup-form {
   flex: 1;
   background-color: white;
-  padding: 30px 40px;
+  padding: 50px 50px;
   box-sizing: border-box;
-  overflow-y: auto; /* trong trường hợp form quá dài */
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
 }
 
 .popup-form h2 {
-  color: #c2185b;
+  color: #fe76ac;
   letter-spacing: 1px;
-  margin-bottom: 20px;
+  margin-bottom: 30px;
   text-align: center;
   font-weight: 700;
-  font-size: 30px;
+  font-size: 34px;
+  position: relative;
 }
 
+.popup-form h2::after {
+  content: "";
+  display: block;
+  width: 80px;
+  height: 4px;
+  background: linear-gradient(90deg, #ec4899, #93c5fd);
+  margin: 10px auto 0;
+  border-radius: 2px;
+}
+
+/* Floating labels */
 .popup-form label {
-  margin-top: 10px;
+  position: relative;
+  display: block;
+  margin-top: 18px;
   font-weight: 600;
   font-size: 14px;
-  color: #000;
+  color: #555;
+  transition: all 0.3s ease;
 }
 
 .popup-form input[type="text"],
@@ -85,13 +134,14 @@
 .popup-form input[type="date"],
 .popup-form input[type="tel"] {
   width: 100%;
-  padding: 10px 15px;
-  border-radius: 30px;
-  border: 1px solid #9f53cb;
-  margin-top: 6px;
-  font-size: 14px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 2px solid #d1b3e0;
+  margin-top: 8px;
+  font-size: 15px;
   outline: none;
-  transition: border-color 0.3s;
+  transition: border-color 0.3s, box-shadow 0.3s, transform 0.2s ease;
+  background-color: #fafafa;
 }
 
 .popup-form input[type="text"]:focus,
@@ -100,30 +150,32 @@
 .popup-form input[type="date"]:focus,
 .popup-form input[type="tel"]:focus {
   border-color: #ec4899;
+  box-shadow: 0 0 10px rgba(236, 72, 153, 0.4);
+  transform: scale(1.03);
 }
 
 .checkbox-group {
   display: flex;
   align-items: center;
-  margin: 20px auto;
+  margin: 25px 0;
 }
 
 .checkbox-group input[type="checkbox"] {
   margin-right: 10px;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
 }
 
 .checkbox-group label {
-  font-weight: 600;
-  font-size: 13px;
-  color: #000;
+  font-weight: 500;
+  font-size: 14px;
+  color: #333;
 }
 
 .btn-register {
   margin-top: auto;
   width: 100%;
-  padding: 12px;
+  padding: 14px;
   background: linear-gradient(135deg, #f9a8d4 0%, #93c5fd 100%);
   color: white;
   font-weight: bold;
@@ -131,12 +183,34 @@
   border: none;
   border-radius: 30px;
   cursor: pointer;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease-in-out;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.4s ease-in-out;
 }
 
 .btn-register:hover {
-  transform: scale(1.03);
+  transform: scale(1.07);
   background: linear-gradient(135deg, #ffbee2 0%, #9fcafc 100%);
-  box-shadow: 0 6px 14px rgba(190, 9, 9, 0.15);
+  box-shadow: 0 8px 18px rgba(190, 9, 9, 0.2);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .popup-container {
+    flex-direction: column;
+    height: auto;
+    max-height: 95vh;
+  }
+
+  .popup-left {
+    flex: none;
+    height: 250px;
+  }
+
+  .popup-form {
+    padding: 30px 20px;
+  }
+
+  .popup-form h2 {
+    font-size: 28px;
+  }
 }

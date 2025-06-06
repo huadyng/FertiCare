@@ -21,6 +21,7 @@ import Register from "./components/Pages/Register/Register";
 import DoctorDetail from "./components/Pages/DoctorTeam/Card/DoctorDetail/DoctorDetail";
 import { Button, Result } from "antd";
 import "./App.css";
+import BlogPage from './components/Pages/Blog/BlogPage';
 
 function AppContent() {
   const location = useLocation();
@@ -51,6 +52,7 @@ function AppContent() {
         <Route path="/" element={<HeroSection />} />
         <Route path="/doctor" element={<Doctor />} />
         <Route path="/doctor/:id" element={<DoctorDetail />} />
+        <Route path="/blog" element={<BlogPage />} />
         <Route
           path="*"
           element={
