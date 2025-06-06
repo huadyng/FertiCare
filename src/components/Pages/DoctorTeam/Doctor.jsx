@@ -23,11 +23,12 @@ const Doctor = () => {
             <div className="doctor-list">
                 {doctor.map((doctor) => (
                     <DoctorCard
-                        key={doctor.id}
-                        name={doctor.name}
-                        expYears={doctor.expYears}
-                        cases={doctor.cases}
-                        pic={doctor.pic}
+                    id={doctor.id}
+                    key={doctor.id}
+                    name={doctor.name}
+                    expYears={doctor.expYears}
+                    cases={doctor.cases}
+                    pic={doctor.pic}
                     />
                 ))}
             </div>

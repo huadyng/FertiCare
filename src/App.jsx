@@ -11,13 +11,14 @@ import NewsPage from "./components/Pages/HomePage/NewsPage";
 import FeedbackPage from "./components/Pages/HomePage/FeedbackPage";
 import Register from "./components/Pages/Register/Register";
 import Doctor from "./components/Pages/DoctorTeam/Doctor";
+import DoctorDetail from "./components/Pages/DoctorTeam/Card/DoctorDetail/DoctorDetail";
 
 function AppContent() {
   const location = useLocation();
   const isAuthPage = location.pathname === "/login" || location.pathname == "/register";
-  const isDoctorPage = location.pathname === "/doctor";
-
-  const hideSections = isAuthPage || isDoctorPage;
+  const isDoctorPage = location.pathname.startsWith ("/doctor");
+  
+  const hideSections = isAuthPage || isDoctorPage ;
   return (
     <>
       {!isAuthPage && <Header />}
@@ -26,6 +27,7 @@ function AppContent() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/doctor" element={<Doctor />} />
+        <Route path="/doctor/:id" element={<DoctorDetail />} />
       </Routes>
       {!hideSections && <AboutUs />}
       {!hideSections && <DoctorCarousel/>}
@@ -33,7 +35,7 @@ function AppContent() {
       {!hideSections && <AchievementPage />}
       {!hideSections  && <NewsPage />}
       {!hideSections  && <FeedbackPage />}
-      {!hideSections && <Footer />}
+      {!isAuthPage && <Footer />}
 
 
 

@@ -1,0 +1,49 @@
+.doctor-detail-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 40px;
+  background-color: #fff0f5;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.doctor-name {
+  text-align: center;
+  font-size: 2.5rem;
+  margin-bottom: 40px;
+  color: #d63384;
+  font-weight: bold;
+}
+
+.doctor-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 40px;
+  flex-wrap: wrap;
+}
+
+.doctor-info {
+  flex: 1;
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.doctor-info p {
+  margin: 10px 0;
+}
+
+.doctor-image {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.doctor-image img {
+  width: 100%;
+  height: 200px;           /* 🔧 cố định chiều cao */
+  object-fit: cover;       /* 🔧 ảnh không méo, cắt gọn */
+  border-radius: 12px;
+  margin-bottom: 15px;
+}
