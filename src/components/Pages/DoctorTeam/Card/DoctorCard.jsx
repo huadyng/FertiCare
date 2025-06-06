@@ -1,11 +1,17 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 
+import "./DoctorCard.css"; 
 
-import "./DoctorCard.css"; // Nếu có style riêng
+const DoctorCard = ({id, name, expYears, cases, pic }) => {
+  const navigate = useNavigate();
 
-const DoctorCard = ({ name, expYears, cases, pic }) => {
+  const handleClick = () => {
+    navigate(`/doctor/${id}`);
+  }
+
   return (
-    <div className="doctor-card">
+    <div className="doctor-card" onClick={handleClick} style={{ cursor: "pointer" }}>
       <img src={pic} alt={name} className="doctor-image" />
       <h3>{name}</h3>
       <p>Số ca chữa: {cases}</p>
