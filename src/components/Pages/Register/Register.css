@@ -1,67 +1,142 @@
-/* Đặt toàn bộ khối giữa trang */
-.register-container {
-  min-height: 100vh;
-  background-color: rgb(247, 227, 236);
+/* Overlay full màn hình, mờ nền */
+.popup-overlay {
+  position: fixed;
+  inset: 0; /* top:0; right:0; bottom:0; left:0 */
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: center;
   justify-content: center;
-  
-  padding: 40px;
+  align-items: center;
+  z-index: 9999;
 }
 
-/* Form bố trí đẹp, đổ bóng nhẹ */
-.register-form {
-  background-color: rgb(255, 255, 255);
-  padding: 50px;
-  border-radius: 16px;
-  box-shadow: 10 20px 30px rgba(202, 17, 174, 0.05);
+/* Popup chính giữa, chiều cao cố định */
+.popup-container {
+  background-color: rgb(247, 227, 236);
+  width: 850px;
+  height: 480px;
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  display: flex;
+  overflow: hidden;
+  position: relative;
+  font-family: Arial, sans-serif;
 }
-.register-form h2 {
+
+/* Nút đóng góc trên phải */
+.btn-close {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
   color: #ec4899;
+  z-index: 10;
+}
+
+/* Bên trái: ảnh */
+.popup-left {
+  flex: 1;
+  background-color: #f8f0f7;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.popup-image {
+  max-height: 420px;
+  max-width: 100%;
+  object-fit: contain;
+  border-radius: 12px;
+}
+
+/* Bên phải: form */
+.popup-form {
+  flex: 1;
+  background-color: white;
+  padding: 30px 40px;
+  box-sizing: border-box;
+  overflow-y: auto; /* trong trường hợp form quá dài */
+  display: flex;
+  flex-direction: column;
+}
+
+.popup-form h2 {
+  color: #c2185b;
   letter-spacing: 1px;
+  margin-bottom: 20px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 30px;
 }
-.register-form .form-label {
-  color: #000000;
-  font-size: 16px;
+
+.popup-form label {
+  margin-top: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #000;
 }
-/* Field input */
-.form-control {
-  border-radius: 30px !important;
-  padding: 12px 20px;
-  font-size: 15px;
+
+.popup-form input[type="text"],
+.popup-form input[type="email"],
+.popup-form input[type="password"],
+.popup-form input[type="date"],
+.popup-form input[type="tel"] {
+  width: 100%;
+  padding: 10px 15px;
+  border-radius: 30px;
   border: 1px solid #9f53cb;
+  margin-top: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+.popup-form input[type="text"]:focus,
+.popup-form input[type="email"]:focus,
+.popup-form input[type="password"]:focus,
+.popup-form input[type="date"]:focus,
+.popup-form input[type="tel"]:focus {
+  border-color: #ec4899;
+}
+
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  margin: 20px auto;
+}
+
+.checkbox-group input[type="checkbox"] {
+  margin-right: 10px;
+  width: 18px;
+  height: 18px;
+}
+
+.checkbox-group label {
+  font-weight: 600;
+  font-size: 13px;
+  color: #000;
 }
 
 .btn-register {
+  margin-top: auto;
+  width: 100%;
+  padding: 12px;
   background: linear-gradient(135deg, #f9a8d4 0%, #93c5fd 100%);
   color: white;
-  border: none;
   font-weight: bold;
-  padding: 12px 20px;
   font-size: 16px;
-  transition: all 0.3s ease-in-out;
+  border: none;
+  border-radius: 30px;
+  cursor: pointer;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  
+  transition: all 0.3s ease-in-out;
 }
 
 .btn-register:hover {
   transform: scale(1.03);
   background: linear-gradient(135deg, #ffbee2 0%, #9fcafc 100%);
   box-shadow: 0 6px 14px rgba(190, 9, 9, 0.15);
-}
-
-
-/* Ảnh bên phải */
-.register-image img {
-  border-radius: 20px;
-  width: 100%;
-  height: auto;
-  object-fit: cover;
-}
-
-/* Responsive: ẩn ảnh khi trên thiết bị nhỏ */
-@media (max-width: 991px) {
-  .register-image-col {
-    display: none;
-  }
 }

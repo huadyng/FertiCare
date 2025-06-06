@@ -2,15 +2,27 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
-  background: url("../../../assets/img/2.jpg") no-repeat;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1001;
+  /* background: url("../../../assets/img/2.jpg") no-repeat; */
+  background-color: white;
   background-size: cover;
   background-position: center;
+  /* pointer-events: none; */
+}
+.login.visible {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+  pointer-events: auto; /* Bật tương tác khi hiện */
+  border-radius: 10px;
 }
 .wrapper {
   background-color: transparent;
   width: 420px;
-  color: white;
+  color: black;
   border-radius: 10px;
   backdrop-filter: blur(20px);
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
@@ -20,7 +32,8 @@
 
 .wrapper h1 {
   text-align: center;
-  color: black;
+  color: #c2185b;
+  font-weight: bold;
 }
 
 .input-box {
@@ -35,15 +48,15 @@
   background: transparent;
   border: none;
   outline: none;
-  border: 2px solid rgba(255, 255, 255, 2);
+  border: 2px solid rgba(0, 0, 0, 2);
   border-radius: 40px;
   font-size: 16px;
-  color: white;
+  color: black;
   padding: 20px 45px 20px 20px;
 }
 
 .input-box input::placeholder {
-  color: white;
+  color: rgba(0, 0, 0, 0.6);
   padding: 10px;
 }
 
@@ -63,12 +76,12 @@
 }
 
 .wrapper .remember-forgot label input {
-  accent-color: white;
+  accent-color: black;
   margin-right: 3px;
 }
 
 .wrapper .remember-forgot a {
-  color: white;
+  color: black;
   text-decoration: none;
 }
 
@@ -88,8 +101,14 @@
   font-size: 16px;
   color: #333;
   font-weight: 600;
+  transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
+.wrapper .btn:hover {
+  background-color: black;
+  color: white;
+  transform: translateY(-4px);
+}
 .wrapper .register-link {
   font-size: 14.5px;
   text-align: center;
@@ -97,12 +116,15 @@
   margin: 20px 0 15px;
 }
 
-.register-link p a {
-  color: white;
+.register-link p span {
+  color: black;
   text-decoration: none;
   font-weight: 600;
+  margin-left: 5px;
+  transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
-.register-link p a:hover {
+.register-link p span:hover {
   text-decoration: underline;
+  transform: translateY(-4px);
 }
