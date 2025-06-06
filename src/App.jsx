@@ -18,6 +18,7 @@ import FeedbackPage from "./components/Pages/HomePage/FeedbackPage";
 import Doctor from "./components/Pages/DoctorTeam/Doctor";
 import Login from "./components/Pages/Login/Login";
 import Register from "./components/Pages/Register/Register";
+import DoctorDetail from "./components/Pages/DoctorTeam/Card/DoctorDetail/DoctorDetail";
 import { Button, Result } from "antd";
 import "./App.css";
 
@@ -25,7 +26,7 @@ function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const isDoctorPage = location.pathname === "/doctor";
+  const isDoctorPage = location.pathname.startsWith("/doctor");
 
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -44,11 +45,12 @@ function AppContent() {
 
   return (
     <>
-      {!isDoctorPage && <Header onLoginClick={() => setShowLoginModal(true)} />}
+      {<Header onLoginClick={() => setShowLoginModal(true)} />}
 
       <Routes>
         <Route path="/" element={<HeroSection />} />
         <Route path="/doctor" element={<Doctor />} />
+        <Route path="/doctor/:id" element={<DoctorDetail />} />
         <Route
           path="*"
           element={
@@ -109,9 +111,10 @@ function AppContent() {
           <AchievementPage />
           <NewsPage />
           <FeedbackPage />
-          <Footer />
+          
         </>
       )}
+      <Footer />
     </>
   );
 }
