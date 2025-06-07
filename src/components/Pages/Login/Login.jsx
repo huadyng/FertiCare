@@ -3,14 +3,17 @@ import axios from "axios";
 import "./Login.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
+import { useNavigate } from "react-router-dom";
 
-export default function Login({ visible, onClose, onRegisterClick }) {
+export default function Login() {
   const [taikhoan, setTaikhoan] = useState("");
   const [matkhau, setMatkhau] = useState("");
   const [message, setMessage] = useState("");
 
   const clientId =
     "298912881431-a0l5ibtfk8jd44eh51b3f4vre3gr4pu3.apps.googleusercontent.com";
+
+  const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -25,9 +28,8 @@ export default function Login({ visible, onClose, onRegisterClick }) {
 
       if (user) {
         console.log("Đăng nhập thành công");
-        setTimeout(() => {
-          onClose();
-        }, 1500);
+        // Redirect sau khi login thành công
+        navigate("/");
       } else {
         setMessage("❌ Đăng nhập thất bại. Tài khoản hoặc mật khẩu sai.");
       }
@@ -38,7 +40,8 @@ export default function Login({ visible, onClose, onRegisterClick }) {
 
   const handleGoogleLoginSuccess = (credentialResponse) => {
     console.log("Google login success:", credentialResponse.credential);
-    onClose();
+    // Sau login thành công với Google, redirect về home
+    navigate("/");
   };
 
   const handleGoogleLoginError = () => {
@@ -47,23 +50,9 @@ export default function Login({ visible, onClose, onRegisterClick }) {
 
   return (
     <GoogleOAuthProvider clientId={clientId}>
-      <div className={`login ${visible ? "visible" : ""}`}>
+      <div className="login fullpage">
         <div className="wrapper">
           <form className="action" onSubmit={handleLogin}>
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                float: "right",
-                border: "none",
-                background: "transparent",
-                fontSize: "18px",
-                cursor: "pointer",
-              }}
-              aria-label="Close login modal"
-            >
-              ❌
-            </button>
             <h1>Login</h1>
 
             <div className="input-box">
@@ -111,9 +100,9 @@ export default function Login({ visible, onClose, onRegisterClick }) {
 
             <div className="register-link">
               <p>
-                Bạn chưa có tài khoản?
+                Bạn chưa có tài khoản?{" "}
                 <span
-                  onClick={onRegisterClick}
+                  onClick={() => navigate("/register")}
                   style={{
                     cursor: "pointer",
                     color: "#c2185b",
