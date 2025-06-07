@@ -16,12 +16,13 @@ import AchievementPage from "./components/Pages/HomePage/AchievementPage";
 import NewsPage from "./components/Pages/HomePage/NewsPage";
 import FeedbackPage from "./components/Pages/HomePage/FeedbackPage";
 import Doctor from "./components/Pages/DoctorTeam/Doctor";
-import Login from "./components/pages/Login/Login";
-import Register from "./components/Pages/Register/Register";
+import Login from "./components/Pages/Login/Login";
+import Register from "./components/Pages/Register/RegisterPage";
 import DoctorDetail from "./components/Pages/DoctorTeam/Card/DoctorDetail/DoctorDetail";
 import { Button, Result } from "antd";
 import "./App.css";
-import BlogPage from './components/Pages/Blog/BlogPage';
+import BlogPage from "./components/Pages/Blog/BlogPage";
+import RegisterPage from "./components/Pages/Register/RegisterPage";
 
 function AppContent() {
   const location = useLocation();
@@ -29,30 +30,17 @@ function AppContent() {
 
   const isDoctorPage = location.pathname.startsWith("/doctor");
 
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const [showRegisterModal, setShowRegisterModal] = useState(false);
-
-  const showAnyModal = showLoginModal || showRegisterModal;
-
-  const handleSwitchToRegister = () => {
-    setShowLoginModal(false);
-    setShowRegisterModal(true);
-  };
-
-  const handleSwitchToLogin = () => {
-    setShowRegisterModal(false);
-    setShowLoginModal(true);
-  };
-
   return (
     <>
-      {<Header onLoginClick={() => setShowLoginModal(true)} />}
+      {!["/login", "/register"].includes(location.pathname) && <Header />}
 
       <Routes>
         <Route path="/" element={<HeroSection />} />
         <Route path="/doctor" element={<Doctor />} />
         <Route path="/doctor/:id" element={<DoctorDetail />} />
         <Route path="/blog" element={<BlogPage />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<RegisterPage />} />
         <Route
           path="*"
           element={
@@ -70,53 +58,18 @@ function AppContent() {
         />
       </Routes>
 
-      {showAnyModal && (
-        <div
-          className="modal-overlay visible"
-          onClick={() => {
-            setShowLoginModal(false);
-            setShowRegisterModal(false);
-          }}
-        >
-          {showLoginModal && (
-            <div
-              className="modal-content visible"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Login
-                visible={showLoginModal}
-                onClose={() => setShowLoginModal(false)}
-                onRegisterClick={handleSwitchToRegister}
-              />
-            </div>
-          )}
-
-          {showRegisterModal && (
-            <div
-              className="modal-content register-modal visible"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Register
-                onClose={() => setShowRegisterModal(false)}
-                onLoginClick={handleSwitchToLogin}
-              />
-            </div>
-          )}
-        </div>
-      )}
-
-      {!isDoctorPage && (
-        <>
-          <AboutUs />
-          <DoctorCarousel />
-          <Service />
-          <AchievementPage />
-          <NewsPage />
-          <FeedbackPage />
-          
-        </>
-      )}
-      <Footer />
+      {!isDoctorPage &&
+        !["/login", "/register"].includes(location.pathname) && (
+          <>
+            <AboutUs />
+            <DoctorCarousel />
+            <Service />
+            <AchievementPage />
+            <NewsPage />
+            <FeedbackPage />
+          </>
+        )}
+      {!["/login", "/register"].includes(location.pathname) && <Footer />}
     </>
   );
 }

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import "./Register.css";
 
-export default function Register({ onClose }) {
+export default function RegisterPage() {
   const [formData, setFormData] = useState({
     Name: "",
     email: "",
@@ -35,27 +35,23 @@ export default function Register({ onClose }) {
         formData
       );
       alert("Registration successful!");
-      // thêm logic nếu cần
     } catch (error) {
       alert("Registration failed.");
     }
   };
 
   return (
-    <div className="popup-overlay" style={{ background: "none" }}>
-      <div className="popup-container">
-        <button type="button" onClick={onClose} className="btn-close">
-          ❌
-        </button>
-        <div className="popup-left">
+    <div className="register-page">
+      <div className="register-container">
+        <div className="register-left">
           <img
             src="/src/assets/img/mom&baby.jpg"
             alt="Visual"
-            className="popup-image"
+            className="register-image"
           />
         </div>
 
-        <form className="popup-form" onSubmit={handleSubmit}>
+        <form className="register-form" onSubmit={handleSubmit}>
           <h2>ĐĂNG KÝ TÀI KHOẢN</h2>
 
           <label htmlFor="Name">Họ và tên</label>

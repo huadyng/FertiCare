@@ -5,10 +5,11 @@ import { useNavigate } from "react-router-dom";
 import "./Header.css";
 import logo from "../../../assets/img/logo.png";
 
-export default function Header({ onLoginClick }) {
-  const handleLoginClick = () => {
-    onLoginClick(); // gọi hàm mở modal từ props
-  };
+export default function Header() {
+  const navigate = useNavigate();
+  const handleLoginClick = () =>{
+    navigate("/login");
+  }
 
   return (
     <>
