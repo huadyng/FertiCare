@@ -15,24 +15,42 @@ export default function Login({ visible, onClose, onRegisterClick }) {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.get(
-        "https://6836811f664e72d28e4105f7.mockapi.io/api/users"
-      );
-      const users = response.data;
-      const user = users.find(
-        (u) => u.email === taikhoan && u.password === matkhau
+      const response = await axios.post(
+        "http://localhost:8080/api/auth/login",
+        {
+          email: taikhoan,
+          password: matkhau,
+        }
       );
 
-      if (user) {
-        console.log("Đăng nhập thành công");
-        setTimeout(() => {
-          onClose();
-        }, 1500);
-      } else {
-        setMessage("❌ Đăng nhập thất bại. Tài khoản hoặc mật khẩu sai.");
-      }
+      const user = response.data;
+      console.log("✅ Đăng nhập thành công", user);
+      setMessage("✅ Đăng nhập thành công!");
+
+      setTimeout(() => {
+        onClose();
+      }, 1500);
     } catch (error) {
-      setMessage("❌ Lỗi khi kết nối đến máy chủ.");
+      console.error("🔥 Lỗi khi login:", error);
+
+      if (error.response && error.response.data) {
+        console.log("📦 JSON trả về:", error.response.data);
+        const errorData = error.response.data;
+
+        // Nếu errorData.message là chuỗi thì dùng, không thì stringify toàn bộ
+        const msg =
+          typeof errorData.message === "string"
+            ? errorData.message
+            : JSON.stringify(errorData);
+
+        setMessage(`❌ ${msg}`);
+      } else if (error.request) {
+        console.log("📡 Không có phản hồi từ server");
+        setMessage("❌ Không thể kết nối đến máy chủ.");
+      } else {
+        console.log("🚨 Lỗi không xác định:", error.message);
+        setMessage("❌ Đã xảy ra lỗi không xác định.");
+      }
     }
   };
 
@@ -97,7 +115,7 @@ export default function Login({ visible, onClose, onRegisterClick }) {
               Login
             </button>
 
-            {message && (
+            {typeof message === "string" && message && (
               <p style={{ marginTop: "10px", color: "#f00" }}>{message}</p>
             )}
 

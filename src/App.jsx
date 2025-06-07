@@ -16,7 +16,7 @@ import AchievementPage from "./components/Pages/HomePage/AchievementPage";
 import NewsPage from "./components/Pages/HomePage/NewsPage";
 import FeedbackPage from "./components/Pages/HomePage/FeedbackPage";
 import Doctor from "./components/Pages/DoctorTeam/Doctor";
-import Login from "./components/Pages/Login/Login";
+import Login from "./components/pages/Login/Login";
 import Register from "./components/Pages/Register/Register";
 import DoctorDetail from "./components/Pages/DoctorTeam/Card/DoctorDetail/DoctorDetail";
 import { Button, Result } from "antd";
