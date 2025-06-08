@@ -38,6 +38,9 @@ export default function Header() {
             <li>
               <Link to="/">Liên hệ</Link>
             </li>
+            <li>
+              <Link to="/blog">Blog</Link>
+            </li>
           </ul>
         </div>
         <div className="button">
