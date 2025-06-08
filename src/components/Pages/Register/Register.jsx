@@ -1,19 +1,21 @@
 import React, { useState } from "react";
 import axios from "axios";
 import "./Register.css";
+import { useNavigate } from "react-router-dom";
 
-export default function RegisterPage() {
+export default function Register() {
   const [formData, setFormData] = useState({
-    Name: "",
+    fullName: "",
+    gender:"",
     email: "",
     password: "",
     confirmPassword: "",
-    dob: "",
+    dateOfBirth: "",
     phone: "",
     address: "",
     acceptTerms: false,
   });
-
+  const navigate = useNavigate();
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prevData) => ({
@@ -29,53 +31,75 @@ export default function RegisterPage() {
       return;
     }
 
-    try {
-      const response = await axios.post(
-        "https://your-api-url.com/register",
-        formData
-      );
-      alert("Registration successful!");
-    } catch (error) {
-      alert("Registration failed.");
-    }
+    try{
+      await axios.post("http://localhost:8080/api/users", formData);
+      alert("Registration successfull!");
+      navigate("/");
+  } catch (error){
+       if (error.response && error.response.data) {
+        const message =
+            typeof error.response.data === "string"
+                ? error.response.data
+                : error.response.data.message || "Đăng ký thất bại.";
+        alert("❌ " + message);
+      } else {
+        alert("❌ Không thể kết nối đến máy chủ.");
+      }
+  }
   };
 
   return (
-    <div className="register-page">
+    <div className="register-page ">
       <div className="register-container">
         <div className="register-left">
           <img
-            src="/src/assets/img/mom&baby.jpg"
+            src="/src/assets/img/register.jpg"
             alt="Visual"
             className="register-image"
           />
+           <div class="register-quote">
+              “Hành trình nào cũng xứng đáng với những yêu thương và chờ đợi.”
+                
+            </div>
         </div>
 
-        <form className="register-form" onSubmit={handleSubmit}>
-          <h2>ĐĂNG KÝ TÀI KHOẢN</h2>
+        <form className="register-form form-fade-slide" onSubmit={handleSubmit}>
+          <h2>ĐĂNG KÝ </h2>
 
-          <label htmlFor="Name">Họ và tên</label>
+          <label htmlFor="fullName">Họ và tên:</label>
           <input
-            id="Name"
-            name="Name"
+            id="fullName"
+            name="fullName"
             type="text"
-            value={formData.Name}
+            value={formData.fullName}
             onChange={handleChange}
             required
             placeholder="Nhập họ và tên"
           />
+          <label htmlFor="gender">Giới tính:</label>
+          <select
+          id="gender"
+          name="gender"
+          value={formData.gender}
+          onChange={handleChange}
+          required
+          >
+            <option value="">Chọn Giới tính</option>
+            <option value="MALE">Nam</option>
+            <option value="FEMALE">Nữ</option>
+          </select>
 
-          <label htmlFor="dob">Ngày tháng năm sinh</label>
+          <label htmlFor="dateOfBirth">Ngày tháng năm sinh:</label>
           <input
-            id="dob"
-            name="dob"
+            id="dateOfBirth"
+            name="dateOfBirth"
             type="date"
-            value={formData.dob}
+            value={formData.dateOfBirth}
             onChange={handleChange}
             required
           />
 
-          <label htmlFor="email">Email</label>
+          <label htmlFor="email">Email:</label>
           <input
             id="email"
             name="email"
@@ -86,7 +110,7 @@ export default function RegisterPage() {
             required
           />
 
-          <label htmlFor="password">Mật khẩu</label>
+          <label htmlFor="password">Mật khẩu:</label>
           <input
             id="password"
             name="password"
@@ -97,7 +121,7 @@ export default function RegisterPage() {
             placeholder="Nhập mật khẩu"
           />
 
-          <label htmlFor="confirmPassword">Xác nhận mật khẩu</label>
+          <label htmlFor="confirmPassword">Xác nhận mật khẩu:</label>
           <input
             id="confirmPassword"
             name="confirmPassword"
@@ -108,7 +132,7 @@ export default function RegisterPage() {
             placeholder="Nhập lại mật khẩu"
           />
 
-          <label htmlFor="phone">SĐT</label>
+          <label htmlFor="phone">SĐT:</label>
           <input
             id="phone"
             name="phone"
@@ -119,7 +143,7 @@ export default function RegisterPage() {
             placeholder="Nhập số điện thoại"
           />
 
-          <label htmlFor="address">Địa chỉ</label>
+          <label htmlFor="address">Địa chỉ:</label>
           <input
             id="address"
             name="address"
@@ -147,6 +171,15 @@ export default function RegisterPage() {
           <button type="submit" className="btn-register">
             ĐĂNG KÝ
           </button>
+          <p className="login-text">
+              Bạn đã có tài khoản?{" "}
+              <span
+                onClick={() => navigate("/login")}
+                className="login-link"
+              >
+                Đăng nhập
+              </span>
+          </p>
         </form>
       </div>
     </div>

@@ -1,42 +1,11 @@
-/* Đặt full màn hình và background ảnh */
-.login.fullpage {
-  height: 100vh;
-  width: 100vw;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: url('https://your-register-page-image-url.com/bg-login.jpg') no-repeat center center/cover;
-  font-family: 'Poppins', sans-serif;
-  position: relative;
-  overflow: hidden;
+.form-fade-slide {
+  animation: fadeSlideForm 0.6s ease forwards;
 }
 
-/* Làm overlay tối nhẹ cho background để text nổi bật */
-.login.fullpage::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  z-index: 1;
-}
-
-/* Wrapper form làm nổi bật lên */
-.wrapper {
-  position: relative;
-  background: #fff;
-  border-radius: 12px;
-  width: 420px;
-  padding: 40px 35px;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-  z-index: 10;
-  animation: fadeInUp 0.6s ease forwards;
-}
-
-/* hiệu ứng fade in từ dưới lên */
-@keyframes fadeInUp {
+@keyframes fadeSlideForm {
   0% {
     opacity: 0;
-    transform: translateY(40px);
+    transform: translateY(20px);
   }
   100% {
     opacity: 1;
@@ -44,113 +13,338 @@
   }
 }
 
-/* Tiêu đề */
-.action h1 {
+
+
+/* Tổng thể trang */
+
+.login-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #fcc6ff, #85d1fa);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Sóng nền nhẹ (copy style sóng từ register nếu có) */
+.login-page::before {
+  content: "";
+  position: absolute;
+  top: -150px;
+  left: -150px;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle at center, #e5a8bc 30%, transparent 70%);
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.6;
+  z-index: 0;
+}
+
+.login-page::after {
+  content: "";
+  position: absolute;
+  bottom: -150px;
+  right: -150px;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle at center, #fbc1cc 30%, transparent 70%);
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.6;
+  z-index: 0;
+}
+
+/* Container chính chứa 2 phần */
+.login-container {
+  display: flex;
+  max-width: 900px;
+  width: 100%;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 12px 30px rgba(255, 105, 180, 0.3);
+  overflow: hidden;
+  z-index: 1;
+}
+
+/* Form login bên trái */
+.login-form {
+  flex: 1;
+  padding: 50px 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: #fdfdfd;
+}
+
+.login-form h2 {
+  color: #f0619a;
+  letter-spacing: 1px;
+  margin-bottom: 30px;
   text-align: center;
   font-weight: 700;
-  font-size: 2.3rem;
-  margin-bottom: 30px;
-  color: #c2185b;
-  letter-spacing: 2px;
-}
-
-/* Input box */
-.input-box {
+  font-size: 35px;
   position: relative;
-  margin-bottom: 25px;
 }
-
-.input-box input {
-  width: 100%;
-  padding: 14px 18px;
-  border: 2px solid #ddd;
-  border-radius: 10px;
+.login-form h2::after {
+  content: "";
+  display: block;
+  width: 80px;
+  height: 4px;
+  background: linear-gradient(90deg, #ec4899, #93c5fd);
+  margin: 10px auto 0;
+  border-radius: 2px;
+}
+/* Input chung */
+.login-form input[type="text"],
+.login-form input[type="password"],
+.login-form input[type="email"] {
+  padding: 12px 15px;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  border: 2px solid #fbc1cc;
+  font-size: 16px;
+  transition: all 0.3s ease;
   outline: none;
-  font-size: 1rem;
-  transition: 0.3s ease;
-  box-shadow: inset 0 2px 4px rgb(0 0 0 / 0.1);
 }
 
-.input-box input:focus {
-  border-color: #c2185b;
-  box-shadow: 0 0 8px #c2185b;
+.login-form input[type="text"]:focus,
+.login-form input[type="password"]:focus,
+.login-form input[type="email"]:focus {
+  border-color: #e84393;
+  box-shadow: 0 0 8px rgba(232, 67, 147, 0.6);
 }
 
-/* Remember + forgot */
-.remember-forgot {
+/* Các option checkbox + forgot password */
+.login-options {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.9rem;
-  color: #555;
-  margin-bottom: 30px;
+  margin-bottom: 25px;
+  font-size: 14px;
+  color: #bf1650;
 }
 
-.remember-forgot label {
+.login-options label {
   user-select: none;
 }
 
-.remember-forgot a {
-  color: #c2185b;
-  text-decoration: none;
-  transition: color 0.3s ease;
-}
-
-.remember-forgot a:hover {
-  color: #9b1545;
-}
-
-/* Nút login */
-.btn {
-  width: 100%;
-  padding: 14px 0;
-  background: #c2185b;
-  color: #fff;
-  font-size: 1.1rem;
-  font-weight: 700;
+.forgot-btn {
+  background: none;
   border: none;
-  border-radius: 10px;
+  color: #e84393;
   cursor: pointer;
-  transition: background 0.3s ease;
-  box-shadow: 0 5px 15px rgba(194, 24, 91, 0.6);
+  font-weight: 600;
+  text-decoration: underline;
+  transition: color 0.3s ease;
+  padding: 0;
 }
 
-.btn:hover {
-  background: #9b1545;
-  box-shadow: 0 8px 20px rgba(194, 24, 91, 0.9);
+.forgot-btn:hover {
+  color: #bf1650;
 }
 
-/* Message lỗi */
-.action p {
-  color: #e74c3c;
+/* Button đăng nhập */
+.btn-login {
+ background: linear-gradient(90deg, #fb61ae, #93c5fd);
+  border: none;
+  color: white;
+  font-weight: 700;
+  padding: 14px 0;
+  border-radius: 12px;
+  font-size: 20px;
+  cursor: pointer;
+  transition: background 0.4s ease;
+  margin-bottom: 20px;
+  box-shadow: 0 6px 15px rgba(247, 37, 133, 0.5);
+}
+
+.btn-login:hover {
+ background: linear-gradient(45deg, #ff4398, #4073ff);
+}
+
+/* Thông báo lỗi */
+.error-message {
+  color: #d63031;
+  font-weight: 600;
   text-align: center;
-  margin-top: 10px;
+  margin-bottom: 20px;
+}
+
+/* Google login */
+.google-login {
+  text-align: center;
+  margin-bottom: 25px;
+  color: #bf1650;
   font-weight: 600;
 }
 
-/* Google login + text */
-.action > div:nth-child(8) {
-  margin-top: 25px;
-  text-align: center;
-  color: #444;
-  font-weight: 600;
+.google-login p {
+  margin-bottom: 10px;
 }
 
 /* Link đăng ký */
-.register-link {
-  margin-top: 30px;
-  font-size: 0.95rem;
+.register-text {
   text-align: center;
-  color: #555;
+  font-size: 16px;
+  color: #bf1650;
+  margin-top: 10px;
 }
 
-.register-link span {
-  color: #c2185b;
+.register-link {
+  color: #e84393;
   font-weight: 700;
   cursor: pointer;
+  text-decoration: underline;
+  user-select: none;
   transition: color 0.3s ease;
 }
 
-.register-link span:hover {
-  color: #9b1545;
+.register-link:hover {
+  color: #b5179e;
+}
+
+/* Ảnh bên phải */
+.login-image-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #ffd3e0, #f7cbd0);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.login-image {
+   width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 1s ease;
+  will-change: transform;
+}
+
+.login-image-container:hover .login-image {
+  transform: scale(1.1);
+  filter: brightness(1.2);
+}
+
+/* Quote ở góc dưới */
+.login-quote {
+  position: absolute;
+  bottom: 20px;
+  left: 50px;
+  right: 20px;
+  color: #fff;
+  font-size: 18px;
+  font-style: italic;
+  line-height: 1.6;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+  z-index: 2;
+}
+
+/* Popup Quên mật khẩu */
+.forgot-password-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+.forgot-password-modal {
+  background: white;
+  padding: 30px 40px;
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(255, 105, 180, 0.4);
+  width: 350px;
+  max-width: 90vw;
+}
+
+.forgot-password-modal h3 {
+  margin-bottom: 25px;
+  color: #bf1650;
+  text-align: center;
+}
+
+.forgot-password-modal input[type="email"] {
+  width: 100%;
+  padding: 12px 15px;
+  font-size: 16px;
+  border-radius: 12px;
+  border: 2px solid #fbc1cc;
+  margin-bottom: 25px;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.forgot-password-modal input[type="email"]:focus {
+  border-color: #e84393;
+  box-shadow: 0 0 8px rgba(232, 67, 147, 0.6);
+}
+
+/* Nút gửi và hủy */
+.forgot-actions {
+  display: flex;
+  justify-content: space-between;
+}
+
+.forgot-actions button {
+  flex: 1;
+  padding: 12px 0;
+  font-weight: 600;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  margin: 0 5px;
+  transition: background 0.3s ease;
+}
+
+.forgot-actions button:first-child {
+  background: linear-gradient(45deg, #f72585, #b5179e);
+  color: white;
+  box-shadow: 0 5px 15px rgba(247, 37, 133, 0.5);
+}
+
+.forgot-actions button:first-child:hover {
+  background: linear-gradient(45deg, #b5179e, #f72585);
+}
+
+.cancel-btn {
+  background: #ddd;
+  color: #555;
+}
+
+.cancel-btn:hover {
+  background: #bbb;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .login-container {
+    flex-direction: column;
+    max-width: 400px;
+  }
+
+  .login-image-container {
+    height: 200px;
+    border-radius: 0 0 20px 20px;
+  }
+
+  .login-image {
+    border-radius: 0 0 20px 20px;
+    object-fit: cover;
+  }
+
+  .login-form {
+    padding: 40px 30px;
+  }
 }

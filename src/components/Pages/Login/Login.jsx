@@ -9,6 +9,8 @@ export default function Login() {
   const [taikhoan, setTaikhoan] = useState("");
   const [matkhau, setMatkhau] = useState("");
   const [message, setMessage] = useState("");
+  const [showForgot, setShowForgot] = useState(false);
+  const [emailForgot, setEmailForgot] = useState("");
 
   const clientId =
     "298912881431-a0l5ibtfk8jd44eh51b3f4vre3gr4pu3.apps.googleusercontent.com";
@@ -28,7 +30,6 @@ export default function Login() {
 
       if (user) {
         console.log("Đăng nhập thành công");
-        // Redirect sau khi login thành công
         navigate("/");
       } else {
         setMessage("❌ Đăng nhập thất bại. Tài khoản hoặc mật khẩu sai.");
@@ -40,7 +41,6 @@ export default function Login() {
 
   const handleGoogleLoginSuccess = (credentialResponse) => {
     console.log("Google login success:", credentialResponse.credential);
-    // Sau login thành công với Google, redirect về home
     navigate("/");
   };
 
@@ -48,49 +48,61 @@ export default function Login() {
     setMessage("❌ Đăng nhập Google thất bại.");
   };
 
+  const handleForgotSubmit = (e) => {
+    e.preventDefault();
+    if (!emailForgot) {
+      alert("Vui lòng nhập email!");
+      return;
+    }
+    alert(`Yêu cầu lấy lại mật khẩu đã được gửi tới email: ${emailForgot}`);
+    setShowForgot(false);
+    setEmailForgot("");
+  };
+
   return (
     <GoogleOAuthProvider clientId={clientId}>
-      <div className="login fullpage">
-        <div className="wrapper">
-          <form className="action" onSubmit={handleLogin}>
-            <h1>Login</h1>
+      <div className="login-page ">
+        <div className="login-container">
+          {/* Form bên trái */}
+          <form className="login-form form-fade-slide" onSubmit={handleLogin}>
+            <h2>ĐĂNG NHẬP</h2>
 
-            <div className="input-box">
-              <input
-                type="text"
-                placeholder="Username/Email"
-                required
-                value={taikhoan}
-                onChange={(e) => setTaikhoan(e.target.value)}
-              />
-            </div>
+            <input
+              type="text"
+              placeholder="Email hoặc Username"
+              value={taikhoan}
+              onChange={(e) => setTaikhoan(e.target.value)}
+              required
+            />
 
-            <div className="input-box">
-              <input
-                type="password"
-                placeholder="Password"
-                required
-                value={matkhau}
-                onChange={(e) => setMatkhau(e.target.value)}
-              />
-            </div>
+            <input
+              type="password"
+              placeholder="Mật khẩu"
+              value={matkhau}
+              onChange={(e) => setMatkhau(e.target.value)}
+              required
+            />
 
-            <div className="remember-forgot">
+            <div className="login-options">
               <label>
-                <input type="checkbox" /> Remember me
+                <input type="checkbox" /> Ghi nhớ đăng nhập
               </label>
-              <a href="#">Forgot password?</a>
+              <button
+                type="button"
+                className="forgot-btn"
+                onClick={() => navigate("/forgot-password")}
+              >
+                Quên mật khẩu?
+              </button>
             </div>
 
-            <button type="submit" className="btn">
-              Login
+            <button type="submit" className="btn-login">
+              Đăng nhập
             </button>
 
-            {message && (
-              <p style={{ marginTop: "10px", color: "#f00" }}>{message}</p>
-            )}
+            {message && <p className="error-message">{message}</p>}
 
-            <div style={{ textAlign: "center", margin: "20px 0" }}>
+            <div className="google-login">
               <p>Hoặc đăng nhập với Google</p>
               <GoogleLogin
                 onSuccess={handleGoogleLoginSuccess}
@@ -98,23 +110,31 @@ export default function Login() {
               />
             </div>
 
-            <div className="register-link">
-              <p>
-                Bạn chưa có tài khoản?{" "}
-                <span
-                  onClick={() => navigate("/register")}
-                  style={{
-                    cursor: "pointer",
-                    color: "#c2185b",
-                    fontWeight: "600",
-                  }}
-                >
-                  Đăng ký
-                </span>
-              </p>
-            </div>
+            <p className="register-text">
+              Bạn chưa có tài khoản?{" "}
+              <span
+                onClick={() => navigate("/register")}
+                className="register-link"
+              >
+                Đăng ký
+              </span>
+            </p>
           </form>
+
+          {/* Ảnh bên phải */}
+          <div className="login-image-container">
+            <img
+              src="/src/assets/img/login.jpg"
+              alt="Mom & Baby"
+              className="login-image"
+            />
+            <div className="login-quote">
+              “Hãy để chúng tôi đồng hành cùng bạn.”
+            </div>
+          </div>
         </div>
+
+   
       </div>
     </GoogleOAuthProvider>
   );

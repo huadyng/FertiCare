@@ -17,12 +17,13 @@ import NewsPage from "./components/Pages/HomePage/NewsPage";
 import FeedbackPage from "./components/Pages/HomePage/FeedbackPage";
 import Doctor from "./components/Pages/DoctorTeam/Doctor";
 import Login from "./components/Pages/Login/Login";
-import Register from "./components/Pages/Register/RegisterPage";
+import Register from "./components/Pages/Register/Register";
 import DoctorDetail from "./components/Pages/DoctorTeam/Card/DoctorDetail/DoctorDetail";
 import { Button, Result } from "antd";
 import "./App.css";
 import BlogPage from './components/Pages/Blog/BlogPage';
-import RegisterPage from "./components/Pages/Register/RegisterPage";
+import ForgotPassword from "./components/Pages/Login/ForgotPassword";
+
 
 function AppContent() {
   const location = useLocation();
@@ -33,7 +34,7 @@ function AppContent() {
 
   return (
     <>
-        {!["/login", "/register"].includes(location.pathname) && (
+        {!["/login", "/register","/forgot-password"].includes(location.pathname) && (
         <Header />
       )}
 
@@ -43,7 +44,8 @@ function AppContent() {
         <Route path="/doctor/:id" element={<DoctorDetail />} />
         <Route path="/blog" element={<BlogPage />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/register" element={<Register />} />
         <Route
           path="*"
           element={
@@ -67,7 +69,7 @@ function AppContent() {
   
       
 
-        {!isDoctorPage && !["/login", "/register"].includes(location.pathname) && (
+        {!isDoctorPage && !["/login", "/register","/forgot-password","/forgot-password"].includes(location.pathname) && (
         <>
           <AboutUs />
           <DoctorCarousel />
@@ -78,7 +80,7 @@ function AppContent() {
           
         </>
       )}
-      {!["/login", "/register"].includes(location.pathname) && <Footer />}
+      {!["/login", "/register","/forgot-password"].includes(location.pathname) && <Footer />}
     </>
   );
 }
