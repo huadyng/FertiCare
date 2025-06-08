@@ -1,0 +1,118 @@
+[33mcommit 96d2c8afd761e43b272b4e3f69148a60bae0f283[m[33m ([m[1;36mHEAD[m[33m)[m
+Author: Nguyen Thanh Tai <121352353+thanhtai15@users.noreply.github.com>
+Date:   Wed Jun 4 12:21:08 2025 +0700
+
+    Update Register.jsx
+
+[33mcommit 66e0d05115773e89290ea6c3c32e9a2bc610cb7e[m
+Author: Nguyen Thanh Tai <121352353+thanhtai15@users.noreply.github.com>
+Date:   Wed Jun 4 12:14:26 2025 +0700
+
+    register
+
+[33mcommit 89241d1085f00cc4f26345248889b5aedc658d93[m
+Author: Nguyen Thanh Tai <121352353+thanhtai15@users.noreply.github.com>
+Date:   Wed Jun 4 12:01:42 2025 +0700
+
+    Register-page
+
+[33mcommit 8782df085dc2beddb8f63eb1cc298bfeafd6e7e8[m[33m ([m[1;31morigin/Phuc_branch[m[33m)[m
+Author: phucplhse183189 <phucplhse183189@fpt.edu.vn>
+Date:   Tue Jun 3 18:22:29 2025 +0700
+
+    Chỉnh sửa giao diện đăng nhập và đăng ký chưa có API
+
+[33mcommit fa0d96104d87a4531a3e7e9b0f37b638deccd3b6[m
+Merge: e31f61c 0bf90ee
+Author: huadyng <huydang882125@gmail.com>
+Date:   Tue Jun 3 16:22:05 2025 +0700
+
+    Merge branch 'Phuc_branch' of https://github.com/huadyng/FertiCare into Phuc_branch
+
+[33mcommit 0bf90ee69aa61ccbf5d51d49829d16d45a73973e[m
+Author: phucplhse183189 <phucplhse183189@fpt.edu.vn>
+Date:   Mon Jun 2 18:09:39 2025 +0700
+
+    Update trang HomePage (1)
+
+[33mcommit ac44edb568bced1aaffc95588bb425adfd72b907[m
+Author: phucplhse183189 <phucplhse183189@fpt.edu.vn>
+Date:   Sat May 31 18:33:05 2025 +0700
+
+    Initial commit on Phuc_branch
+
+[33mcommit e31f61c71c2f32f1cd61a42f01c4585f3f570e95[m
+Merge: cb7f3a4 90a4298
+Author: huadyng <89307832+huadyng@users.noreply.github.com>
+Date:   Tue May 20 22:05:10 2025 +0700
+
+    Merge pull request #2 from huadyng/huy_Branch
+    
+    update hình nền
+
+[33mcommit 90a429887d67226e11aa87fe32427233aca35716[m
+Author: huadyng <huydang882125@gmail.com>
+Date:   Tue May 20 22:01:05 2025 +0700
+
+    update hình nền
+    
+    asdfasdf
+
+[33mcommit cb7f3a4bc094768b219e1fa0d917b70060951362[m
+Merge: 4992a22 899e78a
+Author: huadyng <89307832+huadyng@users.noreply.github.com>
+Date:   Tue May 20 21:52:53 2025 +0700
+
+    Merge pull request #1 from huadyng/huy_Branch
+    
+    add a project
+
+[33mcommit 899e78af2d99e2fed19917d422aceab7aab0452c[m
+Author: huadyng <huydang882125@gmail.com>
+Date:   Tue May 20 21:50:05 2025 +0700
+
+    add a project
+    
+    create a template project for frontend
+
+[33mcommit 4992a2238eb62da07e561c5fec5c2e01bc4a61e4[m
+Author: huadyng <89307832+huadyng@users.noreply.github.com>
+Date:   Tue May 20 21:25:20 2025 +0700
+
+    Delete Front
+
+[33mcommit b06b62ed1d2aea853371494adb79b2792ed5dae6[m
+Author: huadyng <89307832+huadyng@users.noreply.github.com>
+Date:   Tue May 20 21:25:09 2025 +0700
+
+    Delete Back
+
+[33mcommit cdce988012f880d0910ff9cc2239cb8930363ac4[m
+Author: huadyng <89307832+huadyng@users.noreply.github.com>
+Date:   Tue May 20 21:24:41 2025 +0700
+
+    Create read
+
+[33mcommit 149576dcb1a1e5a54de02b953f888c345abf065c[m
+Author: huadyng <89307832+huadyng@users.noreply.github.com>
+Date:   Tue May 20 21:23:52 2025 +0700
+
+    Create read
+
+[33mcommit 58e9992e15d90889354b47b4547c7733fee87192[m
+Author: huadyng <89307832+huadyng@users.noreply.github.com>
+Date:   Tue May 20 21:16:03 2025 +0700
+
+    Create Back
+
+[33mcommit a6921a989c6b51b21ba6bb49900d1fbd0913b873[m
+Author: huadyng <89307832+huadyng@users.noreply.github.com>
+Date:   Tue May 20 21:12:39 2025 +0700
+
+    Create Front
+
+[33mcommit cbacf002cee3c1e57da41ebbfded68b55166fd42[m
+Author: huadyng <89307832+huadyng@users.noreply.github.com>
+Date:   Tue May 20 21:10:01 2025 +0700
+
+    Initial commit

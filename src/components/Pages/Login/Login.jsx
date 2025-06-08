@@ -1,38 +1,33 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import axios from "axios";
 import "./Login.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import { useNavigate } from "react-router-dom";
-
-export default function Login() {
+import { UserContext } from "../../../context/UserContext";
+import { decodeGoogleToken } from "../../../helpers/decodeGoogleToken";
+import apiLogin from "../../../api/apiLogin";
+export default function Login({ setIsLoggedIn }) {
   const [taikhoan, setTaikhoan] = useState("");
   const [matkhau, setMatkhau] = useState("");
   const [message, setMessage] = useState("");
 
   const clientId =
     "298912881431-a0l5ibtfk8jd44eh51b3f4vre3gr4pu3.apps.googleusercontent.com";
-
+  const { setUser, loginWithGoogle } = useContext(UserContext); //Lấy hàm setUser từ Context
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post(
-        "http://localhost:8080/api/auth/login",
-        {
-          email: taikhoan,
-          password: matkhau,
-        }
-      );
-
-      const user = response.data;
+      const user = await apiLogin(taikhoan, matkhau); //Gọi API để đăng nhập từ apiLogin.js
       console.log("✅ Đăng nhập thành công", user);
       setMessage("✅ Đăng nhập thành công!");
-
-      setTimeout(() => {
-        onClose();
-      }, 1500);
+      //Lưu thông tin người dùng vào UserStorage
+      localStorage.setItem("user", JSON.stringify(user));
+      setIsLoggedIn(true);
+      //Cập nhật tráng thái toàn ứng dụng
+      setUser(user);
       if (user) {
         console.log("Đăng nhập thành công");
         // Redirect sau khi login thành công
@@ -66,13 +61,24 @@ export default function Login() {
 
   const handleGoogleLoginSuccess = (credentialResponse) => {
     console.log("Google login success:", credentialResponse.credential);
-    // Sau login thành công với Google, redirect về home
-    navigate("/");
+    //Sử dụng helper để giải mã token
+    const user = decodeGoogleToken(credentialResponse.credential);
+    if (user) {
+      loginWithGoogle(user);
+      setIsLoggedIn(true);
+      navigate("/");
+    } else {
+      console.error("Lỗi khi lấy thông tin người dùng từ Google");
+    }
   };
 
   const handleGoogleLoginError = () => {
     setMessage("❌ Đăng nhập Google thất bại.");
   };
+  useEffect(() => {
+    console.log("🌐 Current origin:", window.location.origin);
+    console.log("🔑 Google Client ID:", clientId);
+  }, []);
 
   return (
     <GoogleOAuthProvider clientId={clientId}>

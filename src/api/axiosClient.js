@@ -1,0 +1,9 @@
+//Kết nối URL của Backend
+import axios from "axios";
+const axiosClient = axios.create({
+  baseURL: "http://localhost:8080", //URL của backend
+  headers: { "Content-Type": "application/json" },
+  timeout: 1000,
+});
+
+export default axiosClient;

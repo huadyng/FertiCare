@@ -1,16 +1,22 @@
-import React from "react";
+import React, { useContext } from "react";
 
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import "./Header.css";
 import logo from "../../../assets/img/logo.png";
+import { UserContext } from "../../../context/UserContext";
 
-export default function Header() {
+export default function Header({ setIsLoggedIn }) {
   const navigate = useNavigate();
-  const handleLoginClick = () =>{
+  const { user, logout } = useContext(UserContext);
+  const handleLoginClick = () => {
     navigate("/login");
-  }
-
+  };
+  const handleLogoutClick = () => {
+    logout(); // ✅ Gọi hàm logout đúng cách
+    setIsLoggedIn(false);
+    navigate("/"); // Chuyển hướng về trang đăng nhập
+  };
   return (
     <>
       <div className="header">
@@ -41,7 +47,14 @@ export default function Header() {
           </ul>
         </div>
         <div className="button">
-          <button onClick={handleLoginClick}>Đăng nhập</button>
+          {user ? (
+            <div className="user-info">
+              <span>Xin chào, {user.name}</span>
+              <button onClick={handleLogoutClick}>Đăng xuất</button>
+            </div>
+          ) : (
+            <button onClick={handleLoginClick}>Đăng nhập</button>
+          )}
         </div>
       </div>
     </>
