@@ -1,19 +1,20 @@
 import React, { useContext } from "react";
-import "./HeroSection.css"; // Link tới file CSS
+import "./HeroSection.css";
 import { useNavigate } from "react-router-dom";
 import { UserContext } from "../../../context/UserContext";
 
 export default function HeroSection() {
-  //Điều hướng
   const navigate = useNavigate();
-  const user = useContext(UserContext);
+  const { user, isLoggedIn } = useContext(UserContext);
+
   const handleBookingClick = () => {
-    if (user) {
+    if (isLoggedIn && user) {
       navigate("/booking");
     } else {
       navigate("/login");
     }
   };
+
   return (
     <section className="hero-section">
       <div className="hero-content">

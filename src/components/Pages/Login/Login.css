@@ -5,8 +5,8 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background: url('https://your-register-page-image-url.com/bg-login.jpg') no-repeat center center/cover;
-  font-family: 'Poppins', sans-serif;
+  /* background: url('https://your-register-page-image-url.com/bg-login.jpg') no-repeat center center/cover; */
+  font-family: "Poppins", sans-serif;
   position: relative;
   overflow: hidden;
 }
