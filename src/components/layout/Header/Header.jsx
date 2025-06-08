@@ -10,7 +10,9 @@ export default function Header() {
   const handleLoginClick = () =>{
     navigate("/login");
   }
-
+  const handleRegisterClick = () =>{
+      navigate("/register");
+  }
   return (
     <>
       <div className="header">
@@ -45,6 +47,9 @@ export default function Header() {
         </div>
         <div className="button">
           <button onClick={handleLoginClick}>Đăng nhập</button>
+        </div>
+        <div className="button">
+          <button onClick={handleRegisterClick}>Đăng ký</button>
         </div>
       </div>
     </>
