@@ -29,7 +29,7 @@ import BookingForm from "./components/pages/BookingForm/BookingForm";
 import { UserProvider, UserContext } from "./context/UserContext";
 import HomePage from "./components/pages/HomePage/index/HomePage";
 import RegistrationForm from "./components/pages/RegistrationServiceForm/index/RegistrationForm";
-
+import Pie from "./components/pages/ChartsForm/Pie";
 function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -50,6 +50,7 @@ function AppContent() {
         <Route path="/blog" element={<BlogPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/chart" element={<Pie />} />
         <Route
           path="/register"
           element={user ? <Navigate to="/" /> : <RegisterPage />}

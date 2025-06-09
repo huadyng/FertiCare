@@ -39,7 +39,7 @@ export default function Header() {
             <Link to="/doctor">Chuyên gia - bác sĩ</Link>
           </li>
           <li>
-            <Link to="/">Thành tựu</Link>
+            <Link to="/chart">Thành tựu</Link>
           </li>
           <li>
             <Link to="/">Tin tức</Link>
