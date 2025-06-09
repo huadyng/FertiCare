@@ -1,13 +1,56 @@
+.form-fade-slide {
+  animation: fadeSlideForm 0.6s ease forwards;
+}
+
+@keyframes fadeSlideForm {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 
 .register-page {
-  min-height: 100vh;
+   min-height: 100vh;
+  background: linear-gradient(135deg, #85d1fa,  #f9b4fd);
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: #fafafa;
-  padding: 40px 20px;
-  animation: fadeIn 0.7s ease forwards;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
 }
+
+.register-page::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(236, 233, 255, 0.4) 20%, transparent 70%) center/25% 25%;
+  animation: moveWaves 20s linear infinite;
+  z-index: 0;
+  opacity: 0.6;
+}
+
+@keyframes moveWaves {
+  0% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(50px, 50px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
 
 @keyframes fadeIn {
   0% {
@@ -57,25 +100,41 @@
 .register-left:hover img {
   transform: scale(1.08) translateY(-10px);
 }
+.register-quote {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  right: 20px;
+  color: #fff;
+  font-size: 18px;
+  font-style: italic;
+  line-height: 1.6;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+  z-index: 2;
+  animation: fadeQuote 5s infinite alternate ease-in-out;
+}
+
+
 
 /* Right side - form */
 .register-form {
   flex: 1;
-  background-color: white;
-  padding: 50px 50px;
+  background-color: rgb(252, 253, 253);
+  padding: 50px 60px;
   box-sizing: border-box;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+
 }
 
 .register-form h2 {
-  color: #fe76ac;
+  color: #44a2ff;
   letter-spacing: 1px;
   margin-bottom: 30px;
   text-align: center;
   font-weight: 700;
-  font-size: 34px;
+  font-size: 35px;
   position: relative;
 }
 
@@ -104,6 +163,7 @@
 .register-form input[type="password"],
 .register-form input[type="date"],
 .register-form input[type="tel"] {
+
   width: 100%;
   padding: 14px 18px;
   border-radius: 12px;
@@ -128,7 +188,7 @@
 .checkbox-group {
   display: flex;
   align-items: center;
-  margin: 25px 0;
+  margin: 20px 0;
 }
 
 .checkbox-group input[type="checkbox"] {
@@ -139,18 +199,19 @@
 
 .checkbox-group label {
   font-weight: 500;
-  font-size: 14px;
+  font-size: 15px;
   color: #333;
+ 
 }
 
 .btn-register {
   margin-top: auto;
   width: 100%;
   padding: 14px;
-  background: linear-gradient(135deg, #f9a8d4 0%, #93c5fd 100%);
+ background: linear-gradient(90deg, #fb61ae, #93c5fd);
   color: white;
   font-weight: bold;
-  font-size: 16px;
+  font-size: 20px;
   border: none;
   border-radius: 30px;
   cursor: pointer;
@@ -160,7 +221,7 @@
 
 .btn-register:hover {
   transform: scale(1.07);
-  background: linear-gradient(135deg, #ffbee2 0%, #9fcafc 100%);
+ background: linear-gradient(45deg, #ff4398, #4073ff);
   box-shadow: 0 8px 18px rgba(190, 9, 9, 0.2);
 }
 
@@ -184,4 +245,47 @@
   .register-form h2 {
     font-size: 28px;
   }
+}
+.register-form select {
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 2px solid #d1b3e0;
+  margin-top: 8px;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.3s, box-shadow 0.3s, transform 0.2s ease;
+  background-color: #fafafa;
+  appearance: none; /* để đồng nhất style giữa các browser */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23666' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px 8px;
+}
+
+.register-form select:focus {
+  border-color: #ec4899;
+  box-shadow: 0 0 10px rgba(236, 72, 153, 0.4);
+  transform: scale(1.03);
+}
+.login-text {
+  text-align: center;
+  font-size: 16px;
+  color: #427af3;
+  margin-top: 10px;
+}
+
+.login-link {
+  color: #3f5fff;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  user-select: none;
+  transition: color 0.3s ease;
+}
+
+.login-link:hover {
+  color: #250af0;
 }

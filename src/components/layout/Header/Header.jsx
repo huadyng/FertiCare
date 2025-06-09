@@ -12,8 +12,12 @@ export default function Header() {
     navigate("/login");
   };
 
+  const handleRegisterClick = () => {
+    navigate("/register");
+  };
+
   const handleLogoutClick = () => {
-    logout(); // đã đủ, không cần setIsLoggedIn(false)
+    logout();
     navigate("/");
   };
 
@@ -43,6 +47,9 @@ export default function Header() {
           <li>
             <Link to="/">Liên hệ</Link>
           </li>
+          <li>
+            <Link to="/blog">Blog</Link>
+          </li>
         </ul>
       </div>
 
@@ -65,7 +72,10 @@ export default function Header() {
             <button onClick={handleLogoutClick}>Đăng xuất</button>
           </div>
         ) : (
-          <button onClick={handleLoginClick}>Đăng nhập</button>
+          <>
+            <button onClick={handleLoginClick}>Đăng nhập</button>
+            <button onClick={handleRegisterClick}>Đăng ký</button>
+          </>
         )}
       </div>
     </div>
