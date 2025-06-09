@@ -1,10 +1,10 @@
 import React from "react";
 import "./NewsPage.css";
 
-import news1 from "../../../assets/img/news.png";
-import news2 from "../../../assets/img/news.png";
-import news3 from "../../../assets/img/news.png";
-import news4 from "../../../assets/img/news.png";
+import news1 from "../../../../assets/img/news.png";
+import news2 from "../../../../assets/img/news.png";
+import news3 from "../../../../assets/img/news.png";
+import news4 from "../../../../assets/img/news.png";
 
 export default function NewsPage() {
   const newsList = [

@@ -1,12 +1,12 @@
 import React from "react";
 import "./AchievementPage.css";
 
-import img1 from "../../../assets/img/achive.png";
-import img2 from "../../../assets/img/achive.png";
-import img3 from "../../../assets/img/achive.png";
-import img4 from "../../../assets/img/achive.png";
-import img5 from "../../../assets/img/achive.png";
-import img6 from "../../../assets/img/achive.png";
+import img1 from "../../../../assets/img/achive.png";
+import img2 from "../../../../assets/img/achive.png";
+import img3 from "../../../../assets/img/achive.png";
+import img4 from "../../../../assets/img/achive.png";
+import img5 from "../../../../assets/img/achive.png";
+import img6 from "../../../../assets/img/achive.png";
 
 export default function AchievementPage() {
   const achievements = [

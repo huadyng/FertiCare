@@ -1,7 +1,7 @@
 import React from "react";
 import "./Service.css";
-import ivfImg from "../../../assets/img/ivf.jpg";
-import iuiImg from "../../../assets/img/iui.jpg";
+import ivfImg from "../../../../assets/img/IVF.jpg";
+import iuiImg from "../../../../assets/img/iui.jpg";
 
 const Service = () => {
   return (

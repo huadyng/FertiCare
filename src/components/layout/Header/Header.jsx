@@ -72,10 +72,17 @@ export default function Header() {
             <button onClick={handleLogoutClick}>Đăng xuất</button>
           </div>
         ) : (
-          <>
-            <button onClick={handleLoginClick}>Đăng nhập</button>
-            <button onClick={handleRegisterClick}>Đăng ký</button>
-          </>
+          <div>
+            <button style={{ marginRight: "10px" }} onClick={handleLoginClick}>
+              Đăng nhập
+            </button>
+            <button
+              style={{ padding: "10px 22px" }}
+              onClick={handleRegisterClick}
+            >
+              Đăng ký
+            </button>
+          </div>
         )}
       </div>
     </div>

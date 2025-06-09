@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import "./DoctorCarousel.css";
-import doctor from "../../../assets/img/doctor1.png";
+import doctor from "../../../../assets/img/doctor1.png";
 
 const doctors = [
   {

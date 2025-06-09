@@ -9,23 +9,26 @@ import {
 import { useContext, useEffect, useState } from "react";
 import Footer from "./components/layout/Footer/Footer";
 import Header from "./components/layout/Header/Header";
-import HeroSection from "./components/Pages/HomePage/HeroSection";
-import AboutUs from "./components/Pages/HomePage/AboutUs";
-import Service from "./components/Pages/HomePage/Service";
-import DoctorCarousel from "./components/Pages/HomePage/DoctorCarousel";
-import AchievementPage from "./components/Pages/HomePage/AchievementPage";
-import NewsPage from "./components/Pages/HomePage/NewsPage";
-import FeedbackPage from "./components/Pages/HomePage/FeedbackPage";
-import Doctor from "./components/Pages/DoctorTeam/Doctor";
-import Login from "./components/Pages/Login/Login";
-import Register from "./components/Pages/Register/Register";
-import DoctorDetail from "./components/Pages/DoctorTeam/Card/DoctorDetail/DoctorDetail";
+// import HeroSection from "./components/pages/HomePage/HeroSection";
+// import AboutUs from "./components/pages/HomePage/AboutUs/AboutUs";
+// import Service from "./components/pages/HomePage/ServiceHomePage/Service";
+// import DoctorCarousel from "./components/pages/HomePage/DoctorCarousel/DoctorCarousel";
+// import AchievementPage from "./components/pages/HomePage/AchievementPage/AchievementPage";
+// import NewsPage from "./components/pages/HomePage/NewsPage/NewsPage";
+// import FeedbackPage from "./components/pages/HomePage/FeedbackPage/FeedbackPage";
+import Doctor from "./components/pages/DoctorTeam/Doctor";
+import Login from "./components/pages/Login/Login";
+import Register from "./components/pages/Register/Register";
+import DoctorDetail from "./components/pages/DoctorTeam/Card/DoctorDetail/DoctorDetail";
 import { Button, Result } from "antd";
 import "./App.css";
-import BlogPage from "./components/Pages/Blog/BlogPage";
-import ForgotPassword from "./components/Pages/Login/ForgotPassword";
-import RegisterPage from "./components/pages/Register/RegisterPage";
+import BlogPage from "./components/pages/Blog/BlogPage";
+import ForgotPassword from "./components/pages/Login/ForgotPassword";
+import RegisterPage from "./components/pages/Register/Register";
 import BookingForm from "./components/pages/BookingForm/BookingForm";
+import { UserProvider, UserContext } from "./context/UserContext";
+import RegistrationForm from "./components/pages/RegistrationServiceForm/index";
+import HomePage from "./components/pages/HomePage/index/HomePage";
 
 function AppContent() {
   const location = useLocation();
@@ -41,20 +44,7 @@ function AppContent() {
       ) && <Header />}
 
       <Routes>
-        <Route
-          path="/"
-          element={
-            <>
-              <HeroSection />
-              <AboutUs />
-              <DoctorCarousel />
-              <Service />
-              <AchievementPage />
-              <NewsPage />
-              <FeedbackPage />
-            </>
-          }
-        />
+        <Route path="/" element={<HomePage />} />
         <Route path="/doctor" element={<Doctor />} />
         <Route path="/doctor/:id" element={<DoctorDetail />} />
         <Route path="/blog" element={<BlogPage />} />
@@ -82,16 +72,7 @@ function AppContent() {
       </Routes>
 
       {/* Chỉ hiển thị các thành phần này nếu đang ở trang chủ */}
-      {isHomePage && (
-        <>
-          <AboutUs />
-          <DoctorCarousel />
-          <Service />
-          <AchievementPage />
-          <NewsPage />
-          <FeedbackPage />
-        </>
-      )}
+      {isHomePage}
       {!["/login", "/register", "/forgot-password"].includes(
         location.pathname
       ) && <Footer />}
@@ -105,6 +86,11 @@ function App() {
       <UserProvider>
         <BrowserRouter>
           <AppContent />
+          {/* <BookingForm /> */}
+          {/* <div>
+            <h1>Đăng ký dịch vụ điều trị hiếm muộn</h1>
+            <RegistrationForm />
+          </div> */}
         </BrowserRouter>
       </UserProvider>
     </>

@@ -13,27 +13,31 @@
   }
 }
 
-
 .register-page {
-   min-height: 100vh;
-  background: linear-gradient(135deg, #85d1fa,  #f9b4fd);
+  min-height: 100vh;
+  background: linear-gradient(135deg, #85d1fa, #f9b4fd);
   display: flex;
   justify-content: center;
   align-items: center;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   padding: 20px;
   position: relative;
   overflow: hidden;
 }
 
 .register-page::before {
-  content: '';
+  content: "";
   position: absolute;
   top: -50%;
   left: -50%;
   width: 200%;
   height: 200%;
-  background: radial-gradient(circle, rgba(236, 233, 255, 0.4) 20%, transparent 70%) center/25% 25%;
+  background: radial-gradient(
+      circle,
+      rgba(236, 233, 255, 0.4) 20%,
+      transparent 70%
+    )
+    center/25% 25%;
   animation: moveWaves 20s linear infinite;
   z-index: 0;
   opacity: 0.6;
@@ -50,7 +54,6 @@
     transform: translate(0, 0);
   }
 }
-
 
 @keyframes fadeIn {
   0% {
@@ -74,7 +77,7 @@
   overflow: hidden;
   position: relative;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   transition: all 0.5s ease;
 }
 
@@ -114,8 +117,6 @@
   animation: fadeQuote 5s infinite alternate ease-in-out;
 }
 
-
-
 /* Right side - form */
 .register-form {
   flex: 1;
@@ -125,11 +126,10 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-
 }
 
 .register-form h2 {
-  color: #44a2ff;
+  color: #f0619a;
   letter-spacing: 1px;
   margin-bottom: 30px;
   text-align: center;
@@ -163,7 +163,6 @@
 .register-form input[type="password"],
 .register-form input[type="date"],
 .register-form input[type="tel"] {
-
   width: 100%;
   padding: 14px 18px;
   border-radius: 12px;
@@ -201,14 +200,13 @@
   font-weight: 500;
   font-size: 15px;
   color: #333;
- 
 }
 
 .btn-register {
   margin-top: auto;
   width: 100%;
   padding: 14px;
- background: linear-gradient(90deg, #fb61ae, #93c5fd);
+  background: linear-gradient(90deg, #fb61ae, #93c5fd);
   color: white;
   font-weight: bold;
   font-size: 20px;
@@ -221,7 +219,7 @@
 
 .btn-register:hover {
   transform: scale(1.07);
- background: linear-gradient(45deg, #ff4398, #4073ff);
+  background: linear-gradient(45deg, #ff4398, #4073ff);
   box-shadow: 0 8px 18px rgba(190, 9, 9, 0.2);
 }
 
@@ -273,12 +271,12 @@
 .login-text {
   text-align: center;
   font-size: 16px;
-  color: #427af3;
+  color: #f0619a;
   margin-top: 10px;
 }
 
 .login-link {
-  color: #3f5fff;
+  color: #f0619a;
   font-weight: 700;
   cursor: pointer;
   text-decoration: underline;
@@ -287,5 +285,5 @@
 }
 
 .login-link:hover {
-  color: #250af0;
+  color: #b5179e;
 }

@@ -1,9 +1,9 @@
 import React from "react";
 import "./FeedbackPage.css";
 
-import avatar1 from "../../../assets/img/customer.png";
-import avatar2 from "../../../assets/img/customer.png";
-import avatar3 from "../../../assets/img/customer.png";
+import avatar1 from "../../../../assets/img/customer.png";
+import avatar2 from "../../../../assets/img/customer.png";
+import avatar3 from "../../../../assets/img/customer.png";
 
 const feedbacks = [
   {
