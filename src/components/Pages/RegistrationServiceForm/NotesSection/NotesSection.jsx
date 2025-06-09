@@ -1,16 +1,16 @@
 import React from "react";
 
 const NotesSection = ({ formData, handleChange }) => (
-  <section className="p-4 border rounded mb-4">
-    <h2 className="text-xl font-bold mb-2">4. Ghi chú</h2>
+  <section className="notes-section">
+    <h2 className="section-title">4. Ghi chú</h2>
     <textarea
       name="notes"
       value={formData.notes}
       onChange={handleChange}
       placeholder="Ghi chú y tế hoặc cá nhân..."
-      className="input"
+      className="textarea-field"
     />
-    <div className="mt-2">
+    <div className="policy-confirmation">
       <label>
         <input
           type="checkbox"

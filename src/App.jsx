@@ -27,8 +27,8 @@ import ForgotPassword from "./components/pages/Login/ForgotPassword";
 import RegisterPage from "./components/pages/Register/Register";
 import BookingForm from "./components/pages/BookingForm/BookingForm";
 import { UserProvider, UserContext } from "./context/UserContext";
-import RegistrationForm from "./components/pages/RegistrationServiceForm/index";
 import HomePage from "./components/pages/HomePage/index/HomePage";
+import RegistrationForm from "./components/pages/RegistrationServiceForm/index/RegistrationForm";
 
 function AppContent() {
   const location = useLocation();
@@ -39,7 +39,7 @@ function AppContent() {
 
   return (
     <>
-      {!["/login", "/register", "/forgot-password"].includes(
+      {!["/login", "/register", "/forgot-password", "/booking"].includes(
         location.pathname
       ) && <Header />}
 
@@ -53,6 +53,10 @@ function AppContent() {
         <Route
           path="/register"
           element={user ? <Navigate to="/" /> : <RegisterPage />}
+        />
+        <Route
+          path="/booking"
+          element={user ? <RegistrationForm /> : <Navigate to="/login" />}
         />
         <Route
           path="*"
@@ -73,7 +77,7 @@ function AppContent() {
 
       {/* Chỉ hiển thị các thành phần này nếu đang ở trang chủ */}
       {isHomePage}
-      {!["/login", "/register", "/forgot-password"].includes(
+      {!["/login", "/register", "/forgot-password", "/booking"].includes(
         location.pathname
       ) && <Footer />}
     </>
@@ -86,11 +90,6 @@ function App() {
       <UserProvider>
         <BrowserRouter>
           <AppContent />
-          {/* <BookingForm /> */}
-          {/* <div>
-            <h1>Đăng ký dịch vụ điều trị hiếm muộn</h1>
-            <RegistrationForm />
-          </div> */}
         </BrowserRouter>
       </UserProvider>
     </>

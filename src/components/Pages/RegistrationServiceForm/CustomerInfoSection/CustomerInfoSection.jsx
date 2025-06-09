@@ -1,22 +1,22 @@
 import React from "react";
 
 const CustomerInfoSection = ({ formData, handleChange }) => (
-  <section className="p-4 border rounded mb-4">
-    <h2 className="text-xl font-bold mb-2">1. Thông tin khách hàng</h2>
+  <section className="customer-info-section">
+    <h2 className="section-title">1. Thông tin khách hàng</h2>
     <input
       name="name"
       placeholder="Họ tên"
       value={formData.name}
       onChange={handleChange}
       required
-      className="input"
+      className="input-field"
     />
     <select
       name="gender"
       value={formData.gender}
       onChange={handleChange}
       required
-      className="input"
+      className="input-field"
     >
       <option value="">Giới tính</option>
       <option value="male">Nam</option>
@@ -28,7 +28,7 @@ const CustomerInfoSection = ({ formData, handleChange }) => (
       value={formData.dob}
       onChange={handleChange}
       required
-      className="input"
+      className="input-field"
     />
     <input
       name="contact"
@@ -36,14 +36,14 @@ const CustomerInfoSection = ({ formData, handleChange }) => (
       value={formData.contact}
       onChange={handleChange}
       required
-      className="input"
+      className="input-field"
     />
     <input
       name="idNumber"
       placeholder="CCCD / Mã bệnh nhân"
       value={formData.idNumber}
       onChange={handleChange}
-      className="input"
+      className="input-field"
     />
   </section>
 );
