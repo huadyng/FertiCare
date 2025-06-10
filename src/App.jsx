@@ -30,6 +30,7 @@ import { UserProvider, UserContext } from "./context/UserContext";
 import HomePage from "./components/pages/HomePage/index/HomePage";
 import RegistrationForm from "./components/pages/RegistrationServiceForm/index/RegistrationForm";
 import Pie from "./components/pages/ChartsForm/Pie";
+import Contact from "./components/Pages/Contact/ContactForm";
 function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -51,6 +52,7 @@ function AppContent() {
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/chart" element={<Pie />} />
+        <Route path="/contact" element={<Contact />} />
         <Route
           path="/register"
           element={user ? <Navigate to="/" /> : <RegisterPage />}
