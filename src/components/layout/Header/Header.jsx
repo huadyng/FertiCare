@@ -68,7 +68,7 @@ export default function Header() {
                 }}
               />
             )}
-            <span>Xin chào, {user.name}</span>
+            <span>Xin chào, {user.fullName}</span>
             <button onClick={handleLogoutClick}>Đăng xuất</button>
           </div>
         ) : (
