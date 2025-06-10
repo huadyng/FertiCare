@@ -34,7 +34,7 @@ function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useContext(UserContext);
-  const isDoctorPage = location.pathname.startsWith("/doctor");
+  
   const isHomePage = location.pathname === "/"; // Kiểm tra nếu là trang chủ
 
   return (
