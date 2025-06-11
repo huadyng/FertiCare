@@ -22,13 +22,17 @@ import Register from "./components/pages/Register/Register";
 import DoctorDetail from "./components/pages/DoctorTeam/Card/DoctorDetail/DoctorDetail";
 import { Button, Result } from "antd";
 import "./App.css";
-import BlogPage from "./components/pages/Blog/BlogPage";
+
 import ForgotPassword from "./components/pages/Login/ForgotPassword";
 import RegisterPage from "./components/pages/Register/Register";
 import BookingForm from "./components/pages/BookingForm/BookingForm";
 import { UserProvider, UserContext } from "./context/UserContext";
 import HomePage from "./components/pages/HomePage/index/HomePage";
 import RegistrationForm from "./components/pages/RegistrationServiceForm/index/RegistrationForm";
+
+import Pie from "./components/pages/ChartsForm/Pie";
+import BlogPublic from "./components/Pages/Blog/BlogPublic";
+import BlogManager from "./components/Pages/Blog/BlogManager";
 
 function AppContent() {
   const location = useLocation();
@@ -47,9 +51,14 @@ function AppContent() {
         <Route path="/" element={<HomePage />} />
         <Route path="/doctor" element={<Doctor />} />
         <Route path="/doctor/:id" element={<DoctorDetail />} />
-        <Route path="/blog" element={<BlogPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+
+
+        <Route path="/chart" element={<Pie />} />
+        <Route path="/blog-public" element={<BlogPublic />} />
+        <Route path="/blog-manager" element={<BlogManager />} />
+
         <Route
           path="/register"
           element={user ? <Navigate to="/" /> : <RegisterPage />}
