@@ -22,8 +22,10 @@ import BookingForm from "./components/pages/BookingForm/BookingForm";
 import { UserProvider, UserContext } from "./context/UserContext";
 import HomePage from "./components/pages/HomePage/index/HomePage";
 import RegistrationForm from "./components/pages/RegistrationServiceForm/index/RegistrationForm";
+import Pie from "./components/pages/ChartsForm/Pie";
+import Contact from "./components/Pages/Contact/ContactForm";
 
-// Wrapper dùng để hiển thị Header và Footer theo logic route
+// Wrapper để hiển thị Header/Footer tùy theo route
 function LayoutWrapper({ children }) {
   const location = useLocation();
   const hideHeaderFooterPaths = [
@@ -32,7 +34,6 @@ function LayoutWrapper({ children }) {
     "/forgot-password",
     "/booking",
   ];
-
   const shouldHideHeaderFooter = hideHeaderFooterPaths.includes(
     location.pathname
   );
@@ -46,21 +47,23 @@ function LayoutWrapper({ children }) {
   );
 }
 
-// Bảo vệ route cần đăng nhập
+// Route cần đăng nhập
 function PrivateRoute({ children }) {
   const { user } = useContext(UserContext);
   return user ? children : <Navigate to="/login" replace />;
 }
 
-// Chặn user đã đăng nhập vào lại trang register
+// Chỉ cho guest vào (chưa đăng nhập)
 function GuestOnlyRoute({ children }) {
   const { user } = useContext(UserContext);
   return user ? <Navigate to="/" replace /> : children;
 }
 
-// AppContent chứa các route chính
+// AppContent chứa toàn bộ route
 function AppContent() {
+  const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useContext(UserContext);
 
   return (
     <Routes>
@@ -98,7 +101,6 @@ function AppContent() {
       />
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
-
       <Route
         path="/register"
         element={
@@ -107,7 +109,6 @@ function AppContent() {
           </GuestOnlyRoute>
         }
       />
-
       <Route
         path="/booking"
         element={
@@ -116,7 +117,22 @@ function AppContent() {
           </PrivateRoute>
         }
       />
-
+      <Route
+        path="/chart"
+        element={
+          <LayoutWrapper>
+            <Pie />
+          </LayoutWrapper>
+        }
+      />
+      <Route
+        path="/contact"
+        element={
+          <LayoutWrapper>
+            <Contact />
+          </LayoutWrapper>
+        }
+      />
       <Route
         path="*"
         element={
