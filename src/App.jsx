@@ -23,7 +23,7 @@ import { UserProvider, UserContext } from "./context/UserContext";
 import HomePage from "./components/pages/HomePage/index/HomePage";
 import RegistrationForm from "./components/pages/RegistrationServiceForm/index/RegistrationForm";
 import Pie from "./components/pages/ChartsForm/Pie";
-import Contact from "./components/Pages/Contact/ContactForm";
+import Contact from "./components/pages/Contact/ContactForm";
 
 // Wrapper để hiển thị Header/Footer tùy theo route
 function LayoutWrapper({ children }) {

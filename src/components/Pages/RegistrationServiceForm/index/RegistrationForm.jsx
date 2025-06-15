@@ -11,7 +11,8 @@ const RegistrationForm = () => {
     dob: "",
     contact: "",
     idNumber: "",
-    service: "", // dùng 1 field duy nhất
+    address: "",
+    service: "",
     doctorOption: "auto",
     appointmentDate: "",
     appointmentTime: "",
@@ -40,6 +41,19 @@ const RegistrationForm = () => {
     }));
   };
 
+  // Reset các trường liên quan bác sĩ khi đổi dịch vụ
+  const handleServiceChange = (e) => {
+    setFormData((prev) => ({
+      ...prev,
+      service: e.target.value,
+      doctor: "",
+      appointmentDate: "",
+      appointmentTime: "",
+    }));
+    setAvailableDates([]);
+    setAvailableSlots([]);
+  };
+
   const handleDoctorChange = (e) => {
     const doctorId = e.target.value;
     setFormData((prev) => ({
@@ -49,7 +63,7 @@ const RegistrationForm = () => {
       appointmentTime: "",
     }));
 
-    const selectedDoctor = doctors.find((d) => d.id === doctorId);
+    const selectedDoctor = filteredDoctors.find((d) => d.id === doctorId);
     setAvailableDates(selectedDoctor?.schedule || []);
     setAvailableSlots([]);
   };
@@ -106,6 +120,11 @@ const RegistrationForm = () => {
     }
   };
 
+  // Lọc danh sách bác sĩ theo dịch vụ đã chọn
+  const filteredDoctors = doctors.filter(
+    (doc) => doc.specialty && doc.specialty.toUpperCase() === formData.service
+  );
+
   return (
     <>
       {/* <Header /> */}
@@ -157,9 +176,9 @@ const RegistrationForm = () => {
                 className="input-field"
               />
               <input
-                name="idNumber"
+                name="address"
                 placeholder="Địa chỉ"
-                value={formData.idNumber}
+                value={formData.address}
                 onChange={handleChange}
                 required
                 className="input-field"
@@ -185,9 +204,9 @@ const RegistrationForm = () => {
                     <input
                       type="radio"
                       name="service"
-                      value="ivf"
-                      checked={formData.service === "ivf"}
-                      onChange={handleChange}
+                      value="IVF"
+                      checked={formData.service === "IVF"}
+                      onChange={handleServiceChange}
                     />
                     IVF - Thụ tinh trong ống nghiệm
                   </label>
@@ -195,95 +214,98 @@ const RegistrationForm = () => {
                     <input
                       type="radio"
                       name="service"
-                      value="iui"
-                      checked={formData.service === "iui"}
-                      onChange={handleChange}
+                      value="IUI"
+                      checked={formData.service === "IUI"}
+                      onChange={handleServiceChange}
                     />
                     IUI - Thụ tinh nhân tạo
                   </label>
                 </div>
               </section>
 
-              <section className="section doctor-selection-section">
-                <h2 className="section-title" style={{ textAlign: "center" }}>
-                  Chọn bác sĩ
-                </h2>
-                <div className="radio-group" style={{ marginBottom: "20px" }}>
-                  <label>
-                    <input
-                      type="radio"
-                      name="doctorOption"
-                      value="manual"
-                      checked={formData.doctorOption === "manual"}
-                      onChange={handleChange}
-                    />
-                    Tự chọn bác sĩ
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
-                      name="doctorOption"
-                      value="auto"
-                      checked={formData.doctorOption === "auto"}
-                      onChange={handleChange}
-                    />
-                    Hệ thống gợi ý
-                  </label>
-                </div>
-
-                {formData.doctorOption === "manual" && (
-                  <div className="doctor-selection-container">
-                    <select
-                      name="doctor"
-                      value={formData.doctor}
-                      onChange={handleDoctorChange}
-                      className="input-field"
-                      required
-                    >
-                      <option value="">-- Chọn bác sĩ --</option>
-                      {doctors.map((doc) => (
-                        <option key={doc.id} value={doc.id}>
-                          {doc.name}
-                        </option>
-                      ))}
-                    </select>
-
-                    {availableDates.length > 0 && (
-                      <select
-                        name="appointmentDate"
-                        value={formData.appointmentDate}
-                        onChange={handleDateChange}
-                        className="input-field"
-                        required
-                      >
-                        <option value="">-- Chọn ngày hẹn --</option>
-                        {availableDates.map((d) => (
-                          <option key={d.date} value={d.date}>
-                            {d.date}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-
-                    {availableSlots.length > 0 && (
-                      <select
-                        name="appointmentTime"
-                        value={formData.appointmentTime}
-                        onChange={handleSlotChange}
-                        className="input-field"
-                        required
-                      >
-                        <option value="">-- Chọn giờ --</option>
-                        {availableSlots.map((slot, index) => (
-                          <option key={index} value={slot}>
-                            {slot}
-                          </option>
-                        ))}
-                      </select>
-                    )}
+              {/* Chỉ hiển thị chọn bác sĩ khi đã chọn dịch vụ */}
+              {formData.service && (
+                <section className="section doctor-selection-section">
+                  <h2 className="section-title" style={{ textAlign: "center" }}>
+                    Chọn bác sĩ
+                  </h2>
+                  <div className="radio-group" style={{ marginBottom: "20px" }}>
+                    <label>
+                      <input
+                        type="radio"
+                        name="doctorOption"
+                        value="manual"
+                        checked={formData.doctorOption === "manual"}
+                        onChange={handleChange}
+                      />
+                      Tự chọn bác sĩ
+                    </label>
+                    <label>
+                      <input
+                        type="radio"
+                        name="doctorOption"
+                        value="auto"
+                        checked={formData.doctorOption === "auto"}
+                        onChange={handleChange}
+                      />
+                      Hệ thống gợi ý
+                    </label>
                   </div>
-                )}
-              </section>
+
+                  {formData.doctorOption === "manual" && (
+                    <div className="doctor-selection-container">
+                      <select
+                        name="doctor"
+                        value={formData.doctor}
+                        onChange={handleDoctorChange}
+                        className="input-field"
+                        required
+                      >
+                        <option value="">-- Chọn bác sĩ --</option>
+                        {filteredDoctors.map((doc) => (
+                          <option key={doc.id} value={doc.id}>
+                            {doc.name}
+                          </option>
+                        ))}
+                      </select>
+
+                      {availableDates.length > 0 && (
+                        <select
+                          name="appointmentDate"
+                          value={formData.appointmentDate}
+                          onChange={handleDateChange}
+                          className="input-field"
+                          required
+                        >
+                          <option value="">-- Chọn ngày hẹn --</option>
+                          {availableDates.map((d) => (
+                            <option key={d.date} value={d.date}>
+                              {d.date}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+
+                      {availableSlots.length > 0 && (
+                        <select
+                          name="appointmentTime"
+                          value={formData.appointmentTime}
+                          onChange={handleSlotChange}
+                          className="input-field"
+                          required
+                        >
+                          <option value="">-- Chọn giờ --</option>
+                          {availableSlots.map((slot, index) => (
+                            <option key={index} value={slot}>
+                              {slot}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  )}
+                </section>
+              )}
             </div>
           </div>
 
