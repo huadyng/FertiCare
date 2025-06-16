@@ -33,6 +33,7 @@ import RegistrationForm from "./components/pages/RegistrationServiceForm/index/R
 import Pie from "./components/pages/ChartsForm/Pie";
 import BlogPublic from "./components/Pages/Blog/BlogPublic";
 import BlogManager from "./components/Pages/Blog/BlogManager";
+import BlogDetail from "./components/Pages/Blog/BlogDetail";
 
 function AppContent() {
   const location = useLocation();
@@ -58,7 +59,7 @@ function AppContent() {
         <Route path="/chart" element={<Pie />} />
         <Route path="/blog-public" element={<BlogPublic />} />
         <Route path="/blog-manager" element={<BlogManager />} />
-
+        <Route path="/blog/:id" element={<BlogDetail />} />
         <Route
           path="/register"
           element={user ? <Navigate to="/" /> : <RegisterPage />}

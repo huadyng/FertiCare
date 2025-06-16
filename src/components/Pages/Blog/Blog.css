@@ -1,0 +1,275 @@
+/* Giao diện tổng thể */
+.blog-container-flex {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  padding: 2rem 4vw;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #fcc6ff, #85d1fa);
+  color: #333;
+  box-sizing: border-box;
+  min-height: 100vh;
+  position: relative;
+}
+
+.blog-container-flex::before,
+.blog-container-flex::after {
+  content: "";
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.5;
+  z-index: 0;
+}
+.blog-container-flex::before {
+  top: -100px;
+  left: -100px;
+  background: radial-gradient(circle at center, #e5a8bc 30%, transparent 70%);
+}
+.blog-container-flex::after {
+  bottom: -100px;
+  right: -100px;
+  background: radial-gradient(circle at center, #fbc1cc 30%, transparent 70%);
+}
+
+/* Cột trái và phải */
+.blog-left {
+  flex: 1 1 30%;
+  min-width: 300px;
+  max-width: 500px;
+  padding-right: 2rem;
+  box-sizing: border-box;
+  z-index: 1;
+}
+
+.blog-right {
+  flex: 1 1 70%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  justify-content: flex-start;
+  box-sizing: border-box;
+  z-index: 1;
+}
+
+/* Thông tin người dùng */
+.user-info {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 0.75rem;
+  border: 2px solid #e84393;
+}
+
+.username {
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: #f0619a;
+}
+
+/* Form đăng bài */
+form {
+  background-color: #fff;
+  padding: 1.5rem;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(232, 67, 147, 0.2);
+  margin-bottom: 1.5rem;
+}
+
+.title-input,
+.content-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border: 2px solid #fbc1cc;
+  border-radius: 12px;
+  font-size: 15px;
+  font-family: inherit;
+  transition: 0.3s;
+}
+
+.title-input:focus,
+.content-input:focus {
+  border-color: #e84393;
+  box-shadow: 0 0 8px rgba(232, 67, 147, 0.3);
+}
+
+.content-input {
+  height: 120px;
+  resize: vertical;
+}
+
+input[type="file"] {
+  margin-bottom: 1rem;
+  font-size: 14px;
+}
+
+/* Ảnh xem trước */
+.preview-image-container {
+  margin-top: 10px;
+  text-align: left;
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  object-fit: cover;
+}
+
+/* Nút */
+.post-button,
+.login-button {
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(90deg, #fb61ae, #93c5fd);
+  color: white;
+  font-weight: bold;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 5px 15px rgba(232, 67, 147, 0.4);
+}
+
+.login-button {
+  background: linear-gradient(90deg, #74b9ff, #a29bfe);
+}
+
+.post-button:hover,
+.login-button:hover {
+  background: linear-gradient(45deg, #ff4398, #4073ff);
+}
+
+/* Blog đang chọn */
+.selected-blog {
+  background-color: #fff;
+  padding: 1.5rem;
+  border-radius: 16px;
+  margin-top: 1.5rem;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+}
+
+.selected-blog-image {
+  max-width: 100%;
+  border-radius: 10px;
+  margin: 1rem 0;
+}
+
+.blog-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #777;
+}
+
+/* Card blog */
+.blog-card {
+  width: calc(50% - 1rem);
+  display: flex;
+  flex-direction: column;
+  background-color: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 6px 16px rgba(247, 37, 133, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+}
+
+.blog-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 28px rgba(247, 37, 133, 0.25);
+}
+
+.card-image {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-bottom: 1px solid #f1f1f1;
+  transition: transform 0.4s ease;
+}
+
+.blog-card:hover .card-image {
+  transform: scale(1.03);
+}
+
+.card-body {
+  padding: 1.2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.card-title {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin: 0;
+  color: #e84393;
+  line-height: 1.3;
+  transition: color 0.2s;
+}
+
+.blog-card:hover .card-title {
+  color: #c2185b;
+}
+
+.card-snippet {
+  font-size: 1rem;
+  color: #555;
+  line-height: 1.6;
+  max-height: 4.8em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-meta {
+  font-size: 0.9rem;
+  color: #999;
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid #eee;
+  padding-top: 0.5rem;
+  margin-top: auto;
+}
+
+/* Nhãn static */
+.static-label {
+  background: #ffe4ec;
+  color: #b5179e;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-block;
+  margin-top: 5px;
+}
+
+/* Responsive layout */
+@media (max-width: 1024px) {
+  .blog-card {
+    width: 100%;
+  }
+
+  .blog-left,
+  .blog-right {
+    flex: 1 1 100%;
+    padding: 0;
+  }
+
+  .blog-container-flex {
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1rem;
+  }
+}
