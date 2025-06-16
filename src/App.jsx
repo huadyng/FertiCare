@@ -15,7 +15,7 @@ import Register from "./components/pages/Register/Register";
 import DoctorDetail from "./components/pages/DoctorTeam/Card/DoctorDetail/DoctorDetail";
 import { Button, Result } from "antd";
 import "./App.css";
-import BlogPage from "./components/pages/Blog/BlogPage";
+
 import ForgotPassword from "./components/pages/Login/ForgotPassword";
 import RegisterPage from "./components/pages/Register/Register";
 import BookingForm from "./components/pages/BookingForm/BookingForm";
@@ -24,6 +24,13 @@ import HomePage from "./components/pages/HomePage/index/HomePage";
 import RegistrationForm from "./components/pages/RegistrationServiceForm/index/RegistrationForm";
 import Pie from "./components/pages/ChartsForm/Pie";
 import Contact from "./components/pages/Contact/ContactForm";
+
+
+import Pie from "./components/pages/ChartsForm/Pie";
+import BlogPublic from "./components/Pages/Blog/BlogPublic";
+import BlogManager from "./components/Pages/Blog/BlogManager";
+import BlogDetail from "./components/Pages/Blog/BlogDetail";
+
 
 // Wrapper để hiển thị Header/Footer tùy theo route
 function LayoutWrapper({ children }) {
@@ -60,12 +67,43 @@ function GuestOnlyRoute({ children }) {
 }
 
 // AppContent chứa toàn bộ route
+
 function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useContext(UserContext);
 
   return (
+
+    <>
+      {!["/login", "/register", "/forgot-password", "/booking"].includes(
+        location.pathname
+      ) && <Header />}
+
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/doctor" element={<Doctor />} />
+        <Route path="/doctor/:id" element={<DoctorDetail />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+
+
+        <Route path="/chart" element={<Pie />} />
+        <Route path="/blog-public" element={<BlogPublic />} />
+        <Route path="/blog-manager" element={<BlogManager />} />
+        <Route path="/blog/:id" element={<BlogDetail />} />
+        <Route
+          path="/register"
+          element={user ? <Navigate to="/" /> : <RegisterPage />}
+        />
+        <Route
+          path="/booking"
+          element={user ? <RegistrationForm /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="*"
+          element={
+
     <Routes>
       <Route
         path="/"
@@ -137,6 +175,7 @@ function AppContent() {
         path="*"
         element={
           <LayoutWrapper>
+
             <Result
               status="404"
               title="404"

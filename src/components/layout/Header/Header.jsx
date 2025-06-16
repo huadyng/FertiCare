@@ -48,8 +48,14 @@ export default function Header() {
             <Link to="/contact">Liên hệ</Link>
           </li>
           <li>
-            <Link to="/blog">Blog</Link>
+            {isLoggedIn && user?.role === "manager" ? (
+              <Link to="/blog-manager">Quản lý Blog</Link>
+            ) : (
+              <Link to="/blog-public">Cộng đồng Blog</Link>
+            )}
           </li>
+           
+           
         </ul>
       </div>
 

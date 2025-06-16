@@ -1,0 +1,93 @@
+.blog-manager {
+  padding: 2rem 4vw;
+  background-color: #f9f9f9;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #333;
+}
+
+h4 {
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Blog card tương tự blog-public nhưng rõ ràng hơn */
+.manager-card {
+  background-color: #fff;
+  border-radius: 16px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  margin-bottom: 1.5rem;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.manager-card:hover {
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-4px);
+}
+
+.blog-image {
+  width: 100%;
+  height: auto;
+  max-height: 400px;
+  object-fit: contain;
+  border-radius: 12px;
+  border: 1px solid #ccc;
+}
+
+/* Metadata */
+.blog-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  color: #777;
+  gap: 0.5rem;
+}
+
+/* Nội dung blog */
+.manager-card p {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #555;
+}
+
+/* Các nút thao tác */
+.manager-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+/* Static label */
+.static-label {
+  background-color: #eee;
+  color: #555;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  border-radius: 6px;
+  font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .blog-manager {
+    padding: 1rem;
+  }
+
+  .manager-card {
+    padding: 1rem;
+  }
+
+  .blog-image {
+    max-height: 250px;
+  }
+
+  h4 {
+    font-size: 1.5rem;
+  }
+}
