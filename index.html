@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -7,6 +7,19 @@
     <title>Vite + React</title>
   </head>
   <body>
+    <!-- Đảm bảo script này nằm ngay đầu <body> để patch localStorage thật sớm -->
+    <script>
+      // Nếu redux_store chưa tồn tại hoặc giá trị là null/undefined thì set giá trị mặc định hợp lệ
+      const key = "redux_store";
+      const val = window.localStorage.getItem(key);
+      if (!val || val === "undefined" || val === "null") {
+        window.localStorage.setItem(
+          key,
+          JSON.stringify({ geo: { language: "vi" } })
+        );
+      }
+    </script>
+
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

@@ -1,38 +1,111 @@
 import React, { useState, useEffect } from "react";
 import axiosClient from "../../../../api/axiosClient";
 import "./RegistrationForm.css";
-import Header from "../../../layout/Header/Header";
-import Footer from "../../../layout/Footer/Footer";
 
 const RegistrationForm = () => {
   const [formData, setFormData] = useState({
-    name: "",
+    fullName: "",
     gender: "",
-    dob: "",
-    contact: "",
+    dateOfBirth: "",
+    phone: "",
+    email: "",
     idNumber: "",
     address: "",
-    service: "",
+    serviceId: "",
     doctorOption: "auto",
+    doctorId: "",
     appointmentDate: "",
     appointmentTime: "",
-    doctor: "",
-    schedule: "",
     notes: "",
     agreePolicy: false,
   });
 
+  const [services, setServices] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [availableDates, setAvailableDates] = useState([]);
   const [availableSlots, setAvailableSlots] = useState([]);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [registerInfo, setRegisterInfo] = useState(null);
 
+  // Regex validation
   const phoneRegex = /^0\d{9}$/;
   const idRegex = /^\d{9,12}$/;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+  // Lấy danh sách dịch vụ
   useEffect(() => {
-    axiosClient.get("/doctors").then((res) => setDoctors(res.data));
+    const fetchServices = async () => {
+      try {
+        const res = await axiosClient.get("/services");
+        setServices(res.data);
+      } catch (err) {
+        console.error("Lỗi lấy dịch vụ:", err);
+      }
+    };
+    fetchServices();
   }, []);
 
+  // Lấy danh sách bác sĩ khi chọn dịch vụ
+  useEffect(() => {
+    const fetchDoctors = async () => {
+      if (!formData.serviceId) return;
+      try {
+        const res = await axiosClient.get("/doctors", {
+          params: { serviceId: formData.serviceId },
+        });
+        setDoctors(res.data);
+      } catch (err) {
+        console.error("Lỗi lấy bác sĩ:", err);
+      }
+    };
+    fetchDoctors();
+    // Reset khi đổi dịch vụ
+    setFormData((prev) => ({
+      ...prev,
+      doctorId: "",
+      appointmentDate: "",
+      appointmentTime: "",
+    }));
+    setAvailableDates([]);
+    setAvailableSlots([]);
+  }, [formData.serviceId]);
+
+  // Khi chọn bác sĩ (manual), lấy lịch schedule
+  const handleDoctorChange = (e) => {
+    const doctorId = e.target.value;
+    setFormData((prev) => ({
+      ...prev,
+      doctorId,
+      appointmentDate: "",
+      appointmentTime: "",
+    }));
+
+    const selectedDoctor = doctors.find((d) => d.id === doctorId);
+    setAvailableDates(selectedDoctor?.schedule || []);
+    setAvailableSlots([]);
+  };
+
+  // Khi chọn ngày hẹn
+  const handleDateChange = (e) => {
+    const date = e.target.value;
+    setFormData((prev) => ({
+      ...prev,
+      appointmentDate: date,
+      appointmentTime: "",
+    }));
+    const selected = availableDates.find((d) => d.date === date);
+    setAvailableSlots(selected?.slots || []);
+  };
+
+  // Khi chọn giờ hẹn
+  const handleSlotChange = (e) => {
+    setFormData((prev) => ({
+      ...prev,
+      appointmentTime: e.target.value,
+    }));
+  };
+
+  // Handle input change
   const handleChange = (e) => {
     const { name, type, value, checked } = e.target;
     setFormData((prev) => ({
@@ -41,56 +114,11 @@ const RegistrationForm = () => {
     }));
   };
 
-  // Reset các trường liên quan bác sĩ khi đổi dịch vụ
-  const handleServiceChange = (e) => {
-    setFormData((prev) => ({
-      ...prev,
-      service: e.target.value,
-      doctor: "",
-      appointmentDate: "",
-      appointmentTime: "",
-    }));
-    setAvailableDates([]);
-    setAvailableSlots([]);
-  };
-
-  const handleDoctorChange = (e) => {
-    const doctorId = e.target.value;
-    setFormData((prev) => ({
-      ...prev,
-      doctor: doctorId,
-      appointmentDate: "",
-      appointmentTime: "",
-    }));
-
-    const selectedDoctor = filteredDoctors.find((d) => d.id === doctorId);
-    setAvailableDates(selectedDoctor?.schedule || []);
-    setAvailableSlots([]);
-  };
-
-  const handleDateChange = (e) => {
-    const date = e.target.value;
-    setFormData((prev) => ({
-      ...prev,
-      appointmentDate: date,
-      appointmentTime: "",
-    }));
-
-    const selected = availableDates.find((d) => d.date === date);
-    setAvailableSlots(selected?.slots || []);
-  };
-
-  const handleSlotChange = (e) => {
-    setFormData((prev) => ({
-      ...prev,
-      appointmentTime: e.target.value,
-    }));
-  };
-
+  // Gửi form đăng ký
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!phoneRegex.test(formData.contact)) {
+    // Validate các trường
+    if (!phoneRegex.test(formData.phone)) {
       alert("Số điện thoại không hợp lệ.");
       return;
     }
@@ -98,248 +126,278 @@ const RegistrationForm = () => {
       alert("CCCD/Mã bệnh nhân không hợp lệ.");
       return;
     }
-    if (new Date(formData.dob) > new Date()) {
+    if (new Date(formData.dateOfBirth) > new Date()) {
       alert("Ngày sinh không hợp lệ.");
       return;
     }
+    if (!emailRegex.test(formData.email)) {
+      alert("Email không hợp lệ.");
+      return;
+    }
+    if (!formData.agreePolicy) {
+      alert("Bạn cần đồng ý chính sách.");
+      return;
+    }
+    if (!formData.serviceId) {
+      alert("Vui lòng chọn dịch vụ.");
+      return;
+    }
+    if (formData.doctorOption === "manual" && !formData.doctorId) {
+      alert("Vui lòng chọn bác sĩ.");
+      return;
+    }
 
+    // Chuẩn bị dữ liệu gửi đi (theo đúng schema Swagger)
     const dataToSubmit = {
-      ...formData,
-      schedule:
-        formData.doctorOption === "manual"
-          ? `${formData.appointmentDate} ${formData.appointmentTime}`
-          : formData.schedule,
+      fullName: formData.fullName,
+      gender: formData.gender,
+      dateOfBirth: formData.dateOfBirth,
+      phone: formData.phone,
+      email: formData.email,
+      idNumber: formData.idNumber,
+      address: formData.address,
+      serviceId: formData.serviceId,
+      doctorId: formData.doctorOption === "manual" ? formData.doctorId : null,
+      appointmentDate: formData.appointmentDate || null,
+      appointmentTime: formData.appointmentTime || null,
+      notes: formData.notes || "",
+      agreePolicy: formData.agreePolicy,
     };
 
     try {
-      await axiosClient.post("/registrations", dataToSubmit);
-      alert("Đăng ký thành công!");
-    } catch (error) {
-      console.error(error);
+      const res = await axiosClient.post("/service-request", dataToSubmit);
+      setRegisterInfo(res.data); // lưu lại đơn đăng ký trả về từ BE
+      setShowSuccess(true);
+      // setFormData({ ... }); // Reset nếu cần
+    } catch (err) {
       alert("Đăng ký thất bại.");
+      console.error(err);
     }
   };
 
-  // Lọc danh sách bác sĩ theo dịch vụ đã chọn
-  const filteredDoctors = doctors.filter(
-    (doc) => doc.specialty && doc.specialty.toUpperCase() === formData.service
-  );
-
   return (
-    <>
-      {/* <Header /> */}
-      <main className="registration-form-container">
-        <form onSubmit={handleSubmit} className="registration-form">
-          <h1 className="h1">ĐĂNG KÝ DỊCH VỤ</h1>
-
-          {/* ===== Row 1: Thông tin + dịch vụ & chọn bác sĩ ===== */}
-          <div className="form-row">
-            {/* Cột trái: Thông tin khách hàng */}
-            <section className="section customer-info-section">
+    <main className="registration-form-container">
+      <form onSubmit={handleSubmit} className="registration-form">
+        <h1 className="h1">ĐĂNG KÝ DỊCH VỤ</h1>
+        <div className="form-row">
+          {/* Cột trái: Thông tin khách hàng */}
+          <section className="section customer-info-section">
+            <h2 className="section-title" style={{ textAlign: "center" }}>
+              Thông tin khách hàng
+            </h2>
+            <input
+              name="fullName"
+              placeholder="Họ tên"
+              value={formData.fullName}
+              onChange={handleChange}
+              required
+              className="input-field"
+            />
+            <select
+              name="gender"
+              value={formData.gender}
+              onChange={handleChange}
+              required
+              className="input-field"
+            >
+              <option value="">Giới tính</option>
+              <option value="male">Nam</option>
+              <option value="female">Nữ</option>
+            </select>
+            <input
+              name="dateOfBirth"
+              type="date"
+              value={formData.dateOfBirth}
+              onChange={handleChange}
+              required
+              className="input-field"
+              max={new Date().toISOString().split("T")[0]}
+            />
+            <input
+              name="phone"
+              placeholder="Số điện thoại"
+              value={formData.phone}
+              onChange={handleChange}
+              required
+              className="input-field"
+            />
+            <input
+              name="email"
+              placeholder="Email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+              className="input-field"
+              type="email"
+            />
+            <input
+              name="address"
+              placeholder="Địa chỉ"
+              value={formData.address}
+              onChange={handleChange}
+              required
+              className="input-field"
+            />
+            <input
+              name="idNumber"
+              placeholder="CCCD / Mã bệnh nhân"
+              value={formData.idNumber}
+              onChange={handleChange}
+              required
+              className="input-field"
+            />
+          </section>
+          {/* Cột phải: dịch vụ + chọn bác sĩ */}
+          <div className="right-col">
+            <section className="section service-selection-section">
               <h2 className="section-title" style={{ textAlign: "center" }}>
-                Thông tin khách hàng
+                Dịch vụ đăng ký
               </h2>
-              <input
-                name="name"
-                placeholder="Họ tên"
-                value={formData.name}
-                onChange={handleChange}
-                required
-                className="input-field"
-              />
-              <select
-                name="gender"
-                value={formData.gender}
-                onChange={handleChange}
-                required
-                className="input-field"
-              >
-                <option value="">Giới tính</option>
-                <option value="male">Nam</option>
-                <option value="female">Nữ</option>
-              </select>
-              <input
-                name="dob"
-                type="date"
-                value={formData.dob}
-                onChange={handleChange}
-                required
-                className="input-field"
-                max={new Date().toISOString().split("T")[0]}
-              />
-              <input
-                name="contact"
-                placeholder="Số điện thoại"
-                value={formData.contact}
-                onChange={handleChange}
-                required
-                className="input-field"
-              />
-              <input
-                name="address"
-                placeholder="Địa chỉ"
-                value={formData.address}
-                onChange={handleChange}
-                required
-                className="input-field"
-              />
-              <input
-                name="idNumber"
-                placeholder="CCCD / Mã bệnh nhân"
-                value={formData.idNumber}
-                onChange={handleChange}
-                required
-                className="input-field"
-              />
+              <div className="radio-group">
+                {services.map((service) => (
+                  <label key={service.id}>
+                    <input
+                      type="radio"
+                      name="serviceId"
+                      value={service.id}
+                      checked={formData.serviceId === service.id}
+                      onChange={handleChange}
+                    />
+                    {service.name}
+                  </label>
+                ))}
+              </div>
             </section>
-
-            {/* Cột phải: dịch vụ + chọn bác sĩ */}
-            <div className="right-col">
-              <section className="section service-selection-section">
+            {/* Chỉ hiển thị chọn bác sĩ khi đã chọn dịch vụ */}
+            {formData.serviceId && (
+              <section className="section doctor-selection-section">
                 <h2 className="section-title" style={{ textAlign: "center" }}>
-                  Dịch vụ đăng ký
+                  Chọn bác sĩ
                 </h2>
-                <div className="radio-group">
+                <div className="radio-group" style={{ marginBottom: "20px" }}>
                   <label>
                     <input
                       type="radio"
-                      name="service"
-                      value="IVF"
-                      checked={formData.service === "IVF"}
-                      onChange={handleServiceChange}
+                      name="doctorOption"
+                      value="manual"
+                      checked={formData.doctorOption === "manual"}
+                      onChange={handleChange}
                     />
-                    IVF - Thụ tinh trong ống nghiệm
+                    Tự chọn bác sĩ
                   </label>
                   <label>
                     <input
                       type="radio"
-                      name="service"
-                      value="IUI"
-                      checked={formData.service === "IUI"}
-                      onChange={handleServiceChange}
+                      name="doctorOption"
+                      value="auto"
+                      checked={formData.doctorOption === "auto"}
+                      onChange={handleChange}
                     />
-                    IUI - Thụ tinh nhân tạo
+                    Hệ thống gợi ý
                   </label>
                 </div>
-              </section>
-
-              {/* Chỉ hiển thị chọn bác sĩ khi đã chọn dịch vụ */}
-              {formData.service && (
-                <section className="section doctor-selection-section">
-                  <h2 className="section-title" style={{ textAlign: "center" }}>
-                    Chọn bác sĩ
-                  </h2>
-                  <div className="radio-group" style={{ marginBottom: "20px" }}>
-                    <label>
-                      <input
-                        type="radio"
-                        name="doctorOption"
-                        value="manual"
-                        checked={formData.doctorOption === "manual"}
-                        onChange={handleChange}
-                      />
-                      Tự chọn bác sĩ
-                    </label>
-                    <label>
-                      <input
-                        type="radio"
-                        name="doctorOption"
-                        value="auto"
-                        checked={formData.doctorOption === "auto"}
-                        onChange={handleChange}
-                      />
-                      Hệ thống gợi ý
-                    </label>
-                  </div>
-
-                  {formData.doctorOption === "manual" && (
-                    <div className="doctor-selection-container">
+                {/* Chỉ hiện chọn bác sĩ và lịch khi chọn 'manual' */}
+                {formData.doctorOption === "manual" && (
+                  <div className="doctor-selection-container">
+                    <select
+                      name="doctorId"
+                      value={formData.doctorId}
+                      onChange={handleDoctorChange}
+                      className="input-field"
+                      required
+                    >
+                      <option value="">-- Chọn bác sĩ --</option>
+                      {doctors.map((doc) => (
+                        <option key={doc.id} value={doc.id}>
+                          {doc.name}
+                        </option>
+                      ))}
+                    </select>
+                    {availableDates.length > 0 && (
                       <select
-                        name="doctor"
-                        value={formData.doctor}
-                        onChange={handleDoctorChange}
+                        name="appointmentDate"
+                        value={formData.appointmentDate}
+                        onChange={handleDateChange}
                         className="input-field"
                         required
                       >
-                        <option value="">-- Chọn bác sĩ --</option>
-                        {filteredDoctors.map((doc) => (
-                          <option key={doc.id} value={doc.id}>
-                            {doc.name}
+                        <option value="">-- Chọn ngày hẹn --</option>
+                        {availableDates.map((d) => (
+                          <option key={d.date} value={d.date}>
+                            {d.date}
                           </option>
                         ))}
                       </select>
-
-                      {availableDates.length > 0 && (
-                        <select
-                          name="appointmentDate"
-                          value={formData.appointmentDate}
-                          onChange={handleDateChange}
-                          className="input-field"
-                          required
-                        >
-                          <option value="">-- Chọn ngày hẹn --</option>
-                          {availableDates.map((d) => (
-                            <option key={d.date} value={d.date}>
-                              {d.date}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-
-                      {availableSlots.length > 0 && (
-                        <select
-                          name="appointmentTime"
-                          value={formData.appointmentTime}
-                          onChange={handleSlotChange}
-                          className="input-field"
-                          required
-                        >
-                          <option value="">-- Chọn giờ --</option>
-                          {availableSlots.map((slot, index) => (
-                            <option key={index} value={slot}>
-                              {slot}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    </div>
-                  )}
-                </section>
-              )}
-            </div>
+                    )}
+                    {availableSlots.length > 0 && (
+                      <select
+                        name="appointmentTime"
+                        value={formData.appointmentTime}
+                        onChange={handleSlotChange}
+                        className="input-field"
+                        required
+                      >
+                        <option value="">-- Chọn giờ --</option>
+                        {availableSlots.map((slot, index) => (
+                          <option key={index} value={slot}>
+                            {slot}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                )}
+              </section>
+            )}
           </div>
-
-          {/* ===== Row 2: Ghi chú + Chính sách ===== */}
-          <div className="form-row single-column">
-            <section className="section notes-section">
-              <h2 className="section-title">Ghi chú</h2>
-              <textarea
-                name="notes"
-                value={formData.notes}
+        </div>
+        {/* ===== Row 2: Ghi chú + Chính sách ===== */}
+        <div className="form-row single-column">
+          <section className="section notes-section">
+            <h2 className="section-title">Ghi chú</h2>
+            <textarea
+              name="notes"
+              value={formData.notes}
+              onChange={handleChange}
+              placeholder="Ghi chú y tế hoặc cá nhân..."
+              className="textarea-field"
+            />
+            <label className="policy-confirmation">
+              <input
+                type="checkbox"
+                name="agreePolicy"
+                checked={formData.agreePolicy}
                 onChange={handleChange}
-                placeholder="Ghi chú y tế hoặc cá nhân..."
-                className="textarea-field"
+                required
               />
-              <label className="policy-confirmation">
-                <input
-                  type="checkbox"
-                  name="agreePolicy"
-                  checked={formData.agreePolicy}
-                  onChange={handleChange}
-                  required
-                />
-                Tôi xác nhận đã đọc và đồng ý chính sách.
-              </label>
-            </section>
+              Tôi xác nhận đã đọc và đồng ý chính sách.
+            </label>
+          </section>
+        </div>
+        <button type="submit" className="submit-button">
+          Gửi đăng ký
+        </button>
+      </form>
+      {/* Modal xác nhận */}
+      {showSuccess && registerInfo && (
+        <div className="success-modal">
+          <h2>Đăng ký thành công!</h2>
+          <div>
+            <b>Mã đơn:</b> {registerInfo.id} <br />
+            <b>Khách hàng:</b> {registerInfo.fullName} <br />
+            <b>Email:</b> {registerInfo.email} <br />
+            <b>Số điện thoại:</b> {registerInfo.phone} <br />
+            <b>Dịch vụ:</b> {registerInfo.service?.name} <br />
+            <b>Bác sĩ:</b> {registerInfo.doctor?.name || "Hệ thống tự gợi ý"}{" "}
+            <br />
+            <b>Ngày hẹn:</b> {registerInfo.appointmentDate} <br />
+            <b>Giờ:</b> {registerInfo.appointmentTime} <br />
+            <b>Ghi chú:</b> {registerInfo.notes} <br />
           </div>
-
-          <button type="submit" className="submit-button">
-            Gửi đăng ký
-          </button>
-        </form>
-      </main>
-      {/* <Footer /> */}
-    </>
+          <button onClick={() => setShowSuccess(false)}>Đóng</button>
+        </div>
+      )}
+    </main>
   );
 };
 
