@@ -16,24 +16,22 @@ export default function Login() {
 
   const clientId =
     "298912881431-a0l5ibtfk8jd44eh51b3f4vre3gr4pu3.apps.googleusercontent.com";
-  const { setUser, loginWithGoogle } = useContext(UserContext);
+  const { setUser, login, loginWithGoogle } = useContext(UserContext);
   const navigate = useNavigate();
 
+  // Login thường
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
       const user = await apiLogin(taikhoan, matkhau);
-      setUser(user);
-      localStorage.setItem("user", JSON.stringify(user));
+      login(user); // ✅ dùng hàm login từ context
       navigate("/");
     } catch (error) {
-      console.error("🔥 Lỗi khi login:", error);
-      setMessage(
-        "❌ Đăng nhập thất bại. Vui lòng kiểm tra lại tài khoản hoặc mật khẩu."
-      );
+      setMessage("❌ Đăng nhập thất bại...");
     }
   };
 
+  // Login Google
   const handleGoogleLoginSuccess = (credentialResponse) => {
     const user = decodeGoogleToken(credentialResponse.credential);
     if (user) {
@@ -43,7 +41,6 @@ export default function Login() {
       setMessage("❌ Không thể xác thực từ Google.");
     }
   };
-
   const handleGoogleLoginError = () => {
     setMessage("❌ Đăng nhập Google thất bại.");
   };

@@ -39,13 +39,13 @@ export default function Header() {
             <Link to="/doctor">Chuyên gia - bác sĩ</Link>
           </li>
           <li>
-            <Link to="/">Thành tựu</Link>
+            <Link to="/chart">Thành tựu</Link>
           </li>
           <li>
             <Link to="/">Tin tức</Link>
           </li>
           <li>
-            <Link to="/">Liên hệ</Link>
+            <Link to="/contact">Liên hệ</Link>
           </li>
           <li>
             {isLoggedIn && user?.role === "manager" ? (
@@ -74,7 +74,7 @@ export default function Header() {
                 }}
               />
             )}
-            <span>Xin chào, {user.name}</span>
+            <span>Xin chào, {user.fullName}</span>
             <button onClick={handleLogoutClick}>Đăng xuất</button>
           </div>
         ) : (
