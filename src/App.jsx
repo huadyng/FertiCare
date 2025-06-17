@@ -6,7 +6,7 @@ import {
   useNavigate,
   Navigate,
 } from "react-router-dom";
-import { useContext, useEffect, useState } from "react";
+import { useContext} from "react";
 import Footer from "./components/layout/Footer/Footer";
 import Header from "./components/layout/Header/Header";
 // import HeroSection from "./components/pages/HomePage/HeroSection";
@@ -31,6 +31,12 @@ import HomePage from "./components/pages/HomePage/index/HomePage";
 import RegistrationForm from "./components/pages/RegistrationServiceForm/index/RegistrationForm";
 import Pie from "./components/pages/ChartsForm/Pie";
 import Contact from "./components/Pages/Contact/ContactForm";
+import Articles from "./components/Pages/Articles/Articles";
+import ArticleDetail from "./components/Pages/Articles/ArticleDetail";
+import Achievements from "./components/Pages/Achievement/Achievements";
+import ServiceList from "./components/Pages/Services/ServicesList";
+import ServiceDetail from "./components/Pages/Services/ServiceDetail";
+
 function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -53,6 +59,12 @@ function AppContent() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/chart" element={<Pie />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/articles" element={<Articles />} />
+        <Route path="/articles/:id" element={<ArticleDetail />} />
+        <Route path="/achievements" element={<Achievements />} />
+        <Route path="/services" element={<ServiceList />} />
+        <Route path="/services/:id" element={<ServiceDetail />} />
+
         <Route
           path="/register"
           element={user ? <Navigate to="/" /> : <RegisterPage />}
