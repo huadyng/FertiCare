@@ -29,13 +29,13 @@ import BookingForm from "./components/pages/BookingForm/BookingForm";
 import { UserProvider, UserContext } from "./context/UserContext";
 import HomePage from "./components/pages/HomePage/index/HomePage";
 import RegistrationForm from "./components/pages/RegistrationServiceForm/index/RegistrationForm";
-import Pie from "./components/pages/ChartsForm/Pie";
 import Contact from "./components/Pages/Contact/ContactForm";
 import Articles from "./components/Pages/Articles/Articles";
 import ArticleDetail from "./components/Pages/Articles/ArticleDetail";
 import Achievements from "./components/Pages/Achievement/Achievements";
 import ServiceList from "./components/Pages/Services/ServicesList";
 import ServiceDetail from "./components/Pages/Services/ServiceDetail";
+import Dashboard from "./components/Pages/ManagerDashboard/DashBoard";
 
 function AppContent() {
   const location = useLocation();
@@ -46,7 +46,7 @@ function AppContent() {
 
   return (
     <>
-      {!["/login", "/register", "/forgot-password", "/booking"].includes(
+      {!["/login", "/register", "/forgot-password", "/booking","/dashboard"].includes(
         location.pathname
       ) && <Header />}
 
@@ -57,13 +57,13 @@ function AppContent() {
         <Route path="/blog" element={<BlogPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/chart" element={<Pie />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/articles" element={<Articles />} />
         <Route path="/articles/:id" element={<ArticleDetail />} />
         <Route path="/achievements" element={<Achievements />} />
         <Route path="/services" element={<ServiceList />} />
         <Route path="/services/:id" element={<ServiceDetail />} />
+        <Route path="/dashboard" element={<Dashboard />} />
 
         <Route
           path="/register"
@@ -92,7 +92,7 @@ function AppContent() {
 
       {/* Chỉ hiển thị các thành phần này nếu đang ở trang chủ */}
       {isHomePage}
-      {!["/login", "/register", "/forgot-password", "/booking"].includes(
+      {!["/login", "/register", "/forgot-password", "/booking", "/dashboard"].includes(
         location.pathname
       ) && <Footer />}
     </>
