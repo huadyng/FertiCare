@@ -11,28 +11,23 @@ import Footer from "./components/layout/Footer/Footer";
 import Header from "./components/layout/Header/Header";
 import Doctor from "./components/pages/DoctorTeam/Doctor";
 import Login from "./components/pages/Login/Login";
-import Register from "./components/pages/Register/Register";
-import DoctorDetail from "./components/pages/DoctorTeam/Card/DoctorDetail/DoctorDetail";
-import { Button, Result } from "antd";
-import "./App.css";
-
-import ForgotPassword from "./components/pages/Login/ForgotPassword";
 import RegisterPage from "./components/pages/Register/Register";
+import ForgotPassword from "./components/pages/Login/ForgotPassword";
+import DoctorDetail from "./components/pages/DoctorTeam/Card/DoctorDetail/DoctorDetail";
 import BookingForm from "./components/pages/BookingForm/BookingForm";
-import { UserProvider, UserContext } from "./context/UserContext";
 import HomePage from "./components/pages/HomePage/index/HomePage";
 import RegistrationForm from "./components/pages/RegistrationServiceForm/index/RegistrationForm";
 import Pie from "./components/pages/ChartsForm/Pie";
 import Contact from "./components/pages/Contact/ContactForm";
-
-
-import Pie from "./components/pages/ChartsForm/Pie";
 import BlogPublic from "./components/Pages/Blog/BlogPublic";
 import BlogManager from "./components/Pages/Blog/BlogManager";
 import BlogDetail from "./components/Pages/Blog/BlogDetail";
+// import BlogPage from "./components/Pages/Blog/BlogPage"; // Nếu bạn cần BlogPage thì import lại
+import { Button, Result } from "antd";
+import { UserProvider, UserContext } from "./context/UserContext";
+import "./App.css";
 
-
-// Wrapper để hiển thị Header/Footer tùy theo route
+// Layout wrapper để ẩn header/footer ở một số page
 function LayoutWrapper({ children }) {
   const location = useLocation();
   const hideHeaderFooterPaths = [
@@ -41,9 +36,7 @@ function LayoutWrapper({ children }) {
     "/forgot-password",
     "/booking",
   ];
-  const shouldHideHeaderFooter = hideHeaderFooterPaths.includes(
-    location.pathname
-  );
+  const shouldHideHeaderFooter = hideHeaderFooterPaths.includes(location.pathname);
 
   return (
     <>
@@ -60,50 +53,17 @@ function PrivateRoute({ children }) {
   return user ? children : <Navigate to="/login" replace />;
 }
 
-// Chỉ cho guest vào (chưa đăng nhập)
+// Chỉ cho guest (chưa đăng nhập)
 function GuestOnlyRoute({ children }) {
   const { user } = useContext(UserContext);
   return user ? <Navigate to="/" replace /> : children;
 }
 
-// AppContent chứa toàn bộ route
-
+// App content
 function AppContent() {
-  const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useContext(UserContext);
 
   return (
-
-    <>
-      {!["/login", "/register", "/forgot-password", "/booking"].includes(
-        location.pathname
-      ) && <Header />}
-
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/doctor" element={<Doctor />} />
-        <Route path="/doctor/:id" element={<DoctorDetail />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-
-
-        <Route path="/chart" element={<Pie />} />
-        <Route path="/blog-public" element={<BlogPublic />} />
-        <Route path="/blog-manager" element={<BlogManager />} />
-        <Route path="/blog/:id" element={<BlogDetail />} />
-        <Route
-          path="/register"
-          element={user ? <Navigate to="/" /> : <RegisterPage />}
-        />
-        <Route
-          path="/booking"
-          element={user ? <RegistrationForm /> : <Navigate to="/login" />}
-        />
-        <Route
-          path="*"
-          element={
-
     <Routes>
       <Route
         path="/"
@@ -129,11 +89,36 @@ function AppContent() {
           </LayoutWrapper>
         }
       />
-      <Route
+      {/* Blog page placeholder nếu có */}
+      {/* <Route
         path="/blog"
         element={
           <LayoutWrapper>
             <BlogPage />
+          </LayoutWrapper>
+        }
+      /> */}
+      <Route
+        path="/blog-public"
+        element={
+          <LayoutWrapper>
+            <BlogPublic />
+          </LayoutWrapper>
+        }
+      />
+      <Route
+        path="/blog-manager"
+        element={
+          <LayoutWrapper>
+            <BlogManager />
+          </LayoutWrapper>
+        }
+      />
+      <Route
+        path="/blog/:id"
+        element={
+          <LayoutWrapper>
+            <BlogDetail />
           </LayoutWrapper>
         }
       />
@@ -175,16 +160,15 @@ function AppContent() {
         path="*"
         element={
           <LayoutWrapper>
-
             <Result
               status="404"
               title="404"
               subTitle="Xin lỗi, trang bạn tìm không tồn tại."
-              extra={
-                <Button type="primary" onClick={() => navigate("/")}>
+              extra={[
+                <Button key="back" onClick={() => navigate("/")}>
                   Về trang chủ
-                </Button>
-              }
+                </Button>,
+              ]}
             />
           </LayoutWrapper>
         }
@@ -193,7 +177,7 @@ function AppContent() {
   );
 }
 
-// Component App chính
+// App chính
 function App() {
   return (
     <UserProvider>
