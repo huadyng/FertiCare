@@ -34,40 +34,78 @@ const RegistrationForm = () => {
 
   // Lấy danh sách dịch vụ
   useEffect(() => {
-    const fetchServices = async () => {
-      try {
-        const res = await axiosClient.get("/services");
-        setServices(res.data);
-      } catch (err) {
-        console.error("Lỗi lấy dịch vụ:", err);
-      }
-    };
-    fetchServices();
+    // const fetchServices = async () => {
+    //   try {
+    //     const res = await axiosClient.get("/services");
+    //     setServices(res.data);
+    //   } catch (err) {
+    //     console.error("Lỗi lấy dịch vụ:", err);
+    //   }
+    // };
+    // fetchServices();
+    setServices([
+      {
+        id: "service-id-IVF",
+        name: "IVF - Thụ tinh trong ống nghiệm",
+        description: "Mô tả IVF",
+      },
+      {
+        id: "service-id-IUI",
+        name: "IUI - Thụ tinh nhân tạo",
+        description: "Mô tả IUI",
+      },
+    ]);
   }, []);
 
-  // Lấy danh sách bác sĩ khi chọn dịch vụ
+  // // Lấy danh sách bác sĩ khi chọn dịch vụ
+  // useEffect(() => {
+  //   const fetchDoctors = async () => {
+  //     if (!formData.serviceId) return;
+  //     try {
+  //       const res = await axiosClient.get("/doctors", {
+  //         params: { serviceId: formData.serviceId },
+  //       });
+  //       setDoctors(res.data);
+  //     } catch (err) {
+  //       console.error("Lỗi lấy bác sĩ:", err);
+  //     }
+  //   };
+  //   fetchDoctors();
+  //   // Reset khi đổi dịch vụ
+  //   setFormData((prev) => ({
+  //     ...prev,
+  //     doctorId: "",
+  //     appointmentDate: "",
+  //     appointmentTime: "",
+  //   }));
+  //   setAvailableDates([]);
+  //   setAvailableSlots([]);
+  // }, [formData.serviceId]);
   useEffect(() => {
-    const fetchDoctors = async () => {
-      if (!formData.serviceId) return;
-      try {
-        const res = await axiosClient.get("/doctors", {
-          params: { serviceId: formData.serviceId },
-        });
-        setDoctors(res.data);
-      } catch (err) {
-        console.error("Lỗi lấy bác sĩ:", err);
-      }
-    };
-    fetchDoctors();
-    // Reset khi đổi dịch vụ
-    setFormData((prev) => ({
-      ...prev,
-      doctorId: "",
-      appointmentDate: "",
-      appointmentTime: "",
-    }));
-    setAvailableDates([]);
-    setAvailableSlots([]);
+    if (!formData.serviceId) return;
+    // Mock doctors theo service
+    if (formData.serviceId === "service-id-IVF") {
+      setDoctors([
+        {
+          id: "doc-1",
+          name: "BS. Nguyễn Văn A",
+          specialtyId: "service-id-IVF",
+          schedule: [
+            { date: "2025-06-20", slots: ["08:00", "09:00"] },
+            { date: "2025-06-21", slots: ["10:00", "11:00"] },
+          ],
+        },
+      ]);
+    } else if (formData.serviceId === "service-id-IUI") {
+      setDoctors([
+        {
+          id: "doc-2",
+          name: "BS. Trần Thị B",
+          specialtyId: "service-id-IUI",
+          schedule: [{ date: "2025-06-22", slots: ["13:00", "14:00"] }],
+        },
+      ]);
+    }
   }, [formData.serviceId]);
 
   // Khi chọn bác sĩ (manual), lấy lịch schedule
@@ -147,32 +185,48 @@ const RegistrationForm = () => {
       return;
     }
 
-    // Chuẩn bị dữ liệu gửi đi (theo đúng schema Swagger)
-    const dataToSubmit = {
-      fullName: formData.fullName,
-      gender: formData.gender,
-      dateOfBirth: formData.dateOfBirth,
-      phone: formData.phone,
-      email: formData.email,
-      idNumber: formData.idNumber,
-      address: formData.address,
-      serviceId: formData.serviceId,
-      doctorId: formData.doctorOption === "manual" ? formData.doctorId : null,
-      appointmentDate: formData.appointmentDate || null,
-      appointmentTime: formData.appointmentTime || null,
-      notes: formData.notes || "",
-      agreePolicy: formData.agreePolicy,
-    };
+    // // Chuẩn bị dữ liệu gửi đi (theo đúng schema Swagger)
+    // const dataToSubmit = {
+    //   fullName: formData.fullName,
+    //   gender: formData.gender,
+    //   dateOfBirth: formData.dateOfBirth,
+    //   phone: formData.phone,
+    //   email: formData.email,
+    //   idNumber: formData.idNumber,
+    //   address: formData.address,
+    //   serviceId: formData.serviceId,
+    //   doctorId: formData.doctorOption === "manual" ? formData.doctorId : null,
+    //   appointmentDate: formData.appointmentDate || null,
+    //   appointmentTime: formData.appointmentTime || null,
+    //   notes: formData.notes || "",
+    //   agreePolicy: formData.agreePolicy,
+    // };
 
-    try {
-      const res = await axiosClient.post("/service-request", dataToSubmit);
-      setRegisterInfo(res.data); // lưu lại đơn đăng ký trả về từ BE
-      setShowSuccess(true);
-      // setFormData({ ... }); // Reset nếu cần
-    } catch (err) {
-      alert("Đăng ký thất bại.");
-      console.error(err);
-    }
+    // try {
+    //   const res = await axiosClient.post("/service-request", dataToSubmit);
+    //   setRegisterInfo(res.data); // lưu lại đơn đăng ký trả về từ BE
+    //   setShowSuccess(true);
+    //   // setFormData({ ... }); // Reset nếu cần
+    // } catch (err) {
+    //   alert("Đăng ký thất bại.");
+    //   console.error(err);
+    // }
+    const fakeRes = {
+      id: "request-001",
+      fullName: formData.fullName,
+      email: formData.email,
+      phone: formData.phone,
+      service: services.find((s) => s.id === formData.serviceId),
+      doctor:
+        formData.doctorOption === "manual"
+          ? doctors.find((d) => d.id === formData.doctorId)
+          : null,
+      appointmentDate: formData.appointmentDate,
+      appointmentTime: formData.appointmentTime,
+      notes: formData.notes,
+    };
+    setRegisterInfo(fakeRes);
+    setShowSuccess(true);
   };
 
   return (
@@ -393,6 +447,9 @@ const RegistrationForm = () => {
             <b>Ngày hẹn:</b> {registerInfo.appointmentDate} <br />
             <b>Giờ:</b> {registerInfo.appointmentTime} <br />
             <b>Ghi chú:</b> {registerInfo.notes} <br />
+          </div>
+          <div style={{ color: "green", marginTop: 12 }}>
+            Bạn sẽ nhận được email xác nhận thông tin đăng ký.
           </div>
           <button onClick={() => setShowSuccess(false)}>Đóng</button>
         </div>

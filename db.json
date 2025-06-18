@@ -90,11 +90,18 @@
       "schedule": [
         {
           "date": "12-06-2025",
-          "slots": ["08:00", "09:00", "14:00"]
+          "slots": [
+            "08:00",
+            "09:00",
+            "14:00"
+          ]
         },
         {
           "date": "2025-06-13",
-          "slots": ["10:00", "15:00"]
+          "slots": [
+            "10:00",
+            "15:00"
+          ]
         }
       ],
       "specialty": "IVF"
@@ -105,11 +112,18 @@
       "schedule": [
         {
           "date": "12-06-2025",
-          "slots": ["08:00", "09:00", "14:00"]
+          "slots": [
+            "08:00",
+            "09:00",
+            "14:00"
+          ]
         },
         {
           "date": "12-06-2025",
-          "slots": ["10:00", "15:00"]
+          "slots": [
+            "10:00",
+            "15:00"
+          ]
         }
       ],
       "specialty": "IUI"
@@ -120,11 +134,18 @@
       "schedule": [
         {
           "date": "2025-06-12",
-          "slots": ["08:00", "09:00", "14:00"]
+          "slots": [
+            "08:00",
+            "09:00",
+            "14:00"
+          ]
         },
         {
           "date": "2025-06-13",
-          "slots": ["10:00", "15:00"]
+          "slots": [
+            "10:00",
+            "15:00"
+          ]
         }
       ],
       "specialty": "IUI"
@@ -135,14 +156,413 @@
       "schedule": [
         {
           "date": "2025-06-12",
-          "slots": ["08:00", "09:00", "14:00"]
+          "slots": [
+            "08:00",
+            "09:00",
+            "14:00"
+          ]
         },
         {
           "date": "2025-06-13",
-          "slots": ["10:00", "15:00"]
+          "slots": [
+            "10:00",
+            "15:00"
+          ]
         }
       ],
       "specialty": "IVF"
+    }
+  ],
+  "examinationResults": [
+    {
+      "id": "exam1",
+      "patientId": "1",
+      "doctorId": "drA",
+      "examinationDate": "2025-01-15",
+      "symptoms": [
+        "đau bụng dưới",
+        "rối loạn kinh nguyệt"
+      ],
+      "clinicalSigns": {
+        "bloodPressure": "120/80",
+        "temperature": "36.5",
+        "heartRate": "72",
+        "weight": "55",
+        "height": "165"
+      },
+      "labResults": {
+        "bloodTest": {
+          "FSH": "8.2",
+          "LH": "5.1",
+          "E2": "45",
+          "testosterone": "0.8"
+        },
+        "ultrasound": "Buồng trứng bình thường, nang noãn 8-10 cái"
+      },
+      "diagnosis": "Vô sinh nguyên phát",
+      "recommendations": "Làm thêm xét nghiệm AMH, HSG",
+      "attachments": [
+        "ultrasound_image.jpg",
+        "blood_test.pdf"
+      ],
+      "status": "completed"
+    },
+    {
+      "id": "1750165533160",
+      "patientId": "1",
+      "doctorId": "drB",
+      "symptoms": [
+        "ra máu bất thường",
+        "mệt mỏi",
+        "căng tức vú"
+      ],
+      "clinicalSigns": {
+        "bloodPressure": "120/80",
+        "temperature": "36.5",
+        "heartRate": "72",
+        "weight": 70,
+        "height": 165
+      },
+      "labResults": {
+        "bloodTest": {
+          "FSH": 4,
+          "LH": 9,
+          "E2": 10,
+          "testosterone": 0.6,
+          "AMH": 2,
+          "prolactin": 5.6
+        }
+      },
+      "diagnosis": "hhaha",
+      "attachments": [
+        "achive.png"
+      ],
+      "examinationDate": "2025-06-17",
+      "status": "completed"
+    }
+  ],
+  "treatmentTemplates": [
+    {
+      "id": "ivf-template-1",
+      "name": "Phác đồ IVF chuẩn",
+      "type": "IVF",
+      "description": "Phác đồ IVF cho bệnh nhân bình thường",
+      "phases": [
+        {
+          "name": "Giai đoạn kích thích buồng trứng",
+          "duration": "10-12 ngày",
+          "medications": [
+            {
+              "name": "Gonal-F",
+              "dosage": "150 IU",
+              "frequency": "1 lần/ngày",
+              "route": "tiêm dưới da",
+              "startDay": 2,
+              "duration": 10
+            },
+            {
+              "name": "Cetrotide",
+              "dosage": "0.25mg",
+              "frequency": "1 lần/ngày",
+              "route": "tiêm dưới da",
+              "startDay": 6,
+              "duration": 5
+            }
+          ],
+          "monitoring": [
+            {
+              "type": "siêu âm",
+              "schedule": "ngày 2, 6, 8, 10",
+              "purpose": "theo dõi nang noãn"
+            },
+            {
+              "type": "xét nghiệm máu",
+              "schedule": "ngày 2, 8, 10",
+              "tests": [
+                "E2",
+                "LH",
+                "P4"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Giai đoạn lấy trứng và thụ tinh",
+          "duration": "3-5 ngày",
+          "procedures": [
+            {
+              "name": "Tiêm HCG",
+              "timing": "36 giờ trước lấy trứng"
+            },
+            {
+              "name": "Lấy trứng",
+              "method": "chọc hút qua âm đạo"
+            },
+            {
+              "name": "Thụ tinh IVF/ICSI",
+              "timing": "ngày lấy trứng"
+            }
+          ]
+        },
+        {
+          "name": "Giai đoạn chuyển phôi",
+          "duration": "2 tuần",
+          "medications": [
+            {
+              "name": "Utrogestan",
+              "dosage": "200mg",
+              "frequency": "3 lần/ngày",
+              "route": "đặt âm đạo",
+              "duration": 14
+            }
+          ],
+          "procedures": [
+            {
+              "name": "Chuyển phôi",
+              "timing": "ngày 3-5 sau lấy trứng"
+            },
+            {
+              "name": "Xét nghiệm beta HCG",
+              "timing": "14 ngày sau chuyển phôi"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "iui-template-1",
+      "name": "Phác đồ IUI với kích thích buồng trứng",
+      "type": "IUI",
+      "description": "Phác đồ IUI cho bệnh nhân vô sinh không rõ nguyên nhân",
+      "phases": [
+        {
+          "name": "Giai đoạn kích thích buồng trứng",
+          "duration": "8-10 ngày",
+          "medications": [
+            {
+              "name": "Clomid",
+              "dosage": "50mg",
+              "frequency": "1 lần/ngày",
+              "route": "uống",
+              "startDay": 3,
+              "duration": 5
+            }
+          ],
+          "monitoring": [
+            {
+              "type": "siêu âm",
+              "schedule": "ngày 10, 12",
+              "purpose": "theo dõi nang noãn"
+            }
+          ]
+        },
+        {
+          "name": "Giai đoạn rụng trứng và thụ tinh",
+          "duration": "2 ngày",
+          "procedures": [
+            {
+              "name": "Tiêm HCG",
+              "timing": "khi nang noãn ≥18mm"
+            },
+            {
+              "name": "Bơm tinh trùng",
+              "timing": "36 giờ sau tiêm HCG"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "treatmentPlans": [
+    {
+      "id": "plan1",
+      "patientId": "1",
+      "templateId": "ivf-template-1",
+      "doctorId": "drA",
+      "createdDate": "2025-01-15",
+      "customizations": {
+        "medications": [
+          {
+            "templateMedId": "Gonal-F",
+            "customDosage": "225 IU",
+            "note": "Tăng liều do tuổi cao"
+          }
+        ],
+        "additionalTests": [
+          {
+            "name": "AMH",
+            "schedule": "trước khi bắt đầu",
+            "reason": "đánh giá dự trữ buồng trứng"
+          }
+        ]
+      },
+      "estimatedStartDate": "2025-02-01",
+      "status": "approved"
+    },
+    {
+      "id": "1750165662162",
+      "patientId": "1",
+      "templateId": "ivf-template-1",
+      "doctorId": "drB",
+      "customizations": {
+        "medications": [],
+        "additionalTests": [],
+        "notes": ""
+      },
+      "estimatedStartDate": "2025-06-30",
+      "createdDate": "2025-06-17",
+      "status": "draft"
+    }
+  ],
+  "treatmentSchedules": [
+    {
+      "id": "schedule1",
+      "patientId": "1",
+      "planId": "plan1",
+      "sessions": [
+        {
+          "id": "session1",
+          "date": "2025-02-01",
+          "time": "09:00",
+          "type": "siêu âm kiểm tra",
+          "room": "Phòng siêu âm 1",
+          "staff": "drA",
+          "duration": 30,
+          "status": "scheduled",
+          "notes": "Siêu âm baseline ngày 2 chu kỳ"
+        },
+        {
+          "id": "session2",
+          "date": "2025-02-02",
+          "time": "07:00",
+          "type": "tiêm thuốc",
+          "room": "Phòng tiêm",
+          "staff": "nurse1",
+          "duration": 15,
+          "status": "scheduled",
+          "notes": "Bắt đầu tiêm Gonal-F 225 IU",
+          "medications": [
+            {
+              "name": "Gonal-F",
+              "dosage": "225 IU",
+              "method": "tiêm dưới da"
+            }
+          ]
+        },
+        {
+          "id": "session3",
+          "date": "2025-02-06",
+          "time": "09:00",
+          "type": "siêu âm theo dõi",
+          "room": "Phòng siêu âm 1",
+          "staff": "drA",
+          "duration": 30,
+          "status": "scheduled",
+          "notes": "Siêu âm ngày 6 - theo dõi nang noãn"
+        },
+        {
+          "id": "session4",
+          "date": "2025-02-08",
+          "time": "08:00",
+          "type": "xét nghiệm máu",
+          "room": "Phòng xét nghiệm",
+          "staff": "lab_tech1",
+          "duration": 15,
+          "status": "scheduled",
+          "notes": "Xét nghiệm E2, LH, P4",
+          "tests": [
+            "E2",
+            "LH",
+            "P4"
+          ]
+        }
+      ],
+      "reminders": [
+        {
+          "sessionId": "session1",
+          "reminderTime": "2025-01-31 20:00",
+          "message": "Nhắc nhở: Bạn có lịch siêu âm kiểm tra vào 9h ngày mai",
+          "sent": false
+        },
+        {
+          "sessionId": "session2",
+          "reminderTime": "2025-02-01 19:00",
+          "message": "Nhắc nhở: Bạn có lịch tiêm thuốc vào 7h sáng ngày mai",
+          "sent": false
+        }
+      ]
+    },
+    {
+      "id": "1750165722191",
+      "patientId": "1",
+      "sessions": [
+        {
+          "id": "session1",
+          "date": "2025-06-21",
+          "time": "20:08",
+          "type": "tiêm thuốc",
+          "room": "Phòng siêu âm 1",
+          "staff": "drA",
+          "duration": 30,
+          "status": "scheduled",
+          "medications": [
+            "Utrogestan"
+          ],
+          "tests": [
+            "P4"
+          ]
+        }
+      ],
+      "reminders": [
+        {
+          "sessionId": "session1",
+          "reminderTime": "2025-06-21 20:00",
+          "message": "Nhắc nhở: Bạn có lịch tiêm thuốc vào 20:08 ngày 2025-06-21",
+          "sent": false
+        }
+      ]
+    }
+  ],
+  "rooms": [
+    {
+      "id": "room1",
+      "name": "Phòng siêu âm 1",
+      "type": "ultrasound",
+      "equipment": [
+        "máy siêu âm 4D",
+        "màn hình"
+      ]
+    },
+    {
+      "id": "room2",
+      "name": "Phòng tiêm",
+      "type": "injection",
+      "equipment": [
+        "tủ lạnh bảo quản thuốc",
+        "bàn tiêm"
+      ]
+    },
+    {
+      "id": "room3",
+      "name": "Phòng xét nghiệm",
+      "type": "laboratory",
+      "equipment": [
+        "máy xét nghiệm tự động"
+      ]
+    }
+  ],
+  "staff": [
+    {
+      "id": "nurse1",
+      "name": "Y tá Nguyễn Thị B",
+      "role": "nurse",
+      "specialization": "tiêm thuốc"
+    },
+    {
+      "id": "lab_tech1",
+      "name": "KTV Trần Văn C",
+      "role": "lab_technician",
+      "specialization": "xét nghiệm máu"
     }
   ]
 }

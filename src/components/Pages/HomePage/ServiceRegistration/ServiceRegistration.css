@@ -1,0 +1,219 @@
+.service-registration {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  position: relative;
+}
+
+.service-registration::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.registration-card {
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  border: none;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+}
+
+.service-card {
+  transition: all 0.3s ease;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.service-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, #1890ff, #52c41a);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.service-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(24, 144, 255, 0.2);
+  border-color: #1890ff;
+}
+
+.service-card:hover::before {
+  opacity: 0.05;
+}
+
+.ant-radio-wrapper {
+  width: 100%;
+}
+
+.ant-radio-wrapper:hover .service-card {
+  border-color: #1890ff;
+}
+
+.ant-radio-checked + .service-card {
+  border-color: #1890ff;
+  background: linear-gradient(
+    135deg,
+    rgba(24, 144, 255, 0.05),
+    rgba(82, 196, 26, 0.05)
+  );
+}
+
+.ant-steps-item-finish .ant-steps-item-icon {
+  background-color: #52c41a;
+  border-color: #52c41a;
+}
+
+.ant-steps-item-process .ant-steps-item-icon {
+  background-color: #1890ff;
+  border-color: #1890ff;
+}
+
+.ant-form-item-label > label {
+  font-weight: 600;
+  color: #262626;
+}
+
+.ant-input,
+.ant-select-selector,
+.ant-picker {
+  border-radius: 8px;
+  border: 2px solid #e8e8e8;
+  transition: all 0.3s ease;
+}
+
+.ant-input:focus,
+.ant-input-focused,
+.ant-select-focused .ant-select-selector,
+.ant-picker:hover,
+.ant-picker-focused {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+}
+
+.ant-btn {
+  border-radius: 8px;
+  font-weight: 600;
+  height: 40px;
+  padding: 0 24px;
+  transition: all 0.3s ease;
+}
+
+.ant-btn-primary {
+  background: linear-gradient(135deg, #1890ff, #40a9ff);
+  border: none;
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
+}
+
+.ant-btn-primary:hover {
+  background: linear-gradient(135deg, #40a9ff, #1890ff);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(24, 144, 255, 0.4);
+}
+
+.ant-btn-lg {
+  height: 48px;
+  padding: 0 32px;
+  font-size: 16px;
+}
+
+.ant-card {
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid #f0f0f0;
+}
+
+.ant-alert {
+  border-radius: 8px;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.ant-modal-content {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.ant-modal-header {
+  border-bottom: none;
+  padding: 32px 32px 0;
+}
+
+.ant-modal-body {
+  padding: 0 32px 32px;
+}
+
+.ant-radio-group .ant-radio-wrapper {
+  margin-bottom: 16px;
+}
+
+@media (max-width: 768px) {
+  .service-registration {
+    padding: 40px 0;
+  }
+
+  .registration-card {
+    margin: 0 16px;
+  }
+
+  .ant-steps {
+    margin-bottom: 24px;
+  }
+
+  .ant-steps-item-title {
+    font-size: 12px;
+  }
+
+  .service-card {
+    margin-bottom: 12px;
+  }
+}
+
+/* Animation for step transition */
+.ant-steps-item-process .ant-steps-item-icon {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(24, 144, 255, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(24, 144, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(24, 144, 255, 0);
+  }
+}
+
+/* Success modal styling */
+.ant-modal-title {
+  text-align: center;
+}
+
+/* Form validation styling */
+.ant-form-item-has-error .ant-input,
+.ant-form-item-has-error .ant-select-selector,
+.ant-form-item-has-error .ant-picker {
+  border-color: #ff4d4f;
+}
+
+.ant-form-item-has-error .ant-input:focus,
+.ant-form-item-has-error .ant-select-focused .ant-select-selector,
+.ant-form-item-has-error .ant-picker:hover {
+  box-shadow: 0 0 0 2px rgba(255, 77, 79, 0.1);
+}

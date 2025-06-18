@@ -1,0 +1,766 @@
+/* =========================
+   COMMON LAYOUT STYLES
+   ========================= */
+
+.ant-layout {
+  min-height: 100vh;
+}
+
+/* Logo Styles */
+.admin-logo,
+.manager-logo,
+.doctor-logo,
+.patient-logo {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.logo-icon {
+  font-size: 24px;
+  margin-right: 12px;
+  color: #1890ff;
+}
+
+.logo-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: white;
+}
+
+/* Header Styles */
+.admin-header,
+.manager-header,
+.doctor-header,
+.patient-header {
+  background: white;
+  padding: 0 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.admin-header-left,
+.manager-header-left,
+.doctor-header-left,
+.patient-header-left {
+  display: flex;
+  align-items: center;
+}
+
+.admin-header-right,
+.manager-header-right,
+.doctor-header-right,
+.patient-header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.collapse-btn {
+  margin-right: 16px;
+  font-size: 18px;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #262626;
+}
+
+/* User Profile */
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: background-color 0.3s;
+}
+
+.user-profile:hover {
+  background-color: #f5f5f5;
+}
+
+.user-name {
+  font-weight: 500;
+  color: #262626;
+}
+
+.notification-badge {
+  margin-right: 8px;
+}
+
+.notification-btn {
+  font-size: 18px;
+}
+
+/* Content Styles */
+.admin-content,
+.manager-content,
+.doctor-content,
+.patient-content {
+  margin: 0;
+  background-color: #f5f5f5;
+}
+
+.admin-content-wrapper,
+.manager-content-wrapper,
+.doctor-content-wrapper,
+.patient-content-wrapper {
+  padding: 24px;
+  min-height: calc(100vh - 64px);
+}
+
+/* =========================
+   ADMIN LAYOUT STYLES
+   ========================= */
+
+.admin-layout {
+  background: #f5f5f5;
+}
+
+.admin-sider {
+  background: linear-gradient(180deg, #1890ff 0%, #096dd9 100%);
+  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.1);
+}
+
+.admin-menu {
+  background: transparent;
+  border-right: none;
+}
+
+.admin-menu .ant-menu-item {
+  margin: 4px 12px;
+  border-radius: 8px;
+  padding: 12px 16px;
+  height: auto;
+}
+
+.admin-menu .ant-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.admin-menu .ant-menu-item-selected {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.admin-menu .ant-menu-item-selected::after {
+  border-right: none;
+}
+
+/* =========================
+   MANAGER LAYOUT STYLES
+   ========================= */
+
+.manager-layout {
+  background: #f5f5f5;
+}
+
+.manager-sider {
+  background: linear-gradient(180deg, #52c41a 0%, #389e0d 100%);
+  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.1);
+}
+
+.manager-menu {
+  background: transparent;
+  border-right: none;
+}
+
+.manager-menu .ant-menu-item {
+  margin: 4px 12px;
+  border-radius: 8px;
+  padding: 12px 16px;
+  height: auto;
+}
+
+.manager-menu .ant-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.manager-menu .ant-menu-item-selected {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.manager-menu .ant-menu-item-selected::after {
+  border-right: none;
+}
+
+/* =========================
+   DOCTOR LAYOUT STYLES
+   ========================= */
+
+.doctor-layout {
+  background: #f5f5f5;
+}
+
+.doctor-sider {
+  background: linear-gradient(180deg, #722ed1 0%, #531dab 100%);
+  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.1);
+}
+
+.doctor-menu {
+  background: transparent;
+  border-right: none;
+}
+
+.doctor-menu .ant-menu-item {
+  margin: 4px 12px;
+  border-radius: 8px;
+  padding: 12px 16px;
+  height: auto;
+}
+
+.doctor-menu .ant-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.doctor-menu .ant-menu-item-selected {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.doctor-menu .ant-menu-item-selected::after {
+  border-right: none;
+}
+
+/* =========================
+   PATIENT LAYOUT STYLES
+   ========================= */
+
+.patient-layout {
+  background: #f5f5f5;
+}
+
+.patient-sider {
+  background: white;
+  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.06);
+  border-right: 1px solid #f0f0f0;
+}
+
+.patient-logo .logo-icon {
+  color: #ff4d4f;
+}
+
+.patient-logo .logo-text {
+  color: #262626;
+}
+
+.patient-menu {
+  background: white;
+  border-right: none;
+}
+
+.patient-menu .ant-menu-item {
+  margin: 4px 12px;
+  border-radius: 8px;
+  padding: 12px 16px;
+  height: auto;
+  color: #595959;
+}
+
+.patient-menu .ant-menu-item:hover {
+  background-color: #f0f2ff;
+  color: #1890ff;
+}
+
+.patient-menu .ant-menu-item-selected {
+  background-color: #e6f7ff;
+  color: #1890ff;
+}
+
+.patient-menu .ant-menu-item-selected::after {
+  border-right: none;
+}
+
+/* =========================
+   RESPONSIVE DESIGN
+   ========================= */
+
+@media (max-width: 768px) {
+  .admin-header,
+  .manager-header,
+  .doctor-header,
+  .patient-header {
+    padding: 0 16px;
+  }
+
+  .admin-content-wrapper,
+  .manager-content-wrapper,
+  .doctor-content-wrapper,
+  .patient-content-wrapper {
+    padding: 16px;
+  }
+
+  .page-title {
+    font-size: 16px;
+  }
+
+  .user-name {
+    display: none;
+  }
+}
+
+/* =========================
+   DASHBOARD SPECIFIC STYLES
+   ========================= */
+
+.dashboard-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #f0f0f0;
+  margin-bottom: 24px;
+}
+
+.dashboard-card-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: #262626;
+}
+
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #f0f0f0;
+  text-align: center;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.stat-icon {
+  font-size: 32px;
+  margin-bottom: 16px;
+}
+
+.stat-number {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #262626;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #8c8c8c;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Color variations for different roles */
+.admin-stat-card .stat-icon {
+  color: #1890ff;
+}
+
+.manager-stat-card .stat-icon {
+  color: #52c41a;
+}
+
+.doctor-stat-card .stat-icon {
+  color: #722ed1;
+}
+
+.patient-stat-card .stat-icon {
+  color: #ff4d4f;
+}
+
+/* =========================
+   ANIMATION EFFECTS
+   ========================= */
+
+.fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-in-left {
+  animation: slideInLeft 0.3s ease-out;
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* =========================
+   UTILITY CLASSES
+   ========================= */
+
+.text-center {
+  text-align: center;
+}
+
+.mb-16 {
+  margin-bottom: 16px;
+}
+
+.mb-24 {
+  margin-bottom: 24px;
+}
+
+.mt-16 {
+  margin-top: 16px;
+}
+
+.mt-24 {
+  margin-top: 24px;
+}
+
+.p-16 {
+  padding: 16px;
+}
+
+.p-24 {
+  padding: 24px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.flex-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.space-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* =========================
+   QUICK ACTIONS STYLES
+   ========================= */
+
+.quick-action-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: white;
+}
+
+.quick-action-item:hover {
+  border-color: #1890ff;
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.quick-action-item div {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #595959;
+  text-align: center;
+}
+
+/* =========================
+   DASHBOARD HEADER STYLES
+   ========================= */
+
+.dashboard-header {
+  padding-bottom: 24px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.dashboard-header h1 {
+  margin: 0 0 8px 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: #262626;
+}
+
+.dashboard-header p {
+  margin: 0;
+  font-size: 16px;
+  color: #8c8c8c;
+}
+
+/* =========================
+   STAT CARD ENHANCEMENTS
+   ========================= */
+
+.stat-trend {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+/* =========================
+   APPOINTMENT ITEM STYLES
+   ========================= */
+
+.appointment-item {
+  transition: background-color 0.3s;
+  border-radius: 6px;
+  margin: 0 -12px;
+  padding: 12px;
+}
+
+.appointment-item:hover {
+  background-color: #f8f9fa;
+}
+
+/* =========================
+   ROLE-SPECIFIC ENHANCEMENTS
+   ========================= */
+
+/* Admin specific */
+.admin-dashboard {
+  background: #f5f5f5;
+}
+
+.admin-dashboard .dashboard-header h1 {
+  color: #1890ff;
+}
+
+/* Manager specific */
+.manager-dashboard {
+  background: #f5f5f5;
+}
+
+.manager-dashboard .dashboard-header h1 {
+  color: #52c41a;
+}
+
+/* Doctor specific */
+.doctor-dashboard {
+  background: #f5f5f5;
+}
+
+.doctor-dashboard .dashboard-header h1 {
+  color: #722ed1;
+}
+
+/* Patient specific */
+.patient-dashboard {
+  background: #f5f5f5;
+}
+
+.patient-dashboard .dashboard-header h1 {
+  color: #ff4d4f;
+}
+
+/* =========================
+   LOADING STATES
+   ========================= */
+
+.loading-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  font-size: 16px;
+  color: #8c8c8c;
+}
+
+/* =========================
+   CARD IMPROVEMENTS
+   ========================= */
+
+.ant-card {
+  transition: box-shadow 0.3s;
+}
+
+.ant-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.ant-card-head {
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.ant-card-head-title {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+/* =========================
+   TIMELINE IMPROVEMENTS
+   ========================= */
+
+.ant-timeline-item-content {
+  min-height: 60px;
+}
+
+.ant-timeline-item-tail {
+  border-left-width: 2px;
+}
+
+/* =========================
+   TABLE IMPROVEMENTS
+   ========================= */
+
+.ant-table-thead > tr > th {
+  background: #f8f9fa;
+  font-weight: 600;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.ant-table-tbody > tr:hover > td {
+  background: #f8f9fa;
+}
+
+/* =========================
+   PROGRESS BAR IMPROVEMENTS
+   ========================= */
+
+.ant-progress-line {
+  margin-top: 8px;
+}
+
+.ant-progress-bg {
+  border-radius: 10px;
+}
+
+.ant-progress-inner {
+  border-radius: 10px;
+  background: #f0f0f0;
+}
+
+/* =========================
+   NOTIFICATION IMPROVEMENTS
+   ========================= */
+
+.ant-badge-count {
+  background: #ff4d4f;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* =========================
+   BUTTON IMPROVEMENTS
+   ========================= */
+
+.ant-btn {
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.ant-btn:hover {
+  transform: translateY(-1px);
+}
+
+.ant-btn-primary {
+  background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
+  border: none;
+}
+
+.ant-btn-primary:hover {
+  background: linear-gradient(135deg, #096dd9 0%, #0050b3 100%);
+}
+
+/* =========================
+   MENU IMPROVEMENTS
+   ========================= */
+
+.ant-menu-item {
+  transition: all 0.3s;
+}
+
+.ant-menu-item:hover {
+  transform: translateX(4px);
+}
+
+/* =========================
+   AVATAR IMPROVEMENTS
+   ========================= */
+
+.ant-avatar {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 2px solid #fff;
+}
+
+/* =========================
+   TAG IMPROVEMENTS
+   ========================= */
+
+.ant-tag {
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* =========================
+   ALERT IMPROVEMENTS
+   ========================= */
+
+.ant-alert {
+  border-radius: 8px;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.ant-alert-info {
+  background: linear-gradient(135deg, #e6f7ff 0%, #f0f8ff 100%);
+}
+
+/* =========================
+   SCROLLBAR IMPROVEMENTS
+   ========================= */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f0f0f0;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d9d9d9;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #bfbfbf;
+}

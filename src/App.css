@@ -1,17 +1,22 @@
+/* Modal Components Styles */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5); /* nền đen với opacity 50% */
-  backdrop-filter: blur(4px); /* hiệu ứng mờ (blur) */
-  z-index: 1000;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: var(--z-index-modal, 1000);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  will-change: opacity, visibility;
 }
 
 .modal-overlay.visible {
-  background: rgba(0, 0, 0, 0.5);
   opacity: 1;
+  visibility: visible;
   pointer-events: auto;
 }
 
@@ -19,24 +24,134 @@
   position: fixed;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%) scale(0.8);
+  transform: translate(-50%, -50%) scale(0.9);
   opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s ease, transform 0.3s ease;
-  z-index: 1001;
-  background-color: white; /* chỉ để background-color */
+  visibility: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: calc(var(--z-index-modal, 1000) + 1);
+  background-color: var(--background-primary, #ffffff);
   padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  border-radius: var(--border-radius, 8px);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   min-width: 400px;
   max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  will-change: transform, opacity, visibility;
 }
 
 .modal-content.visible {
   opacity: 1;
-  pointer-events: auto;
+  visibility: visible;
   transform: translate(-50%, -50%) scale(1);
-  background-color: transparent;
-  background: none;
-  box-shadow: none;
+  pointer-events: auto;
+}
+
+/* Responsive modal */
+@media (max-width: 768px) {
+  .modal-content {
+    min-width: 300px;
+    padding: 1.5rem;
+    margin: 1rem;
+    max-width: calc(100vw - 2rem);
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-content {
+    min-width: 280px;
+    padding: 1rem;
+    margin: 0.5rem;
+    max-width: calc(100vw - 1rem);
+  }
+}
+
+/* App-specific utility classes */
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  flex: 1;
+  padding: var(--spacing-md, 16px);
+}
+
+/* Loading states */
+.loading-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+/* Animation optimizations */
+.fade-enter {
+  opacity: 0;
+}
+
+.fade-enter-active {
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.fade-exit {
+  opacity: 1;
+}
+
+.fade-exit-active {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+/* Slide animations */
+.slide-enter {
+  transform: translateX(-100%);
+}
+
+.slide-enter-active {
+  transform: translateX(0);
+  transition: transform 0.3s ease;
+}
+
+.slide-exit {
+  transform: translateX(0);
+}
+
+.slide-exit-active {
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+}
+
+/* Focus management */
+.focus-trap {
+  outline: none;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .modal-overlay {
+    background-color: rgba(0, 0, 0, 0.8);
+  }
+
+  .modal-content {
+    border: 2px solid var(--text-primary, #000);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay,
+  .modal-content,
+  .fade-enter-active,
+  .fade-exit-active,
+  .slide-enter-active,
+  .slide-exit-active {
+    transition: none;
+  }
+
+  .modal-content {
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
