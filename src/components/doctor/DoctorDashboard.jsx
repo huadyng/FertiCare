@@ -41,25 +41,27 @@ import {
   PlayCircleOutlined,
   PauseCircleOutlined,
   HistoryOutlined,
+  ExperimentOutlined,
 } from "@ant-design/icons";
 
 import TreatmentProcess from "./treatment/TreatmentProcess";
 import ExaminationForm from "./treatment/ExaminationForm";
-import SimpleTreatmentPlanEditor from "./treatment/SimpleTreatmentPlanEditor";
-import SimpleTreatmentScheduleForm from "./treatment/SimpleTreatmentScheduleForm";
-import SimplePatientScheduleView from "./treatment/SimplePatientScheduleView";
-
-// Use simplified versions for now - they are fully functional
-const TreatmentPlanEditor = SimpleTreatmentPlanEditor;
-const TreatmentScheduleForm = SimpleTreatmentScheduleForm;
-const PatientScheduleView = SimplePatientScheduleView;
+import TreatmentPlanEditor from "./treatment/TreatmentPlanEditor";
+import TreatmentScheduleForm from "./treatment/TreatmentScheduleForm";
+import TreatmentSyncDemo from "./test/TreatmentSyncDemo";
+import PatientScheduleView from "./treatment/PatientScheduleView";
 import DoctorProfile from "./DoctorProfile";
 import { UserContext } from "../../context/UserContext";
 import { useNavigate } from "react-router-dom";
+import {
+  mockPatients,
+  todayAppointments,
+  statistics,
+} from "./constants/mockData";
+import { getScheduleSubSteps } from "./constants/treatmentSubSteps";
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
-const { TabPane } = Tabs;
 
 const DoctorDashboard = () => {
   const [selectedSection, setSelectedSection] = useState("dashboard");
@@ -108,156 +110,6 @@ const DoctorDashboard = () => {
       localStorage.setItem("treatmentFlow", JSON.stringify(treatmentFlow));
     }
   }, [treatmentFlow]);
-
-  // Mock data for doctor's patients and statistics
-  const mockPatients = [
-    {
-      id: "1",
-      name: "Nguyễn Thị Mai",
-      age: 32,
-      gender: "female",
-      dob: "1992-03-15",
-      contact: "0909123456",
-      status: "in-treatment",
-      treatmentType: "IVF",
-      nextAppointment: "2024-01-20",
-      progress: 65,
-      servicePackage: "IVF_PREMIUM", // Determines sub-steps
-    },
-    {
-      id: "2",
-      name: "Trần Văn Nam",
-      age: 35,
-      gender: "male",
-      dob: "1989-07-22",
-      contact: "0912345678",
-      status: "consultation",
-      treatmentType: "IUI",
-      nextAppointment: "2024-01-18",
-      progress: 25,
-      servicePackage: "IUI_STANDARD",
-    },
-    {
-      id: "3",
-      name: "Lê Thị Hoa",
-      age: 28,
-      gender: "female",
-      dob: "1996-12-08",
-      contact: "0923456789",
-      status: "completed",
-      treatmentType: "Natural",
-      nextAppointment: null,
-      progress: 100,
-      servicePackage: "NATURAL_SUPPORT",
-    },
-  ];
-
-  const todayAppointments = [
-    { time: "09:00", patient: "Nguyễn Thị Mai", type: "Khám định kỳ" },
-    { time: "10:30", patient: "Trần Văn Nam", type: "Tư vấn điều trị" },
-    { time: "14:00", patient: "Lê Thị Hoa", type: "Theo dõi kết quả" },
-  ];
-
-  const statistics = {
-    totalPatients: 45,
-    todayAppointments: 8,
-    inTreatment: 12,
-    completed: 28,
-    successRate: 78,
-  };
-
-  // Define sub-steps based on service package
-  const getScheduleSubSteps = (servicePackage) => {
-    const subStepConfigs = {
-      IVF_PREMIUM: [
-        {
-          title: "Chuẩn bị",
-          description: "Kiểm tra sức khỏe tổng quát",
-          duration: "1-2 tuần",
-        },
-        {
-          title: "Kích thích buồng trứng",
-          description: "Tiêm hormone FSH/LH",
-          duration: "10-14 ngày",
-        },
-        {
-          title: "Theo dõi nang trứng",
-          description: "Siêu âm định kỳ",
-          duration: "5-7 ngày",
-        },
-        {
-          title: "Chọc hút trứng",
-          description: "Thu thập trứng từ buồng trứng",
-          duration: "1 ngày",
-        },
-        {
-          title: "Thụ tinh ống nghiệm",
-          description: "Kết hợp tinh trùng và trứng",
-          duration: "3-5 ngày",
-        },
-        {
-          title: "Chuyển phôi",
-          description: "Đưa phôi vào tử cung",
-          duration: "1 ngày",
-        },
-        {
-          title: "Theo dõi thai",
-          description: "Kiểm tra kết quả",
-          duration: "2 tuần",
-        },
-      ],
-      IUI_STANDARD: [
-        {
-          title: "Chuẩn bị",
-          description: "Kiểm tra chu kỳ kinh nguyệt",
-          duration: "1 tuần",
-        },
-        {
-          title: "Kích thích buồng trứng nhẹ",
-          description: "Thuốc kích thích",
-          duration: "5-7 ngày",
-        },
-        {
-          title: "Theo dõi phóng noãn",
-          description: "Siêu âm và xét nghiệm",
-          duration: "3-5 ngày",
-        },
-        {
-          title: "Đưa tinh trùng vào tử cung",
-          description: "Thủ thuật IUI",
-          duration: "1 ngày",
-        },
-        {
-          title: "Theo dõi kết quả",
-          description: "Kiểm tra có thai",
-          duration: "2 tuần",
-        },
-      ],
-      NATURAL_SUPPORT: [
-        {
-          title: "Tư vấn lối sống",
-          description: "Chế độ ăn uống, tập luyện",
-          duration: "1 tuần",
-        },
-        {
-          title: "Theo dõi chu kỳ",
-          description: "Ghi nhận thời gian rụng trứng",
-          duration: "1-3 tháng",
-        },
-        {
-          title: "Hỗ trợ dinh dưỡng",
-          description: "Bổ sung vitamin",
-          duration: "Liên tục",
-        },
-        {
-          title: "Kiểm tra định kỳ",
-          description: "Khám sức khỏe",
-          duration: "Hàng tháng",
-        },
-      ],
-    };
-    return subStepConfigs[servicePackage] || subStepConfigs.IVF_PREMIUM;
-  };
 
   const handleLogout = () => {
     localStorage.removeItem("treatmentFlow");
@@ -833,6 +685,10 @@ const DoctorDashboard = () => {
       title: "Thông tin cá nhân",
       component: <DoctorProfile />,
     },
+    "sync-demo": {
+      title: "🔄 Treatment Sync Demo",
+      component: <TreatmentSyncDemo />,
+    },
   };
 
   const menuItems = [
@@ -881,6 +737,14 @@ const DoctorDashboard = () => {
       key: "profile",
       icon: <UserOutlined />,
       label: "Thông tin cá nhân",
+    },
+    {
+      type: "divider",
+    },
+    {
+      key: "sync-demo",
+      icon: <ExperimentOutlined />,
+      label: "🔄 Sync Demo",
     },
   ];
 

@@ -37,8 +37,11 @@ import {
   HeartOutlined,
 } from "@ant-design/icons";
 
+import ExaminationForm from "./ExaminationForm";
+import TreatmentPlanEditor from "./TreatmentPlanEditor";
 import TreatmentScheduleForm from "./TreatmentScheduleForm";
 import PatientScheduleView from "./PatientScheduleView";
+import { treatmentStateManager } from "../../../utils/treatmentStateManager";
 
 const { Step } = Steps;
 const { Title, Text } = Typography;
@@ -49,6 +52,8 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
   const [loading, setLoading] = useState(false);
   const [processData, setProcessData] = useState({
     patient: null,
+    examination: null,
+    treatmentPlan: null,
     schedule: null,
     progress: null,
   });
@@ -58,7 +63,7 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
   const [selectedSession, setSelectedSession] = useState(null);
   const [progressForm] = Form.useForm();
 
-  // Mock patient data với examination results đã có sẵn
+  // Mock patient data - sẽ được cập nhật trong quá trình
   const mockPatientInfo = {
     id: patientId || "1",
     name: "Nguyễn Thị Mai",
@@ -67,18 +72,6 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
     contact: "0909123456",
     address: "123 Đường ABC, Quận 1, TP.HCM",
     age: 32,
-    // Kết quả khám đã có từ trang khám lâm sàng
-    examination: {
-      diagnosis: "Vô sinh nguyên phát",
-      symptoms: ["Rối loạn kinh nguyệt", "Khó thụ thai"],
-      labResults: {
-        hormone: "Thiếu hụt estrogen",
-        ultrasound: "Buồng trứng có nang nhỏ",
-      },
-      recommendations: ["IVF", "Hỗ trợ hormone"],
-      completedDate: "2024-01-15",
-      doctorNotes: "Bệnh nhân cần theo dõi sát trong quá trình điều trị",
-    },
   };
 
   // Mock treatment progress data
@@ -115,18 +108,212 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
     ],
   };
 
+  // Load patient info and sync with treatment state on mount
   useEffect(() => {
     setProcessData((prev) => ({
       ...prev,
       patient: mockPatientInfo,
+    }));
+
+    // Initialize treatment state for this patient
+    const currentState = treatmentStateManager.getCurrentState();
+    if (
+      !currentState.patientId ||
+      currentState.patientId !== (patientId || "1")
+    ) {
+      treatmentStateManager.initializePatient(
+        patientId || "1",
+        mockPatientInfo
+      );
+    }
+
+    // Load existing data from state manager
+    syncWithStateManager();
+  }, [patientId]);
+
+  // Sync with state manager
+  const syncWithStateManager = () => {
+    const state = treatmentStateManager.getCurrentState();
+    if (state.patientId === (patientId || "1")) {
+      console.log("🔄 Syncing TreatmentProcess with state manager:", state);
+
+      // Update process data
+      setProcessData((prev) => ({
+        ...prev,
+        examination: state.data.examination,
+        treatmentPlan: state.data.treatmentPlan,
+        schedule: state.data.schedule,
+        progress: state.data.progress,
+      }));
+
+      // Update current step
+      setCurrentStep(state.currentStep);
+
+      // Show sync message if we have completed data
+      if (state.completedSteps.length > 0) {
+        message.success(
+          `🔄 Đã đồng bộ ${state.completedSteps.length} bước hoàn thành từ các trang riêng lẻ`
+        );
+      }
+    }
+  };
+
+  // Check for completed examination data from standalone page on mount
+  useEffect(() => {
+    const checkExaminationSync = () => {
+      const completedExam = localStorage.getItem(
+        `examination_completed_${patientId || "1"}`
+      );
+      if (completedExam) {
+        try {
+          const examData = JSON.parse(completedExam);
+          if (examData.fromStandalonePage) {
+            console.log(
+              "🔄 Syncing examination data from standalone page:",
+              examData
+            );
+
+            // Update process data with examination results
+            setProcessData((prev) => ({
+              ...prev,
+              examination: examData,
+            }));
+
+            // Don't auto advance - let user control navigation
+            message.success(
+              "✅ Đã đồng bộ kết quả khám lâm sàng! Sẵn sàng chuyển sang bước lập phác đồ."
+            );
+          }
+        } catch (error) {
+          console.error("Error parsing examination data:", error);
+        }
+      }
+    };
+
+    // Check on mount
+    checkExaminationSync();
+
+    // Listen for examination completion events
+    const handleExaminationCompleted = (event) => {
+      const { patientId: eventPatientId, examinationData } = event.detail;
+      if (eventPatientId === (patientId || "1")) {
+        console.log(
+          "🔄 Real-time sync: Examination completed",
+          examinationData
+        );
+
+        setProcessData((prev) => ({
+          ...prev,
+          examination: examinationData,
+        }));
+
+        // Don't auto advance - let user control navigation
+        message.success(
+          "✅ Khám lâm sàng đã hoàn thành! Có thể chuyển sang lập phác đồ."
+        );
+      }
+    };
+
+    // Listen for print events
+    const handleExaminationPrinted = (event) => {
+      const { patientId: eventPatientId, examinationData } = event.detail;
+      if (eventPatientId === (patientId || "1")) {
+        console.log("📄 Examination printed, syncing data", examinationData);
+
+        setProcessData((prev) => ({
+          ...prev,
+          examination: examinationData,
+        }));
+
+        // Don't auto advance - let user control navigation
+        message.success(
+          "📄 Đã in kết quả khám! Có thể chuyển sang lập phác đồ."
+        );
+      }
+    };
+
+    // Listen for real-time state updates
+    const handleStateUpdate = (event) => {
+      const { patientId: eventPatientId, state } = event.detail;
+      if (eventPatientId === (patientId || "1")) {
+        console.log("🔔 Received state update:", event.type, state);
+        syncWithStateManager();
+      }
+    };
+
+    // Add event listeners
+    window.addEventListener("examinationCompleted", handleExaminationCompleted);
+    window.addEventListener("examinationPrinted", handleExaminationPrinted);
+
+    // Add state manager event listeners for real-time sync
+    treatmentStateManager.addEventListener(
+      "examination:completed",
+      handleStateUpdate
+    );
+    treatmentStateManager.addEventListener(
+      "treatmentplan:completed",
+      handleStateUpdate
+    );
+    treatmentStateManager.addEventListener(
+      "schedule:completed",
+      handleStateUpdate
+    );
+    treatmentStateManager.addEventListener("step:changed", handleStateUpdate);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener(
+        "examinationCompleted",
+        handleExaminationCompleted
+      );
+      window.removeEventListener(
+        "examinationPrinted",
+        handleExaminationPrinted
+      );
+
+      // Remove state manager listeners
+      treatmentStateManager.removeEventListener(
+        "examination:completed",
+        handleStateUpdate
+      );
+      treatmentStateManager.removeEventListener(
+        "treatmentplan:completed",
+        handleStateUpdate
+      );
+      treatmentStateManager.removeEventListener(
+        "schedule:completed",
+        handleStateUpdate
+      );
+      treatmentStateManager.removeEventListener(
+        "step:changed",
+        handleStateUpdate
+      );
+    };
+  }, [currentStep, patientId]);
+
+  useEffect(() => {
+    setProcessData((prev) => ({
+      ...prev,
       progress: mockProgressData,
     }));
   }, [patientId]);
 
   const steps = [
     {
-      title: "Tạo lịch trình",
-      description: "Lập lịch các buổi điều trị",
+      title: "Khám tổng quát",
+      description: "Nhập kết quả khám và xét nghiệm",
+      icon: <FileTextOutlined />,
+      component: ExaminationForm,
+    },
+    {
+      title: "Lập phác đồ",
+      description: "Chọn và cá nhân hóa phác đồ điều trị",
+      icon: <MedicineBoxOutlined />,
+      component: TreatmentPlanEditor,
+    },
+    {
+      title: "Lập lịch điều trị",
+      description: "Tạo lịch trình các buổi điều trị",
       icon: <CalendarOutlined />,
       component: TreatmentScheduleForm,
     },
@@ -137,15 +324,15 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
       component: "TreatmentProgress",
     },
     {
-      title: "Hoàn thành",
-      description: "Xem tổng quan và kết quả",
+      title: "Hoàn thành dịch vụ",
+      description: "Tổng kết và hoàn tất quy trình",
       icon: <CheckCircleOutlined />,
       component: PatientScheduleView,
     },
   ];
 
   const handleNext = (stepData) => {
-    const stepKeys = ["schedule", "progress"];
+    const stepKeys = ["examination", "treatmentPlan", "schedule", "progress"];
     const currentStepKey = stepKeys[currentStep];
 
     setProcessData((prev) => ({
@@ -257,54 +444,6 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
 
     return (
       <div>
-        {/* Thông tin từ các trang khác đã có */}
-        <Card
-          title={
-            <Space>
-              <FileTextOutlined />
-              Thông tin chuẩn bị
-              <Tag color="green">Đã hoàn thành</Tag>
-            </Space>
-          }
-          style={{ marginBottom: 24 }}
-        >
-          <Row gutter={16}>
-            <Col span={8}>
-              <Text strong>📋 Khám lâm sàng:</Text>
-              <ul style={{ marginTop: 8 }}>
-                <li>Chẩn đoán: {processData.patient.examination.diagnosis}</li>
-                <li>
-                  Ngày khám: {processData.patient.examination.completedDate}
-                </li>
-                <li>
-                  Khuyến nghị:{" "}
-                  {processData.patient.examination.recommendations.join(", ")}
-                </li>
-              </ul>
-            </Col>
-            <Col span={8}>
-              <Text strong>🔬 Kết quả xét nghiệm:</Text>
-              <ul style={{ marginTop: 8 }}>
-                <li>
-                  Hormone: {processData.patient.examination.labResults.hormone}
-                </li>
-                <li>
-                  Siêu âm:{" "}
-                  {processData.patient.examination.labResults.ultrasound}
-                </li>
-              </ul>
-            </Col>
-            <Col span={8}>
-              <Text strong>💊 Phác đồ điều trị:</Text>
-              <ul style={{ marginTop: 8 }}>
-                <li>Loại: IVF (đã lập ở trang riêng)</li>
-                <li>Trạng thái: ✅ Đã phê duyệt</li>
-                <li>Giai đoạn: 7 giai đoạn chi tiết</li>
-              </ul>
-            </Col>
-          </Row>
-        </Card>
-
         {/* Tổng quan tiến trình */}
         <Row gutter={16} style={{ marginBottom: 24 }}>
           <Col span={6}>
@@ -467,15 +606,26 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
     };
 
     switch (currentStep) {
-      case 0:
+      case 0: // Khám tổng quát
+        return <StepComponent {...commonProps} />;
+      case 1: // Lập phác đồ
         return (
           <StepComponent
             {...commonProps}
-            examinationData={processData.patient?.examination}
-            treatmentPlan={null} // Sẽ được load từ trang lập phác đồ riêng
+            examinationData={processData.examination}
           />
         );
-      case 2:
+      case 2: // Lập lịch điều trị
+        return (
+          <StepComponent
+            {...commonProps}
+            treatmentPlan={processData.treatmentPlan}
+            examinationData={processData.examination}
+          />
+        );
+      case 3: // Theo dõi tiến trình
+        return renderTreatmentProgress();
+      case 4: // Hoàn thành dịch vụ
         return (
           <StepComponent {...commonProps} isPatientView={mode === "patient"} />
         );
@@ -522,40 +672,152 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
               <Text strong>Liên hệ:</Text> {processData.patient.contact}
             </Col>
             <Col span={6}>
-              <Text strong>Khám lâm sàng:</Text>
-              <Tag color="green" style={{ marginLeft: 8 }}>
-                ✓ Hoàn thành {processData.patient.examination.completedDate}
-              </Tag>
-              <br />
-              <Text strong>Phác đồ:</Text>
+              <Text strong>Quy trình:</Text>
               <Tag color="blue" style={{ marginLeft: 8 }}>
-                ✓ Đã lập riêng
+                Bước {currentStep + 1}/5
               </Tag>
             </Col>
           </Row>
         </Card>
 
-        {/* Alert về examination và phác đồ đã hoàn thành */}
-        <Alert
-          message="Khám lâm sàng và phác đồ đã hoàn thành"
-          description={`Chẩn đoán: ${processData.patient.examination.diagnosis}. Phác đồ điều trị đã được lập ở trang riêng. Bây giờ tiến hành quy trình điều trị.`}
-          type="success"
-          icon={<CheckCircleOutlined />}
-          style={{ marginBottom: 24 }}
-          showIcon
-        />
+        {/* Alert when examination data synced from standalone page */}
+        {processData.examination?.fromStandalonePage && (
+          <Alert
+            message="🔄 Đã đồng bộ kết quả khám lâm sàng"
+            description={`Kết quả khám từ trang riêng đã được cập nhật thành công. Chẩn đoán: "${processData.examination.diagnosis}". Bạn có thể tiếp tục với bước lập phác đồ.`}
+            type="success"
+            showIcon
+            closable
+            style={{ marginBottom: 24 }}
+            action={
+              <Space>
+                <Button
+                  size="small"
+                  onClick={() => {
+                    // Option to view full examination details
+                    Modal.info({
+                      title: "Chi tiết kết quả khám",
+                      content: (
+                        <div>
+                          <p>
+                            <strong>Chẩn đoán:</strong>{" "}
+                            {processData.examination.diagnosis}
+                          </p>
+                          <p>
+                            <strong>Khuyến nghị:</strong>{" "}
+                            {processData.examination.recommendations}
+                          </p>
+                          <p>
+                            <strong>Thời gian hoàn thành:</strong>{" "}
+                            {new Date(
+                              processData.examination.completedAt
+                            ).toLocaleString("vi-VN")}
+                          </p>
+                          {processData.examination.symptoms?.length > 0 && (
+                            <p>
+                              <strong>Triệu chứng:</strong>{" "}
+                              {processData.examination.symptoms.join(", ")}
+                            </p>
+                          )}
+                        </div>
+                      ),
+                      width: 600,
+                    });
+                  }}
+                >
+                  Xem chi tiết
+                </Button>
 
-        {/* Steps - quy trình theo thứ tự */}
+                {/* Manual navigation button */}
+                {currentStep === 0 && (
+                  <Button
+                    type="primary"
+                    size="small"
+                    onClick={() => {
+                      setCurrentStep(1);
+                      message.success("➡️ Đã chuyển sang bước lập phác đồ!");
+                    }}
+                  >
+                    ➡️ Chuyển sang lập phác đồ
+                  </Button>
+                )}
+              </Space>
+            }
+          />
+        )}
+
+        {/* Steps - quy trình theo thứ tự với trạng thái từ state manager */}
         <Steps current={currentStep} style={{ marginBottom: 32 }}>
-          {steps.map((step, index) => (
-            <Step
-              key={index}
-              title={step.title}
-              description={step.description}
-              icon={step.icon}
-            />
-          ))}
+          {steps.map((step, index) => {
+            // Get step data from state manager
+            const stepData = treatmentStateManager.getStepData(index);
+            let stepStatus = stepData.status;
+            let stepDescription = step.description;
+
+            // Show completion info if step is completed
+            if (stepData.isCompleted) {
+              stepStatus = "finish";
+              stepDescription = `✅ Đã hoàn thành${
+                stepData.completedAt
+                  ? ` - ${new Date(stepData.completedAt).toLocaleString(
+                      "vi-VN"
+                    )}`
+                  : ""
+              }`;
+            } else if (index === currentStep) {
+              stepStatus = "process";
+            } else if (index < currentStep) {
+              stepStatus = "finish";
+            } else {
+              stepStatus = "wait";
+            }
+
+            return (
+              <Step
+                key={index}
+                title={step.title}
+                description={stepDescription}
+                icon={step.icon}
+                status={stepStatus}
+              />
+            );
+          })}
         </Steps>
+
+        {/* Progress summary từ state manager */}
+        {(() => {
+          const progress = treatmentStateManager.getOverallProgress();
+          return (
+            <Card size="small" style={{ marginBottom: 16 }}>
+              <Row gutter={16} align="middle">
+                <Col span={12}>
+                  <Text strong>Tiến độ tổng thể: </Text>
+                  <Tag color="blue">
+                    {progress.completed}/{progress.total} bước
+                  </Tag>
+                  <Progress
+                    percent={progress.percentage}
+                    size="small"
+                    style={{ marginLeft: 8, width: 200 }}
+                    status={
+                      progress.current >= progress.total ? "success" : "active"
+                    }
+                  />
+                </Col>
+                <Col span={12} style={{ textAlign: "right" }}>
+                  {progress.state.lastUpdated && (
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      Cập nhật cuối:{" "}
+                      {new Date(progress.state.lastUpdated).toLocaleString(
+                        "vi-VN"
+                      )}
+                    </Text>
+                  )}
+                </Col>
+              </Row>
+            </Card>
+          );
+        })()}
 
         {/* Navigation buttons */}
         {currentStep < steps.length - 1 && (
@@ -568,6 +830,19 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
                 Bước {currentStep + 1} / {steps.length}:{" "}
                 {steps[currentStep].title}
               </Text>
+
+              {/* Show manual next button when examination is completed */}
+              {currentStep === 0 && processData.examination && (
+                <Button
+                  type="primary"
+                  onClick={() => {
+                    setCurrentStep(1);
+                    message.success("➡️ Tiếp tục với bước lập phác đồ!");
+                  }}
+                >
+                  ➡️ Tiếp theo: Lập phác đồ
+                </Button>
+              )}
             </Space>
           </div>
         )}
