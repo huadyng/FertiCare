@@ -20,19 +20,19 @@ const RegistrationForm = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [registerInfo, setRegisterInfo] = useState(null);
 
-  // Lấy danh sách dịch vụ từ API
+  // Lấy danh sách dịch vụ
   useEffect(() => {
     axiosClient.get("/api/services").then((res) => setServices(res.data));
   }, []);
 
-  // Lấy danh sách bác sĩ theo dịch vụ
+  // Khi chọn dịch vụ, lấy danh sách bác sĩ
   useEffect(() => {
     if (!formData.serviceId) return;
     axiosClient
       .get(`/api/service-request/available-doctors/${formData.serviceId}`)
       .then((res) => setDoctors(res.data));
 
-    // Reset lại chọn cũ
+    // Reset các trường liên quan
     setFormData((prev) => ({
       ...prev,
       doctorId: "",
@@ -43,7 +43,7 @@ const RegistrationForm = () => {
     setAvailableSlots([]);
   }, [formData.serviceId]);
 
-  // Nếu chọn "auto", sau khi có doctors thì chọn bác sĩ đầu tiên và lấy lịch
+  // Nếu chọn auto thì load lịch bác sĩ đầu tiên
   useEffect(() => {
     const fetchAutoDoctorSchedule = async () => {
       if (
@@ -77,9 +77,9 @@ const RegistrationForm = () => {
       }
     };
     fetchAutoDoctorSchedule();
-    // eslint-disable-next-line
-  }, [formData.doctorOption, doctors]);
+  }, [formData.doctorOption, doctors, formData.appointmentDate]);
 
+  // Khi chọn bác sĩ thủ công
   const handleDoctorChange = async (e) => {
     const doctorId = e.target.value;
     setFormData((prev) => ({
@@ -158,7 +158,7 @@ const RegistrationForm = () => {
       setRegisterInfo(res.data);
       setShowSuccess(true);
 
-      // Sau khi gửi, nếu là auto thì tiếp tục lấy lịch
+      // Nếu là auto, cập nhật lịch tiếp theo
       if (formData.doctorOption === "auto" && res.data.doctor?.id) {
         const doctorId = res.data.doctor.id;
         setFormData((prev) => ({ ...prev, doctorId }));
