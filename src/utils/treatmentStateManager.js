@@ -51,7 +51,7 @@ export class TreatmentStateManager {
           lastUpdated: new Date().toISOString(),
         })
       );
-      console.log("💾 Treatment state saved:", state);
+      // console.log("💾 Treatment state saved:", state);
     } catch (error) {
       console.error("Error saving treatment state:", error);
     }
@@ -230,7 +230,7 @@ export class TreatmentStateManager {
       detail: data,
     });
     window.dispatchEvent(event);
-    console.log(`🔔 Event dispatched: ${eventType}`, data);
+    // console.log(`🔔 Event dispatched: ${eventType}`, data);
   }
 
   // Listen for events

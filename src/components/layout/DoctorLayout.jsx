@@ -25,7 +25,7 @@ const DoctorLayout = () => {
 
   const handleLogout = () => {
     logout();
-    message.success("Đăng xuất thành công");
+    // message.success("Đăng xuất thành công");
     navigate("/login");
   };
 

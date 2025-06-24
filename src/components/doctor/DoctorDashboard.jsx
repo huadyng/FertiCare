@@ -41,14 +41,13 @@ import {
   PlayCircleOutlined,
   PauseCircleOutlined,
   HistoryOutlined,
-  ExperimentOutlined,
 } from "@ant-design/icons";
 
 import TreatmentProcess from "./treatment/TreatmentProcess";
 import ExaminationForm from "./treatment/ExaminationForm";
 import TreatmentPlanEditor from "./treatment/TreatmentPlanEditor";
 import TreatmentScheduleForm from "./treatment/TreatmentScheduleForm";
-import TreatmentSyncDemo from "./test/TreatmentSyncDemo";
+
 import PatientScheduleView from "./treatment/PatientScheduleView";
 import DoctorProfile from "./DoctorProfile";
 import { UserContext } from "../../context/UserContext";
@@ -119,7 +118,7 @@ const DoctorDashboard = () => {
 
   // Enhanced treatment flow handlers with step tracking
   const handleExaminationComplete = (examinationData) => {
-    console.log("✅ Khám lâm sàng hoàn thành:", examinationData);
+    // console.log("✅ Khám lâm sàng hoàn thành:", examinationData);
 
     const timestamp = new Date().toISOString();
     const stepHistory = {
@@ -140,11 +139,11 @@ const DoctorDashboard = () => {
     }));
 
     setSelectedSection("treatment-plan");
-    message.success("✅ Đã lưu kết quả khám - Chuyển sang lập phác đồ");
+    // message.success("✅ Đã lưu kết quả khám - Chuyển sang lập phác đồ");
   };
 
   const handleTreatmentPlanComplete = (treatmentPlan) => {
-    console.log("✅ Phác đồ điều trị hoàn thành:", treatmentPlan);
+    // console.log("✅ Phác đồ điều trị hoàn thành:", treatmentPlan);
 
     const timestamp = new Date().toISOString();
     const stepHistory = {
@@ -183,11 +182,11 @@ const DoctorDashboard = () => {
     }));
 
     setSelectedSection("schedule");
-    message.success("✅ Đã lưu phác đồ - Chuyển sang lập lịch điều trị");
+    // message.success("✅ Đã lưu phác đồ - Chuyển sang lập lịch điều trị");
   };
 
   const handleScheduleComplete = (schedule) => {
-    console.log("✅ Lịch điều trị hoàn thành:", schedule);
+    // console.log("✅ Lịch điều trị hoàn thành:", schedule);
 
     const timestamp = new Date().toISOString();
     const stepHistory = {
@@ -208,13 +207,13 @@ const DoctorDashboard = () => {
     }));
 
     setSelectedSection("patient-view");
-    message.success(
-      "✅ Đã lập lịch hoàn thành - Chuyển sang theo dõi bệnh nhân"
-    );
+    // message.success(
+    //   "✅ Đã lập lịch hoàn thành - Chuyển sang theo dõi bệnh nhân"
+    // );
   };
 
   const handleSubStepComplete = (subStepIndex, subStepData) => {
-    console.log(`✅ Hoàn thành giai đoạn phụ ${subStepIndex}:`, subStepData);
+    // console.log(`✅ Hoàn thành giai đoạn phụ ${subStepIndex}:`, subStepData);
 
     setScheduleSubSteps((prev) => ({
       ...prev,
@@ -222,9 +221,9 @@ const DoctorDashboard = () => {
       currentSubStep: Math.min(subStepIndex + 1, prev.subSteps.length - 1),
     }));
 
-    message.success(
-      `✅ Hoàn thành: ${scheduleSubSteps.subSteps[subStepIndex]?.title}`
-    );
+    // message.success(
+    //   `✅ Hoàn thành: ${scheduleSubSteps.subSteps[subStepIndex]?.title}`
+    // );
   };
 
   const handleStartNewTreatment = (patient) => {
@@ -252,7 +251,7 @@ const DoctorDashboard = () => {
           completedSubSteps: [],
         });
         setSelectedSection("examination");
-        message.info(`🏥 Bắt đầu quy trình điều trị cho ${patient.name}`);
+        // message.info(`🏥 Bắt đầu quy trình điều trị cho ${patient.name}`);
       },
     });
   };
@@ -261,7 +260,7 @@ const DoctorDashboard = () => {
     const stepSections = ["examination", "treatment-plan", "schedule"];
     setTreatmentFlow((prev) => ({ ...prev, isEditing: true }));
     setSelectedSection(stepSections[stepIndex]);
-    message.info(`✏️ Chỉnh sửa bước: ${stepIndex + 1}`);
+    // message.info(`✏️ Chỉnh sửa bước: ${stepIndex + 1}`);
   };
 
   const handleJumpToStep = (stepIndex) => {
@@ -389,27 +388,30 @@ const DoctorDashboard = () => {
                     </Col>
                     <Col span={12}>
                       <Card type="inner" title="Lịch sử hoàn thành">
-                        <Timeline size="small">
-                          {treatmentFlow.stepHistory.map((step, index) => (
-                            <Timeline.Item
-                              key={index}
-                              color="green"
-                              dot={
+                        <Timeline
+                          size="small"
+                          items={treatmentFlow.stepHistory.map(
+                            (step, index) => ({
+                              color: "green",
+                              dot: (
                                 <CheckCircleOutlined
                                   style={{ color: "green" }}
                                 />
-                              }
-                            >
-                              <Text strong>{step.title}</Text>
-                              <br />
-                              <Text type="secondary">
-                                {new Date(step.completedAt).toLocaleString(
-                                  "vi-VN"
-                                )}
-                              </Text>
-                            </Timeline.Item>
-                          ))}
-                        </Timeline>
+                              ),
+                              children: (
+                                <div>
+                                  <Text strong>{step.title}</Text>
+                                  <br />
+                                  <Text type="secondary">
+                                    {new Date(step.completedAt).toLocaleString(
+                                      "vi-VN"
+                                    )}
+                                  </Text>
+                                </div>
+                              ),
+                            })
+                          )}
+                        />
                       </Card>
                     </Col>
                   </Row>
@@ -685,10 +687,6 @@ const DoctorDashboard = () => {
       title: "Thông tin cá nhân",
       component: <DoctorProfile />,
     },
-    "sync-demo": {
-      title: "🔄 Treatment Sync Demo",
-      component: <TreatmentSyncDemo />,
-    },
   };
 
   const menuItems = [
@@ -738,14 +736,6 @@ const DoctorDashboard = () => {
       icon: <UserOutlined />,
       label: "Thông tin cá nhân",
     },
-    {
-      type: "divider",
-    },
-    {
-      key: "sync-demo",
-      icon: <ExperimentOutlined />,
-      label: "🔄 Sync Demo",
-    },
   ];
 
   const currentSection = treatmentSections[selectedSection];
@@ -788,38 +778,6 @@ const DoctorDashboard = () => {
           items={menuItems}
           style={{ borderRight: 0 }}
         />
-
-        {!collapsed && (
-          <div style={{ padding: "16px" }}>
-            <Card size="small">
-              <Title level={5}>Thông báo</Title>
-              <List
-                size="small"
-                dataSource={[
-                  { text: "3 lịch hẹn mới hôm nay", type: "info" },
-                  { text: "2 kết quả xét nghiệm cần xem", type: "warning" },
-                  { text: "1 báo cáo đã hoàn thành", type: "success" },
-                ]}
-                renderItem={(item) => (
-                  <List.Item>
-                    <Text style={{ fontSize: 12 }}>
-                      <Badge
-                        color={
-                          item.type === "info"
-                            ? "blue"
-                            : item.type === "warning"
-                            ? "orange"
-                            : "green"
-                        }
-                      />
-                      {item.text}
-                    </Text>
-                  </List.Item>
-                )}
-              />
-            </Card>
-          </div>
-        )}
       </Sider>
 
       <Layout>

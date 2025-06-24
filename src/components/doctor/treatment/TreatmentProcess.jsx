@@ -135,7 +135,7 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
   const syncWithStateManager = () => {
     const state = treatmentStateManager.getCurrentState();
     if (state.patientId === (patientId || "1")) {
-      console.log("🔄 Syncing TreatmentProcess with state manager:", state);
+      // console.log("🔄 Syncing TreatmentProcess with state manager:", state);
 
       // Update process data
       setProcessData((prev) => ({
@@ -151,9 +151,9 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
 
       // Show sync message if we have completed data
       if (state.completedSteps.length > 0) {
-        message.success(
-          `🔄 Đã đồng bộ ${state.completedSteps.length} bước hoàn thành từ các trang riêng lẻ`
-        );
+        // message.success(
+        //   `🔄 Đã đồng bộ ${state.completedSteps.length} bước hoàn thành từ các trang riêng lẻ`
+        // );
       }
     }
   };
@@ -168,10 +168,10 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
         try {
           const examData = JSON.parse(completedExam);
           if (examData.fromStandalonePage) {
-            console.log(
-              "🔄 Syncing examination data from standalone page:",
-              examData
-            );
+            // console.log(
+            //   "🔄 Syncing examination data from standalone page:",
+            //   examData
+            // );
 
             // Update process data with examination results
             setProcessData((prev) => ({
@@ -180,9 +180,9 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
             }));
 
             // Don't auto advance - let user control navigation
-            message.success(
-              "✅ Đã đồng bộ kết quả khám lâm sàng! Sẵn sàng chuyển sang bước lập phác đồ."
-            );
+            // message.success(
+            //   "✅ Đã đồng bộ kết quả khám lâm sàng! Sẵn sàng chuyển sang bước lập phác đồ."
+            // );
           }
         } catch (error) {
           console.error("Error parsing examination data:", error);
@@ -197,10 +197,10 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
     const handleExaminationCompleted = (event) => {
       const { patientId: eventPatientId, examinationData } = event.detail;
       if (eventPatientId === (patientId || "1")) {
-        console.log(
-          "🔄 Real-time sync: Examination completed",
-          examinationData
-        );
+        // console.log(
+        //   "🔄 Real-time sync: Examination completed",
+        //   examinationData
+        // );
 
         setProcessData((prev) => ({
           ...prev,
@@ -208,9 +208,9 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
         }));
 
         // Don't auto advance - let user control navigation
-        message.success(
-          "✅ Khám lâm sàng đã hoàn thành! Có thể chuyển sang lập phác đồ."
-        );
+        // message.success(
+        //   "✅ Khám lâm sàng đã hoàn thành! Có thể chuyển sang lập phác đồ."
+        // );
       }
     };
 
@@ -218,7 +218,7 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
     const handleExaminationPrinted = (event) => {
       const { patientId: eventPatientId, examinationData } = event.detail;
       if (eventPatientId === (patientId || "1")) {
-        console.log("📄 Examination printed, syncing data", examinationData);
+        // console.log("📄 Examination printed, syncing data", examinationData);
 
         setProcessData((prev) => ({
           ...prev,
@@ -226,9 +226,9 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
         }));
 
         // Don't auto advance - let user control navigation
-        message.success(
-          "📄 Đã in kết quả khám! Có thể chuyển sang lập phác đồ."
-        );
+        // message.success(
+        //   "📄 Đã in kết quả khám! Có thể chuyển sang lập phác đồ."
+        // );
       }
     };
 
@@ -236,7 +236,7 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
     const handleStateUpdate = (event) => {
       const { patientId: eventPatientId, state } = event.detail;
       if (eventPatientId === (patientId || "1")) {
-        console.log("🔔 Received state update:", event.type, state);
+        // console.log("🔔 Received state update:", event.type, state);
         syncWithStateManager();
       }
     };
@@ -342,7 +342,7 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
 
     if (currentStep < steps.length - 1) {
       setCurrentStep((prev) => prev + 1);
-      message.success(`Đã hoàn thành bước ${currentStep + 1}`);
+      // message.success(`Đã hoàn thành bước ${currentStep + 1}`);
     }
   };
 
@@ -384,10 +384,10 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
       }));
 
       setSessionUpdateModal(false);
-      message.success("Đã cập nhật tiến trình điều trị");
+      // message.success("Đã cập nhật tiến trình điều trị");
     } catch (error) {
       console.error("Update session error:", error);
-      message.error("Lỗi khi cập nhật tiến trình");
+      // message.error("Lỗi khi cập nhật tiến trình");
     }
   };
 
@@ -735,7 +735,7 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
                     size="small"
                     onClick={() => {
                       setCurrentStep(1);
-                      message.success("➡️ Đã chuyển sang bước lập phác đồ!");
+                      // message.success("➡️ Đã chuyển sang bước lập phác đồ!");
                     }}
                   >
                     ➡️ Chuyển sang lập phác đồ
@@ -837,7 +837,7 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
                   type="primary"
                   onClick={() => {
                     setCurrentStep(1);
-                    message.success("➡️ Tiếp tục với bước lập phác đồ!");
+                    // message.success("➡️ Tiếp tục với bước lập phác đồ!");
                   }}
                 >
                   ➡️ Tiếp theo: Lập phác đồ

@@ -10,6 +10,7 @@ import {
   Calendar,
   Badge,
   message,
+  Space,
 } from "antd";
 import dayjs from "dayjs";
 
@@ -183,6 +184,7 @@ const PatientScheduleView = ({
           dataSource={mockScheduleData}
           pagination={false}
           size="middle"
+          rowKey="key"
         />
       ) : (
         <Calendar cellRender={calendarCellRender} mode="month" />
@@ -200,9 +202,9 @@ const PatientScheduleView = ({
             type="primary"
             size="large"
             onClick={() => {
-              message.success(
-                "✅ Quy trình điều trị đã hoàn thành thành công!"
-              );
+              // message.success(
+              //   "✅ Quy trình điều trị đã hoàn thành thành công!"
+              // );
             }}
           >
             🎉 Hoàn thành quy trình điều trị

@@ -100,8 +100,6 @@ const TreatmentPlanEditor = ({
             ? dayjs(existingPlan.estimatedStartDate)
             : undefined,
         });
-
-        message.info("📝 Đang chỉnh sửa phác đồ điều trị hiện có");
       }
       return;
     }
@@ -189,10 +187,6 @@ const TreatmentPlanEditor = ({
 
     // Generate doctor suggestions based on examination data
     generateDoctorSuggestions(template);
-
-    message.success(
-      `✅ Đã chọn phác đồ ${treatmentType} - Xem chi tiết bên dưới`
-    );
   }, []);
 
   const generateDoctorSuggestions = useCallback(
@@ -321,8 +315,6 @@ const TreatmentPlanEditor = ({
         ...prev,
         activities: updatedActivities,
       }));
-
-      message.success(`✅ Đã cập nhật hoạt động "${editingActivity.name}"`);
       setIsEditingActivity(false);
       setEditingActivity(null);
       setEditingActivityIndex(null);
@@ -334,7 +326,7 @@ const TreatmentPlanEditor = ({
     setIsEditingActivity(false);
     setEditingActivity(null);
     setEditingActivityIndex(null);
-    message.info("Đã hủy chỉnh sửa hoạt động");
+    // message.info("Đã hủy chỉnh sửa hoạt động");
   };
 
   // Function to update activity field
@@ -394,7 +386,7 @@ const TreatmentPlanEditor = ({
         },
       }));
 
-      message.success(`✅ Đã cập nhật giai đoạn "${editingPhase.name}"`);
+      // message.success(`✅ Đã cập nhật giai đoạn "${editingPhase.name}"`);
     }
     setIsEditingPhase(false);
     setEditingPhase(null);
@@ -403,7 +395,7 @@ const TreatmentPlanEditor = ({
   const handleCancelPhaseEdit = () => {
     setIsEditingPhase(false);
     setEditingPhase(null);
-    message.info("Đã hủy chỉnh sửa");
+    // message.info("Đã hủy chỉnh sửa");
   };
 
   // Get effective phase (customized or original)
@@ -442,7 +434,7 @@ const TreatmentPlanEditor = ({
 
       // Validate required fields
       if (!selectedTemplate) {
-        message.error("Vui lòng chọn phác đồ điều trị");
+        // message.error("Vui lòng chọn phác đồ điều trị");
         return;
       }
 
@@ -505,20 +497,13 @@ const TreatmentPlanEditor = ({
 
       // Try to save via API
       try {
-        const savedPlan = await treatmentPlanAPI.createTreatmentPlan(planData);
-        console.log("✅ Phác đồ đã lưu thành công:", savedPlan);
-
-        // Clear draft after successful save (only if not editing)
+        const result = await treatmentPlanAPI.saveTreatmentPlan(planData);
+        const savedPlan = result.success ? result.data : null;
         if (!isEditing) {
           localStorage.removeItem(`treatment_plan_draft_${patientId}`);
         }
 
         const actionText = isEditing ? "Cập nhật" : "Lưu";
-        message.success(
-          `🎉 ${actionText} phác đồ ${selectedTemplate.type} thành công!${
-            isEditing ? "" : " Chuyển sang lập lịch..."
-          }`
-        );
 
         // Log the data being passed to next step
         console.log("📋 Data being passed to schedule:", savedPlan || planData);
@@ -536,7 +521,7 @@ const TreatmentPlanEditor = ({
       } catch (apiError) {
         // If API fails, still proceed with local data
         console.warn("API save failed, using local data:", apiError);
-        message.warning("Đã lưu phác đồ cục bộ. Hệ thống sẽ đồng bộ sau.");
+        // message.warning("Đã lưu phác đồ cục bộ. Hệ thống sẽ đồng bộ sau.");
 
         console.log("📋 Local data being passed to schedule:", planData);
 
@@ -549,7 +534,7 @@ const TreatmentPlanEditor = ({
       }
     } catch (error) {
       console.error("Error creating treatment plan:", error);
-      message.error("❌ Có lỗi xảy ra khi lưu phác đồ. Vui lòng thử lại!");
+      // message.error("❌ Có lỗi xảy ra khi lưu phác đồ. Vui lòng thử lại!");
     } finally {
       setLoading(false);
     }
@@ -570,7 +555,7 @@ const TreatmentPlanEditor = ({
       `treatment_plan_draft_${patientId}`,
       JSON.stringify(draftData)
     );
-    message.success("💾 Đã lưu bản nháp thành công");
+    // message.success("💾 Đã lưu bản nháp thành công");
   };
 
   // Columns for phases table
@@ -634,7 +619,7 @@ const TreatmentPlanEditor = ({
         ...prev,
         activities: updatedActivities,
       }));
-      message.success("✅ Đã xóa hoạt động");
+      // message.success("✅ Đã xóa hoạt động");
     }
   };
 
@@ -1035,6 +1020,7 @@ const TreatmentPlanEditor = ({
                               size="small"
                               dataSource={effectivePhase.activities}
                               pagination={false}
+                              rowKey={(record, index) => `activity-${index}`}
                               columns={[
                                 {
                                   title: "Ngày",
@@ -1084,6 +1070,9 @@ const TreatmentPlanEditor = ({
                                     size="small"
                                     dataSource={effectivePhase.medications}
                                     pagination={false}
+                                    rowKey={(record, index) =>
+                                      `medication-${index}`
+                                    }
                                     columns={[
                                       {
                                         title: "Tên thuốc",
@@ -1391,7 +1380,7 @@ const TreatmentPlanEditor = ({
                       ],
                     }));
 
-                    message.success("🧪 Đã thêm dữ liệu mẫu cho test");
+                    // message.success("🧪 Đã thêm dữ liệu mẫu cho test");
                   }
                 }}
               >

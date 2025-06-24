@@ -6,7 +6,7 @@ import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import { useNavigate } from "react-router-dom";
 import { UserContext } from "../../../context/UserContext";
 import { decodeGoogleToken } from "../../../helpers/decodeGoogleToken";
-import apiLogin from "../../../api/apiLogin";
+import { apiLogin, apiGoogleLogin } from "../../../api/apiLogin";
 
 export default function Login() {
   const [taikhoan, setTaikhoan] = useState("");
@@ -19,28 +19,47 @@ export default function Login() {
   const { setUser, login, loginWithGoogle } = useContext(UserContext);
   const navigate = useNavigate();
 
-  // Login thường
+  //Đăng nhập thường
   const handleLogin = async (e) => {
     e.preventDefault();
+    setMessage("");
     try {
       const user = await apiLogin(taikhoan, matkhau);
       login(user); // ✅ dùng hàm login từ context
       navigate("/");
     } catch (error) {
-      setMessage("❌ Đăng nhập thất bại...");
+      // Xử lý lỗi chi tiết hơn
+      if (error.response?.status === 403) {
+        setMessage(
+          "❌ Email của bạn chưa được xác thực. Vui lòng kiểm tra hộp thư."
+        );
+      } else if (error.response?.status === 401) {
+        setMessage("❌ Email hoặc mật khẩu không đúng.");
+      } else {
+        setMessage("❌ Đăng nhập thất bại.");
+      }
     }
   };
 
   // Login Google
-  const handleGoogleLoginSuccess = (credentialResponse) => {
-    const user = decodeGoogleToken(credentialResponse.credential);
-    if (user) {
-      loginWithGoogle(user);
+  const handleGoogleLoginSuccess = async (credentialResponse) => {
+    try {
+      const user = decodeGoogleToken(credentialResponse.credential);
+      if (!user) throw new Error("Google token không hợp lệ.");
+      const data = await apiGoogleLogin({
+        ...user,
+        credential: credentialResponse.credential,
+      });
+      login(data);
       navigate("/");
-    } else {
-      setMessage("❌ Không thể xác thực từ Google.");
+    } catch (error) {
+      let errorMsg = "❌ Đăng nhập Google thất bại.";
+      if (error.response?.data?.message)
+        errorMsg += " " + error.response.data.message;
+      setMessage(errorMsg);
     }
   };
+
   const handleGoogleLoginError = () => {
     setMessage("❌ Đăng nhập Google thất bại.");
   };

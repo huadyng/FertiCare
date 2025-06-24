@@ -1,17 +1,14 @@
 import { createContext, useState, useEffect } from "react";
 
-export const UserContext = createContext();
-
-// Định nghĩa các vai trò (roles)
+// 1. Định nghĩa các vai trò và quyền
 export const USER_ROLES = {
   ADMIN: "admin",
   MANAGER: "manager",
   DOCTOR: "doctor",
   PATIENT: "patient",
-  CUSTOMER: "customer", // Customer chưa đăng ký dịch vụ
+  CUSTOMER: "customer",
 };
 
-// Định nghĩa quyền cho từng vai trò
 export const ROLE_PERMISSIONS = {
   [USER_ROLES.ADMIN]: {
     canManageUsers: true,
@@ -45,10 +42,15 @@ export const ROLE_PERMISSIONS = {
   },
 };
 
+// 2. Tạo Context
+export const UserContext = createContext();
+
+// 3. UserProvider kết hợp
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
+  // Khi load lại trang, lấy user từ localStorage (có xử lý lỗi)
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     try {
@@ -59,37 +61,40 @@ export const UserProvider = ({ children }) => {
       }
     } catch (error) {
       console.error("❌ Lỗi parse user từ localStorage:", error);
-      localStorage.removeItem("user"); // dọn sạch dữ liệu lỗi
+      localStorage.removeItem("user");
     }
   }, []);
 
+  // Đăng nhập (có role & trạng thái dịch vụ mặc định)
   const login = (userData) => {
     const dataToStore = {
       ...userData,
-      role: userData.role || USER_ROLES.CUSTOMER, // mặc định là customer nếu không có role
+      role: userData.role || USER_ROLES.CUSTOMER,
       token: userData.token,
-      hasRegisteredService: userData.hasRegisteredService || false, // Trạng thái đăng ký dịch vụ
+      hasRegisteredService: userData.hasRegisteredService || false,
     };
     setUser(dataToStore);
     setIsLoggedIn(true);
     localStorage.setItem("user", JSON.stringify(dataToStore));
   };
 
+  // Đăng nhập bằng Google
   const loginWithGoogle = (googleUser) => {
     const userData = {
       fullName: googleUser.name,
       email: googleUser.email,
-      role: USER_ROLES.CUSTOMER, // mặc định Google login là customer
+      role: USER_ROLES.CUSTOMER,
       hasRegisteredService: false,
     };
     login(userData);
   };
 
-  // Cập nhật trạng thái đăng ký dịch vụ
+  // Đăng ký dịch vụ, chuyển customer => patient
   const updateServiceRegistration = (registrationData) => {
+    if (!user) return;
     const updatedUser = {
       ...user,
-      role: USER_ROLES.PATIENT, // Chuyển từ customer sang patient
+      role: USER_ROLES.PATIENT,
       hasRegisteredService: true,
       serviceInfo: registrationData,
     };
@@ -97,27 +102,25 @@ export const UserProvider = ({ children }) => {
     localStorage.setItem("user", JSON.stringify(updatedUser));
   };
 
+  // Đăng xuất
   const logout = () => {
     localStorage.removeItem("user");
     setUser(null);
     setIsLoggedIn(false);
   };
 
-  // Kiểm tra quyền của user
+  // Kiểm tra permission
   const hasPermission = (permission) => {
     if (!user || !user.role) return false;
     return ROLE_PERMISSIONS[user.role]?.[permission] || false;
   };
 
   // Kiểm tra vai trò
-  const hasRole = (role) => {
-    return user?.role === role;
-  };
+  const hasRole = (role) => user?.role === role;
 
-  // Lấy dashboard path theo role
+  // Lấy dashboard path
   const getDashboardPath = () => {
     if (!user?.role) return "/";
-
     switch (user.role) {
       case USER_ROLES.ADMIN:
         return "/admin/dashboard";
@@ -128,16 +131,14 @@ export const UserProvider = ({ children }) => {
       case USER_ROLES.PATIENT:
         return "/patient/dashboard";
       case USER_ROLES.CUSTOMER:
-        return "/"; // Customer quay về homepage để đăng ký dịch vụ
       default:
         return "/";
     }
   };
 
-  // Kiểm tra xem user có thể truy cập patient area không
-  const canAccessPatientArea = () => {
-    return user?.role === USER_ROLES.PATIENT && user?.hasRegisteredService;
-  };
+  // Có được truy cập patient area không?
+  const canAccessPatientArea = () =>
+    user?.role === USER_ROLES.PATIENT && user?.hasRegisteredService;
 
   return (
     <UserContext.Provider
@@ -148,11 +149,11 @@ export const UserProvider = ({ children }) => {
         login,
         loginWithGoogle,
         logout,
+        updateServiceRegistration,
         hasPermission,
         hasRole,
         getDashboardPath,
         canAccessPatientArea,
-        updateServiceRegistration,
         USER_ROLES,
         ROLE_PERMISSIONS,
       }}

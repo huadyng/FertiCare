@@ -1,6 +1,6 @@
 import axiosClient from "./axiosClient";
 
-const apiLogin = async (email, password) => {
+export const apiLogin = async (email, password) => {
   try {
     console.log("🔐 [apiLogin] Gửi dữ liệu đăng nhập:");
     console.log("📧 Email:", email);
@@ -22,4 +22,17 @@ const apiLogin = async (email, password) => {
   }
 };
 
-export default apiLogin;
+// Đăng nhập Google
+export const apiGoogleLogin = async (googleUser) => {
+  try {
+    const res = await axiosClient.post("/api/auth/google-login", {
+      googleToken: googleUser.credential,
+      email: googleUser.email,
+      fullName: googleUser.name,
+      avatarUrl: googleUser.picture,
+    });
+    return res.data;
+  } catch (error) {
+    throw error;
+  }
+};

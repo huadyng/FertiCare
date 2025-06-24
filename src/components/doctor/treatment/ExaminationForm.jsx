@@ -81,7 +81,7 @@ const ExaminationForm = ({
         setSymptoms(completedData.symptoms || []);
         setLabResults(completedData.labResults || {});
 
-        message.success("📋 Đã khôi phục kết quả khám đã hoàn thành");
+        // message.success("📋 Đã khôi phục kết quả khám đã hoàn thành");
         return;
       } catch (error) {
         console.error("Error loading completed examination:", error);
@@ -103,7 +103,7 @@ const ExaminationForm = ({
       });
       setSymptoms(existingData.symptoms || []);
       setLabResults(existingData.labResults || {});
-      message.info("📝 Đang chỉnh sửa kết quả khám hiện có");
+      // message.info("📝 Đang chỉnh sửa kết quả khám hiện có");
       return;
     }
 
@@ -116,7 +116,7 @@ const ExaminationForm = ({
         form.setFieldsValue(draft);
         setSymptoms(draft.symptoms || []);
         setLabResults(draft.labResults || {});
-        message.info(`Đã tải bản nháp lưu lúc: ${draft.savedAt}`);
+        // message.info(`Đã tải bản nháp lưu lúc: ${draft.savedAt}`);
       } catch (error) {
         console.error("Error loading draft:", error);
       }
@@ -177,7 +177,7 @@ const ExaminationForm = ({
 
       // Validate required fields
       if (!values.diagnosis || !values.recommendations) {
-        message.error("Vui lòng nhập đầy đủ chẩn đoán và khuyến nghị");
+        // message.error("Vui lòng nhập đầy đủ chẩn đoán và khuyến nghị");
         return;
       }
 
@@ -234,11 +234,11 @@ const ExaminationForm = ({
         }
 
         const actionText = isEditing ? "Cập nhật" : "Lưu";
-        message.success(
-          `🎉 ${actionText} kết quả khám thành công! ${
-            isEditing ? "" : "Hiển thị kết quả bên dưới."
-          }`
-        );
+        // message.success(
+        //   `🎉 ${actionText} kết quả khám thành công! ${
+        //     isEditing ? "" : "Hiển thị kết quả bên dưới."
+        //   }`
+        // );
 
         // Update with saved result if API succeeded
         setSubmittedData(savedResult || examinationData);
@@ -270,9 +270,9 @@ const ExaminationForm = ({
         );
       } catch (apiError) {
         console.warn("API save failed, but showing results locally:", apiError);
-        message.warning(
-          "⚠️ Không thể kết nối server nhưng kết quả đã được hiển thị. Dữ liệu sẽ được lưu tạm thời."
-        );
+        // message.warning(
+        //   "⚠️ Không thể kết nối server nhưng kết quả đã được hiển thị. Dữ liệu sẽ được lưu tạm thời."
+        // );
 
         // Store in localStorage as backup
         localStorage.setItem(
@@ -313,7 +313,7 @@ const ExaminationForm = ({
       }
     } catch (error) {
       console.error("Critical error in examination form:", error);
-      message.error("❌ Có lỗi nghiêm trọng. Vui lòng tải lại trang!");
+      // message.error("❌ Có lỗi nghiêm trọng. Vui lòng tải lại trang!");
     } finally {
       setLoading(false);
     }
@@ -612,7 +612,7 @@ const ExaminationForm = ({
                         savedAt: new Date().toLocaleString(),
                       })
                     );
-                    message.success("Đã lưu bản nháp");
+                    // message.success("Đã lưu bản nháp");
                   }}
                 >
                   💾 Lưu nháp
@@ -643,7 +643,7 @@ const ExaminationForm = ({
                         AMH: "2.1",
                       },
                     });
-                    message.info("Đã điền dữ liệu mẫu");
+                    // message.info("Đã điền dữ liệu mẫu");
                   }}
                 >
                   🧪 Điền mẫu test
@@ -708,9 +708,9 @@ const ExaminationForm = ({
                     });
                     window.dispatchEvent(syncEvent);
 
-                    message.success(
-                      "💾 Test hoàn thành! Dữ liệu sẽ được giữ khi chuyển trang"
-                    );
+                    // message.success(
+                    //   "💾 Test hoàn thành! Dữ liệu sẽ được giữ khi chuyển trang"
+                    // );
                   }}
                 >
                   💾 Test Persistent State
@@ -765,7 +765,7 @@ const ExaminationForm = ({
                     );
 
                     // Form already has the data from useEffect, so no need to set again
-                    message.info("🔧 Đã chuyển sang chế độ chỉnh sửa");
+                    // message.info("🔧 Đã chuyển sang chế độ chỉnh sửa");
                   }}
                 >
                   Chỉnh sửa
@@ -785,9 +785,9 @@ const ExaminationForm = ({
                         },
                       });
                       window.dispatchEvent(syncEvent);
-                      message.info(
-                        "📄 Đã in kết quả và đồng bộ với quy trình điều trị"
-                      );
+                      // message.info(
+                      //   "📄 Đã in kết quả và đồng bộ với quy trình điều trị"
+                      // );
                     }
                   }}
                 >
@@ -811,9 +811,9 @@ const ExaminationForm = ({
                     setLabResults({});
                     setAttachments([]);
 
-                    message.warning(
-                      "🗑️ Đã xóa tất cả dữ liệu khám và bắt đầu lại"
-                    );
+                    // message.warning(
+                    //   "🗑️ Đã xóa tất cả dữ liệu khám và bắt đầu lại"
+                    // );
                   }}
                 >
                   Bắt đầu lại

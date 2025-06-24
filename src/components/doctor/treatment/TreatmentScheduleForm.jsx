@@ -83,7 +83,7 @@ const TreatmentScheduleForm = ({
         ),
       });
 
-      message.info("📝 Đang chỉnh sửa lịch điều trị hiện có");
+      // message.info("📝 Đang chỉnh sửa lịch điều trị hiện có");
       return;
     }
 
@@ -116,14 +116,9 @@ const TreatmentScheduleForm = ({
         preferredTime: dayjs("09:00", "HH:mm"),
       });
 
-      message.success(
-        `✅ Đã tải phác đồ ${templateData?.type} với ${schedule.length} hoạt động điều trị`
-      );
-    } else {
-      console.warn("⚠️ No treatment plan template found:", treatmentPlan);
-      message.warning(
-        "Chưa có phác đồ điều trị. Vui lòng hoàn thành bước lập phác đồ trước."
-      );
+      // message.success(
+      //   `✅ Đã tải phác đồ ${templateData?.type} với ${schedule.length} hoạt động điều trị`
+      // );
     }
   }, [treatmentPlan, existingSchedule, isEditing, form]);
 
@@ -182,11 +177,11 @@ const TreatmentScheduleForm = ({
         },
       }));
 
-      message.success("Đã cập nhật buổi điều trị");
+      // message.success("Đã cập nhật buổi điều trị");
       setSessionModal(false);
       setEditingSession(null);
     } catch (error) {
-      message.error("Có lỗi khi cập nhật buổi điều trị");
+      // message.error("Có lỗi khi cập nhật buổi điều trị");
     }
   };
 
@@ -226,7 +221,7 @@ const TreatmentScheduleForm = ({
         setGeneratedSchedule((prev) =>
           prev.filter((session) => session.id !== sessionId)
         );
-        message.success("Đã xóa buổi điều trị");
+        // message.success("Đã xóa buổi điều trị");
       },
     });
   };
@@ -281,7 +276,7 @@ const TreatmentScheduleForm = ({
           (existingSchedule?.modificationCount || 0) + (isEditing ? 1 : 0),
       };
 
-      console.log("✅ Lịch điều trị hoàn chỉnh:", scheduleData);
+      // console.log("✅ Lịch điều trị hoàn chỉnh:", scheduleData);
 
       // Validate required fields
       if (!scheduleData.sessions || scheduleData.sessions.length === 0) {
@@ -290,9 +285,9 @@ const TreatmentScheduleForm = ({
 
       // Enhanced success message
       const actionText = isEditing ? "Cập nhật" : "Tạo";
-      message.success(
-        `✅ ${actionText} lịch điều trị thành công - ${scheduleData.totalSessions} buổi điều trị`
-      );
+      // message.success(
+      //   `✅ ${actionText} lịch điều trị thành công - ${scheduleData.totalSessions} buổi điều trị`
+      // );
 
       // Auto-complete first sub-step if exists
       if (subStepsData?.subSteps?.length > 0 && !isEditing) {
@@ -311,7 +306,7 @@ const TreatmentScheduleForm = ({
       onNext && onNext(scheduleData);
     } catch (error) {
       console.error("❌ Lỗi lưu lịch điều trị:", error);
-      message.error(error.message || "Có lỗi xảy ra khi lưu lịch điều trị");
+      // message.error(error.message || "Có lỗi xảy ra khi lưu lịch điều trị");
     } finally {
       setLoading(false);
     }
@@ -470,7 +465,7 @@ const TreatmentScheduleForm = ({
                 type="primary"
                 onClick={() => {
                   console.log("Current treatment plan:", treatmentPlan);
-                  message.info("Vui lòng quay lại bước lập phác đồ");
+                  // message.info("Vui lòng quay lại bước lập phác đồ");
                 }}
               >
                 Quay lại lập phác đồ
@@ -718,75 +713,75 @@ const TreatmentScheduleForm = ({
                     >
                       <Row gutter={16}>
                         <Col span={16}>
-                          <Timeline size="small">
-                            {subStepsData.subSteps.map((subStep, index) => (
-                              <Timeline.Item
-                                key={index}
-                                color={
-                                  subStepsData.completedSubSteps.includes(index)
-                                    ? "green"
-                                    : index === subStepsData.currentSubStep
-                                    ? "blue"
-                                    : "gray"
-                                }
-                                dot={
-                                  subStepsData.completedSubSteps.includes(
-                                    index
-                                  ) ? (
-                                    <CheckCircleOutlined
-                                      style={{ color: "green" }}
-                                    />
-                                  ) : index === subStepsData.currentSubStep ? (
-                                    <PlayCircleOutlined
-                                      style={{ color: "blue" }}
-                                    />
-                                  ) : (
-                                    <ClockCircleOutlined
-                                      style={{ color: "gray" }}
-                                    />
-                                  )
-                                }
-                              >
-                                <div>
-                                  <Space>
+                          <Timeline
+                            size="small"
+                            items={subStepsData.subSteps.map(
+                              (subStep, index) => ({
+                                color: subStepsData.completedSubSteps.includes(
+                                  index
+                                )
+                                  ? "green"
+                                  : index === subStepsData.currentSubStep
+                                  ? "blue"
+                                  : "gray",
+                                dot: subStepsData.completedSubSteps.includes(
+                                  index
+                                ) ? (
+                                  <CheckCircleOutlined
+                                    style={{ color: "green" }}
+                                  />
+                                ) : index === subStepsData.currentSubStep ? (
+                                  <PlayCircleOutlined
+                                    style={{ color: "blue" }}
+                                  />
+                                ) : (
+                                  <ClockCircleOutlined
+                                    style={{ color: "gray" }}
+                                  />
+                                ),
+                                children: (
+                                  <div>
+                                    <Space>
+                                      <Text
+                                        strong={
+                                          index === subStepsData.currentSubStep
+                                        }
+                                        type={
+                                          subStepsData.completedSubSteps.includes(
+                                            index
+                                          )
+                                            ? "success"
+                                            : undefined
+                                        }
+                                      >
+                                        {subStep.title}
+                                      </Text>
+                                      {subStepsData.completedSubSteps.includes(
+                                        index
+                                      ) && (
+                                        <Tag color="green" size="small">
+                                          Hoàn thành
+                                        </Tag>
+                                      )}
+                                      {index ===
+                                        subStepsData.currentSubStep && (
+                                        <Tag color="blue" size="small">
+                                          Hiện tại
+                                        </Tag>
+                                      )}
+                                    </Space>
+                                    <br />
                                     <Text
-                                      strong={
-                                        index === subStepsData.currentSubStep
-                                      }
-                                      type={
-                                        subStepsData.completedSubSteps.includes(
-                                          index
-                                        )
-                                          ? "success"
-                                          : undefined
-                                      }
+                                      type="secondary"
+                                      style={{ fontSize: "12px" }}
                                     >
-                                      {subStep.title}
+                                      {subStep.description} • {subStep.duration}
                                     </Text>
-                                    {subStepsData.completedSubSteps.includes(
-                                      index
-                                    ) && (
-                                      <Tag color="green" size="small">
-                                        Hoàn thành
-                                      </Tag>
-                                    )}
-                                    {index === subStepsData.currentSubStep && (
-                                      <Tag color="blue" size="small">
-                                        Hiện tại
-                                      </Tag>
-                                    )}
-                                  </Space>
-                                  <br />
-                                  <Text
-                                    type="secondary"
-                                    style={{ fontSize: "12px" }}
-                                  >
-                                    {subStep.description} • {subStep.duration}
-                                  </Text>
-                                </div>
-                              </Timeline.Item>
-                            ))}
-                          </Timeline>
+                                  </div>
+                                ),
+                              })
+                            )}
+                          />
                         </Col>
                         <Col span={8}>
                           <Space direction="vertical" style={{ width: "100%" }}>
@@ -843,7 +838,11 @@ const TreatmentScheduleForm = ({
                           dataSource={generatedSchedule}
                           pagination={false}
                           size="small"
-                          rowKey="id"
+                          rowKey={(record, index) =>
+                            `schedule-${record.id || index}-${
+                              record.phaseName || ""
+                            }-${record.activity || ""}`
+                          }
                           scroll={{ y: 400 }}
                         />
                       </Card>
@@ -903,7 +902,7 @@ const TreatmentScheduleForm = ({
                     };
 
                     setGeneratedSchedule((prev) => [...prev, newSession]);
-                    message.success("Đã thêm buổi điều trị tùy chỉnh");
+                    // message.success("Đã thêm buổi điều trị tùy chỉnh");
                     setSessionModal(false);
                     setEditingSession(null);
                   }

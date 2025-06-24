@@ -146,11 +146,11 @@ const DoctorDashboard = () => {
   const handleCreateTreatmentPlan = async (values) => {
     try {
       await treatmentAPI.create(values);
-      message.success("Tạo kế hoạch điều trị thành công");
+      // message.success("Tạo kế hoạch điều trị thành công");
       setIsTreatmentModalVisible(false);
       fetchTreatmentPlans();
     } catch (error) {
-      message.error("Lỗi khi tạo kế hoạch điều trị");
+      // message.error("Lỗi khi tạo kế hoạch điều trị");
     }
   };
 
@@ -375,19 +375,16 @@ const DoctorDashboard = () => {
                   </Button>
                 }
               >
-                <Timeline>
-                  {todayAppointments.slice(0, 5).map((apt, index) => (
-                    <Timeline.Item
-                      key={apt.id}
-                      color={apt.status === "confirmed" ? "green" : "blue"}
-                      dot={
-                        apt.status === "completed" ? (
-                          <CheckCircleOutlined />
-                        ) : (
-                          <ClockCircleOutlined />
-                        )
-                      }
-                    >
+                <Timeline
+                  items={todayAppointments.slice(0, 5).map((apt, index) => ({
+                    color: apt.status === "confirmed" ? "green" : "blue",
+                    dot:
+                      apt.status === "completed" ? (
+                        <CheckCircleOutlined />
+                      ) : (
+                        <ClockCircleOutlined />
+                      ),
+                    children: (
                       <div
                         style={{
                           display: "flex",
@@ -413,9 +410,9 @@ const DoctorDashboard = () => {
                           Chi tiết
                         </Button>
                       </div>
-                    </Timeline.Item>
-                  ))}
-                </Timeline>
+                    ),
+                  }))}
+                />
               </Card>
             </Col>
 
