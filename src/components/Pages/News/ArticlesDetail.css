@@ -1,0 +1,41 @@
+.article-detail-container {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 1rem;
+  background-color: #fffefc;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.article-detail-image {
+  width: 100%;
+  height: 300px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 1.5rem;
+}
+
+.article-detail-title {
+  font-size: 2rem;
+  color: #c2185b;
+  margin-bottom: 1rem;
+}
+
+.article-detail-content {
+  font-size: 16px;
+  line-height: 1.7;
+  color: #333;
+}
+
+.back-to-list {
+  display: inline-block;
+  margin-top: 1.5rem;
+  color: #f43f5e;
+  text-decoration: none;
+  font-weight: bold;
+  transition: color 0.3s ease;
+}
+
+.back-to-list:hover {
+  color: #c2185b;
+}

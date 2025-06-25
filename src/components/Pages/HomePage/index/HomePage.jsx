@@ -5,12 +5,12 @@ import HeroSection from "../HeroSection/HeroSection";
 import AboutUs from "../AboutUs/AboutUs";
 import Service from "../ServiceHomePage/Service";
 import DoctorCarousel from "../DoctorCarousel/DoctorCarousel";
-import AchievementPage from "../AchievementPage/AchievementPage";
 import FeedbackPage from "../FeedbackPage/FeedbackPage";
 import NewsPage from "../NewsPage/NewsPage";
+import ArticlePreview from "../../News/ArticlesPreview";
 import ServiceRegistration from "../ServiceRegistration/ServiceRegistration";
 import { UserContext } from "../../../../context/UserContext";
-
+import AchievementPage from "../../Achievement/AchievementPreview";
 const HomePage = () => {
   const { user, USER_ROLES } = useContext(UserContext);
 
@@ -26,7 +26,7 @@ const HomePage = () => {
       {showServiceRegistration && <ServiceRegistration />}
       <DoctorCarousel />
       <AchievementPage />
-      <NewsPage />
+      <ArticlePreview />
       <FeedbackPage />
     </>
   );

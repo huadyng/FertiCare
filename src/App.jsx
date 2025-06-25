@@ -19,25 +19,41 @@ const Login = lazy(() => import("./components/pages/Login/Login"));
 const Register = lazy(() => import("./components/pages/Register/Register"));
 const RegisterPage = lazy(() => import("./components/pages/Register/Register")); // Nếu RegisterPage khác với Register, điều chỉnh lại
 const DoctorDetail = lazy(() =>
-  import("./components/pages/DoctorTeam/Card/DoctorDetail/DoctorDetail")
+  import("./components/pages/DoctorTeam/Card/DoctorDetail/DoctorDetail"),
 );
 const HomePage = lazy(() =>
-  import("./components/pages/HomePage/index/HomePage")
+  import("./components/pages/HomePage/index/HomePage"),
 );
 const RegistrationForm = lazy(() =>
-  import("./components/pages/RegistrationServiceForm/index/RegistrationForm")
+  import("./components/pages/RegistrationServiceForm/index/RegistrationForm"),
 );
+
+const Services = lazy(() =>
+  import("./components/Pages/Services/ServicesList"));
+
+const ServiceDetail = lazy(() =>
+  import("./components/Pages/Services/ServiceDetail"));
+
+const Articles = lazy(() =>
+  import("./components/Pages/News/Articles"));
+
+const ArticlesDetail = lazy(() =>
+  import("./components/Pages/News/ArticlesDetail"));
+
+const Achievements = lazy(() =>
+  import("./components/Pages/Achievement/Achievements"));
+
 const Pie = lazy(() => import("./components/pages/ChartsForm/Pie"));
-//const Contact = lazy(() => import("./components/pages/Contact/ContactForm"));
+const Contact = lazy(() => import("./components/pages/Contact/ContactForm"));
 //const BlogPage = lazy(() => import("./components/pages/Blog/BlogPage"));
 //const BlogPublic = lazy(() => import("./components/Pages/Blog/BlogPublic"));
 //const BlogManager = lazy(() => import("./components/Pages/Blog/BlogManager"));
 //const BlogDetail = lazy(() => import("./components/Pages/Blog/BlogDetail"));
 const ForgotPassword = lazy(() =>
-  import("./components/pages/Login/ForgotPassword")
+  import("./components/pages/Login/ForgotPassword"),
 );
 const VerifyEmail = lazy(() =>
-  import("./components/pages/VerifyEmail/VerifyEmail")
+  import("./components/pages/VerifyEmail/VerifyEmail"),
 );
 
 // Lazy load layouts và dashboard
@@ -47,33 +63,33 @@ const DoctorLayout = lazy(() => import("./components/layout/DoctorLayout"));
 const PatientLayout = lazy(() => import("./components/layout/PatientLayout"));
 
 const AdminDashboard = lazy(() =>
-  import("./components/dashboards/AdminDashboard")
+  import("./components/dashboards/AdminDashboard"),
 );
 const ManagerDashboard = lazy(() =>
-  import("./components/dashboards/ManagerDashboard")
+  import("./components/dashboards/ManagerDashboard"),
 );
 const DoctorDashboard = lazy(() =>
-  import("./components/doctor/DoctorDashboard")
+  import("./components/doctor/DoctorDashboard"),
 );
 const PatientDashboard = lazy(() =>
-  import("./components/dashboards/PatientDashboard")
+  import("./components/dashboards/PatientDashboard"),
 );
 
 const UserManagement = lazy(() => import("./components/admin/UserManagement"));
 const DepartmentManagement = lazy(() =>
-  import("./components/admin/DepartmentManagement")
+  import("./components/admin/DepartmentManagement"),
 );
 const SystemReports = lazy(() => import("./components/admin/SystemReports"));
 const SystemSettings = lazy(() => import("./components/admin/SystemSettings"));
 
 const DoctorManagement = lazy(() =>
-  import("./components/manager/DoctorManagement")
+  import("./components/manager/DoctorManagement"),
 );
 const ScheduleManagement = lazy(() =>
-  import("./components/manager/ScheduleManagement")
+  import("./components/manager/ScheduleManagement"),
 );
 const ShiftManagement = lazy(() =>
-  import("./components/manager/ShiftManagement")
+  import("./components/manager/ShiftManagement"),
 );
 
 const MockLogin = lazy(() => import("./components/auth/MockLogin"));
@@ -199,6 +215,41 @@ function AppContent() {
           }
         />
         <Route
+          path="/articles"
+          element={
+            <LayoutWrapper>
+              <Articles />
+            </LayoutWrapper>
+          }/>
+          <Route
+          path="/services"
+          element={
+            <LayoutWrapper>
+              <Services />
+            </LayoutWrapper>
+          }/>
+          <Route
+          path="/services/:id"
+          element={
+            <LayoutWrapper>
+              <ServiceDetail />
+            </LayoutWrapper>
+          }/>
+          <Route
+          path="/articles/:id"
+          element={
+            <LayoutWrapper>
+              <ArticlesDetail/>
+            </LayoutWrapper>
+          }/>
+          <Route
+          path="/achievements"
+          element={
+            <LayoutWrapper>
+              <Achievements />
+            </LayoutWrapper>
+          }/>
+        <Route
           path="/doctor/:id"
           element={
             <LayoutWrapper>
@@ -246,14 +297,14 @@ function AppContent() {
             </LayoutWrapper>
           }
         />
-        {/* <Route
+        <Route
           path="/contact"
           element={
             <LayoutWrapper>
               <Contact />
             </LayoutWrapper>
           }
-        /> */}
+        />
         <Route
           path="/chart"
           element={

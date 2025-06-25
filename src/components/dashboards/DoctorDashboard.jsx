@@ -577,7 +577,7 @@ const DoctorDashboard = () => {
                           <Tag color="blue">Bệnh nhân {item.patientId}</Tag>
                           <Tag color="green">
                             {item.phases?.filter(
-                              (p) => p.status === "completed"
+                              (p) => p.status === "completed",
                             ).length || 0}
                             /{item.phases?.length || 0} giai đoạn
                           </Tag>
@@ -643,7 +643,7 @@ const DoctorDashboard = () => {
               <Descriptions.Item label="Lịch hẹn tiếp theo">
                 {selectedPatient.nextAppointment
                   ? new Date(selectedPatient.nextAppointment).toLocaleString(
-                      "vi-VN"
+                      "vi-VN",
                     )
                   : "Chưa có"}
               </Descriptions.Item>
