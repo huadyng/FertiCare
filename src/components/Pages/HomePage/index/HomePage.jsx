@@ -10,7 +10,8 @@ import FeedbackPage from "../FeedbackPage/FeedbackPage";
 import NewsPage from "../NewsPage/NewsPage";
 import ServiceRegistration from "../ServiceRegistration/ServiceRegistration";
 import { UserContext } from "../../../../context/UserContext";
-
+import AchievementsPreview from "../../Achievement/AchievementPreview";
+import ArticlePreview from "../../News/ArticlesPreview";
 const HomePage = () => {
   const { user, USER_ROLES } = useContext(UserContext);
 
@@ -25,8 +26,8 @@ const HomePage = () => {
       <Service />
       {showServiceRegistration && <ServiceRegistration />}
       <DoctorCarousel />
-      <AchievementPage />
-      <NewsPage />
+      <AchievementsPreview />
+      <ArticlePreview />
       <FeedbackPage />
     </>
   );

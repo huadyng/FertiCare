@@ -33,16 +33,16 @@ export default function Header() {
             <Link to="/">Giới thiệu</Link>
           </li>
           <li>
-            <Link to="/">Dịch vụ</Link>
+            <Link to="/services">Dịch vụ</Link>
           </li>
           <li>
             <Link to="/doctor">Chuyên gia - bác sĩ</Link>
           </li>
           <li>
-            <Link to="/chart">Thành tựu</Link>
+            <Link to="/achievements">Thành tựu</Link>
           </li>
           <li>
-            <Link to="/">Tin tức</Link>
+            <Link to="/articles">Tin tức</Link>
           </li>
           <li>
             <Link to="/contact">Liên hệ</Link>
@@ -54,8 +54,7 @@ export default function Header() {
               <Link to="/blog-public">Cộng đồng Blog</Link>
             )}
           </li>
-           
-           
+             
         </ul>
       </div>
 
