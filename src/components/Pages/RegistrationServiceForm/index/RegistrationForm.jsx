@@ -4,13 +4,6 @@ import "./RegistrationForm.css";
 
 const RegistrationForm = () => {
   const [formData, setFormData] = useState({
-    fullName: "",
-    gender: "",
-    dateOfBirth: "",
-    phone: "",
-    email: "",
-    idNumber: "",
-    address: "",
     serviceId: "",
     doctorOption: "auto",
     doctorId: "",
@@ -27,39 +20,19 @@ const RegistrationForm = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [registerInfo, setRegisterInfo] = useState(null);
 
-  // Regex validation
-  const phoneRegex = /^0\d{9}$/;
-  const idRegex = /^\d{9,12}$/;
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
   // Lấy danh sách dịch vụ
   useEffect(() => {
-    const fetchServices = async () => {
-      try {
-        const res = await axiosClient.get("/services");
-        setServices(res.data);
-      } catch (err) {
-        console.error("Lỗi lấy dịch vụ:", err);
-      }
-    };
-    fetchServices();
+    axiosClient.get("/api/services").then((res) => setServices(res.data));
   }, []);
 
-  // Lấy danh sách bác sĩ khi chọn dịch vụ
+  // Khi chọn dịch vụ, lấy danh sách bác sĩ
   useEffect(() => {
-    const fetchDoctors = async () => {
-      if (!formData.serviceId) return;
-      try {
-        const res = await axiosClient.get("/doctors", {
-          params: { serviceId: formData.serviceId },
-        });
-        setDoctors(res.data);
-      } catch (err) {
-        console.error("Lỗi lấy bác sĩ:", err);
-      }
-    };
-    fetchDoctors();
-    // Reset khi đổi dịch vụ
+    if (!formData.serviceId) return;
+    axiosClient
+      .get(`/api/service-request/available-doctors/${formData.serviceId}`)
+      .then((res) => setDoctors(res.data));
+
+    // Reset các trường liên quan
     setFormData((prev) => ({
       ...prev,
       doctorId: "",
@@ -70,8 +43,44 @@ const RegistrationForm = () => {
     setAvailableSlots([]);
   }, [formData.serviceId]);
 
-  // Khi chọn bác sĩ (manual), lấy lịch schedule
-  const handleDoctorChange = (e) => {
+  // Nếu chọn auto thì load lịch bác sĩ đầu tiên
+  useEffect(() => {
+    const fetchAutoDoctorSchedule = async () => {
+      if (
+        formData.doctorOption === "auto" &&
+        doctors.length > 0 &&
+        !formData.appointmentDate
+      ) {
+        const autoDoctorId = doctors[0].id;
+        setFormData((prev) => ({ ...prev, doctorId: autoDoctorId }));
+
+        try {
+          const res = await axiosClient.get(
+            `/api/service-request/doctor-available-times/${autoDoctorId}`
+          );
+          const grouped = {};
+          res.data.forEach((item) => {
+            const date = item.dateTime.split("T")[0];
+            const time = item.time;
+            if (!grouped[date]) grouped[date] = [];
+            grouped[date].push(time);
+          });
+          const dateList = Object.keys(grouped).map((d) => ({
+            date: d,
+            slots: grouped[d],
+          }));
+          setAvailableDates(dateList);
+          setAvailableSlots([]);
+        } catch (err) {
+          console.error("Lỗi lấy lịch bác sĩ auto:", err);
+        }
+      }
+    };
+    fetchAutoDoctorSchedule();
+  }, [formData.doctorOption, doctors, formData.appointmentDate]);
+
+  // Khi chọn bác sĩ thủ công
+  const handleDoctorChange = async (e) => {
     const doctorId = e.target.value;
     setFormData((prev) => ({
       ...prev,
@@ -79,13 +88,26 @@ const RegistrationForm = () => {
       appointmentDate: "",
       appointmentTime: "",
     }));
+    if (!doctorId) return;
 
-    const selectedDoctor = doctors.find((d) => d.id === doctorId);
-    setAvailableDates(selectedDoctor?.schedule || []);
+    const res = await axiosClient.get(
+      `/api/service-request/doctor-available-times/${doctorId}`
+    );
+    const grouped = {};
+    res.data.forEach((item) => {
+      const date = item.dateTime.split("T")[0];
+      const time = item.time;
+      if (!grouped[date]) grouped[date] = [];
+      grouped[date].push(time);
+    });
+    const dateList = Object.keys(grouped).map((d) => ({
+      date: d,
+      slots: grouped[d],
+    }));
+    setAvailableDates(dateList);
     setAvailableSlots([]);
   };
 
-  // Khi chọn ngày hẹn
   const handleDateChange = (e) => {
     const date = e.target.value;
     setFormData((prev) => ({
@@ -97,7 +119,6 @@ const RegistrationForm = () => {
     setAvailableSlots(selected?.slots || []);
   };
 
-  // Khi chọn giờ hẹn
   const handleSlotChange = (e) => {
     setFormData((prev) => ({
       ...prev,
@@ -105,7 +126,6 @@ const RegistrationForm = () => {
     }));
   };
 
-  // Handle input change
   const handleChange = (e) => {
     const { name, type, value, checked } = e.target;
     setFormData((prev) => ({
@@ -114,64 +134,54 @@ const RegistrationForm = () => {
     }));
   };
 
-  // Gửi form đăng ký
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Validate các trường
-    if (!phoneRegex.test(formData.phone)) {
-      alert("Số điện thoại không hợp lệ.");
-      return;
-    }
-    if (!idRegex.test(formData.idNumber)) {
-      alert("CCCD/Mã bệnh nhân không hợp lệ.");
-      return;
-    }
-    if (new Date(formData.dateOfBirth) > new Date()) {
-      alert("Ngày sinh không hợp lệ.");
-      return;
-    }
-    if (!emailRegex.test(formData.email)) {
-      alert("Email không hợp lệ.");
-      return;
-    }
-    if (!formData.agreePolicy) {
-      alert("Bạn cần đồng ý chính sách.");
-      return;
-    }
-    if (!formData.serviceId) {
-      alert("Vui lòng chọn dịch vụ.");
-      return;
-    }
-    if (formData.doctorOption === "manual" && !formData.doctorId) {
-      alert("Vui lòng chọn bác sĩ.");
-      return;
-    }
+    if (!formData.agreePolicy) return alert("Bạn cần đồng ý chính sách.");
+    if (!formData.serviceId) return alert("Vui lòng chọn dịch vụ.");
+    if (formData.doctorOption === "manual" && !formData.doctorId)
+      return alert("Vui lòng chọn bác sĩ.");
+    if (!formData.appointmentDate || !formData.appointmentTime)
+      return alert("Vui lòng chọn ngày và giờ.");
 
-    // Chuẩn bị dữ liệu gửi đi (theo đúng schema Swagger)
+    const appointmentTime = `${formData.appointmentDate}T${formData.appointmentTime}:00`;
+
     const dataToSubmit = {
-      fullName: formData.fullName,
-      gender: formData.gender,
-      dateOfBirth: formData.dateOfBirth,
-      phone: formData.phone,
-      email: formData.email,
-      idNumber: formData.idNumber,
-      address: formData.address,
       serviceId: formData.serviceId,
       doctorId: formData.doctorOption === "manual" ? formData.doctorId : null,
-      appointmentDate: formData.appointmentDate || null,
-      appointmentTime: formData.appointmentTime || null,
-      notes: formData.notes || "",
-      agreePolicy: formData.agreePolicy,
+      doctorSelection: formData.doctorOption,
+      note: formData.notes,
+      appointmentTime,
     };
 
     try {
-      const res = await axiosClient.post("/service-request", dataToSubmit);
-      setRegisterInfo(res.data); // lưu lại đơn đăng ký trả về từ BE
+      const res = await axiosClient.post("/api/service-request", dataToSubmit);
+      setRegisterInfo(res.data);
       setShowSuccess(true);
-      // setFormData({ ... }); // Reset nếu cần
+
+      // Nếu là auto, cập nhật lịch tiếp theo
+      if (formData.doctorOption === "auto" && res.data.doctor?.id) {
+        const doctorId = res.data.doctor.id;
+        setFormData((prev) => ({ ...prev, doctorId }));
+
+        const res2 = await axiosClient.get(
+          `/api/service-request/doctor-available-times/${doctorId}`
+        );
+        const grouped = {};
+        res2.data.forEach((item) => {
+          const date = item.dateTime.split("T")[0];
+          const time = item.time;
+          if (!grouped[date]) grouped[date] = [];
+          grouped[date].push(time);
+        });
+        const dateList = Object.keys(grouped).map((d) => ({
+          date: d,
+          slots: grouped[d],
+        }));
+        setAvailableDates(dateList);
+        setAvailableSlots([]);
+      }
     } catch (err) {
-      alert("Đăng ký thất bại.");
-      console.error(err);
+      alert("Đăng ký thất bại: " + (err.response?.data || err.message));
     }
   };
 
@@ -179,221 +189,156 @@ const RegistrationForm = () => {
     <main className="registration-form-container">
       <form onSubmit={handleSubmit} className="registration-form">
         <h1 className="h1">ĐĂNG KÝ DỊCH VỤ</h1>
-        <div className="form-row">
-          {/* Cột trái: Thông tin khách hàng */}
-          <section className="section customer-info-section">
-            <h2 className="section-title" style={{ textAlign: "center" }}>
-              Thông tin khách hàng
-            </h2>
-            <input
-              name="fullName"
-              placeholder="Họ tên"
-              value={formData.fullName}
-              onChange={handleChange}
-              required
-              className="input-field"
-            />
-            <select
-              name="gender"
-              value={formData.gender}
-              onChange={handleChange}
-              required
-              className="input-field"
-            >
-              <option value="">Giới tính</option>
-              <option value="male">Nam</option>
-              <option value="female">Nữ</option>
-            </select>
-            <input
-              name="dateOfBirth"
-              type="date"
-              value={formData.dateOfBirth}
-              onChange={handleChange}
-              required
-              className="input-field"
-              max={new Date().toISOString().split("T")[0]}
-            />
-            <input
-              name="phone"
-              placeholder="Số điện thoại"
-              value={formData.phone}
-              onChange={handleChange}
-              required
-              className="input-field"
-            />
-            <input
-              name="email"
-              placeholder="Email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              className="input-field"
-              type="email"
-            />
-            <input
-              name="address"
-              placeholder="Địa chỉ"
-              value={formData.address}
-              onChange={handleChange}
-              required
-              className="input-field"
-            />
-            <input
-              name="idNumber"
-              placeholder="CCCD / Mã bệnh nhân"
-              value={formData.idNumber}
-              onChange={handleChange}
-              required
-              className="input-field"
-            />
-          </section>
-          {/* Cột phải: dịch vụ + chọn bác sĩ */}
-          <div className="right-col">
-            <section className="section service-selection-section">
-              <h2 className="section-title" style={{ textAlign: "center" }}>
-                Dịch vụ đăng ký
-              </h2>
-              <div className="radio-group">
-                {services.map((service) => (
-                  <label key={service.id}>
-                    <input
-                      type="radio"
-                      name="serviceId"
-                      value={service.id}
-                      checked={formData.serviceId === service.id}
-                      onChange={handleChange}
-                    />
-                    {service.name}
-                  </label>
-                ))}
-              </div>
-            </section>
-            {/* Chỉ hiển thị chọn bác sĩ khi đã chọn dịch vụ */}
-            {formData.serviceId && (
-              <section className="section doctor-selection-section">
-                <h2 className="section-title" style={{ textAlign: "center" }}>
-                  Chọn bác sĩ
-                </h2>
-                <div className="radio-group" style={{ marginBottom: "20px" }}>
-                  <label>
-                    <input
-                      type="radio"
-                      name="doctorOption"
-                      value="manual"
-                      checked={formData.doctorOption === "manual"}
-                      onChange={handleChange}
-                    />
-                    Tự chọn bác sĩ
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
-                      name="doctorOption"
-                      value="auto"
-                      checked={formData.doctorOption === "auto"}
-                      onChange={handleChange}
-                    />
-                    Hệ thống gợi ý
-                  </label>
-                </div>
-                {/* Chỉ hiện chọn bác sĩ và lịch khi chọn 'manual' */}
-                {formData.doctorOption === "manual" && (
-                  <div className="doctor-selection-container">
-                    <select
-                      name="doctorId"
-                      value={formData.doctorId}
-                      onChange={handleDoctorChange}
-                      className="input-field"
-                      required
-                    >
-                      <option value="">-- Chọn bác sĩ --</option>
-                      {doctors.map((doc) => (
-                        <option key={doc.id} value={doc.id}>
-                          {doc.name}
-                        </option>
-                      ))}
-                    </select>
-                    {availableDates.length > 0 && (
-                      <select
-                        name="appointmentDate"
-                        value={formData.appointmentDate}
-                        onChange={handleDateChange}
-                        className="input-field"
-                        required
-                      >
-                        <option value="">-- Chọn ngày hẹn --</option>
-                        {availableDates.map((d) => (
-                          <option key={d.date} value={d.date}>
-                            {d.date}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    {availableSlots.length > 0 && (
-                      <select
-                        name="appointmentTime"
-                        value={formData.appointmentTime}
-                        onChange={handleSlotChange}
-                        className="input-field"
-                        required
-                      >
-                        <option value="">-- Chọn giờ --</option>
-                        {availableSlots.map((slot, index) => (
-                          <option key={index} value={slot}>
-                            {slot}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                )}
-              </section>
-            )}
+
+        {/* Dịch vụ */}
+        <section className="section">
+          <h2 className="section-title">1. DỊCH VỤ ĐIỀU TRỊ</h2>
+          <div className="radio-group">
+            {services.map((service) => (
+              <label key={service.id}>
+                <input
+                  type="radio"
+                  name="serviceId"
+                  value={service.id}
+                  checked={formData.serviceId === service.id}
+                  onChange={handleChange}
+                />
+                {service.name}
+              </label>
+            ))}
           </div>
-        </div>
-        {/* ===== Row 2: Ghi chú + Chính sách ===== */}
-        <div className="form-row single-column">
-          <section className="section notes-section">
-            <h2 className="section-title">Ghi chú</h2>
-            <textarea
-              name="notes"
-              value={formData.notes}
-              onChange={handleChange}
-              placeholder="Ghi chú y tế hoặc cá nhân..."
-              className="textarea-field"
-            />
-            <label className="policy-confirmation">
+        </section>
+
+        {/* Bác sĩ */}
+        {formData.serviceId && (
+          <section className="section">
+            <h2 className="section-title">2. CHỌN BÁC SĨ</h2>
+            <label>
               <input
-                type="checkbox"
-                name="agreePolicy"
-                checked={formData.agreePolicy}
+                type="radio"
+                name="doctorOption"
+                value="manual"
+                checked={formData.doctorOption === "manual"}
                 onChange={handleChange}
-                required
               />
-              Tôi xác nhận đã đọc và đồng ý chính sách.
+              Tự chọn bác sĩ
             </label>
+            <label>
+              <input
+                type="radio"
+                name="doctorOption"
+                value="auto"
+                checked={formData.doctorOption === "auto"}
+                onChange={handleChange}
+              />
+              Hệ thống gợi ý
+            </label>
+
+            {formData.doctorOption === "manual" && (
+              <div>
+                <select
+                  name="doctorId"
+                  value={formData.doctorId}
+                  onChange={handleDoctorChange}
+                  className="input-field"
+                  required
+                >
+                  <option value="">-- Chọn bác sĩ --</option>
+                  {doctors.map((doc) => (
+                    <option key={doc.id} value={doc.id}>
+                      {doc.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {(formData.doctorOption === "manual" && formData.doctorId) ||
+            formData.doctorOption === "auto" ? (
+              <div>
+                {availableDates.length > 0 && (
+                  <select
+                    name="appointmentDate"
+                    value={formData.appointmentDate}
+                    onChange={handleDateChange}
+                    className="input-field"
+                    required
+                  >
+                    <option value="">-- Chọn ngày hẹn --</option>
+                    {availableDates.map((d) => (
+                      <option key={d.date} value={d.date}>
+                        {d.date}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {availableSlots.length > 0 && (
+                  <select
+                    name="appointmentTime"
+                    value={formData.appointmentTime}
+                    onChange={handleSlotChange}
+                    className="input-field"
+                    required
+                  >
+                    <option value="">-- Chọn giờ --</option>
+                    {availableSlots.map((slot, i) => (
+                      <option key={i} value={slot}>
+                        {slot}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            ) : null}
           </section>
-        </div>
+        )}
+
+        {/* Ghi chú + Chính sách */}
+        <section className="section">
+          <h2 className="section-title">3. GHI CHÚ</h2>
+          <textarea
+            name="notes"
+            value={formData.notes}
+            onChange={handleChange}
+            placeholder="Thông tin y tế hoặc yêu cầu đặc biệt..."
+            className="textarea-field"
+          />
+          <label className="policy-confirmation">
+            <input
+              type="checkbox"
+              name="agreePolicy"
+              checked={formData.agreePolicy}
+              onChange={handleChange}
+              required
+            />
+            Tôi xác nhận đã đọc và đồng ý chính sách bảo mật.
+          </label>
+        </section>
+
         <button type="submit" className="submit-button">
           Gửi đăng ký
         </button>
       </form>
-      {/* Modal xác nhận */}
+
       {showSuccess && registerInfo && (
         <div className="success-modal">
           <h2>Đăng ký thành công!</h2>
-          <div>
-            <b>Mã đơn:</b> {registerInfo.id} <br />
-            <b>Khách hàng:</b> {registerInfo.fullName} <br />
-            <b>Email:</b> {registerInfo.email} <br />
-            <b>Số điện thoại:</b> {registerInfo.phone} <br />
-            <b>Dịch vụ:</b> {registerInfo.service?.name} <br />
-            <b>Bác sĩ:</b> {registerInfo.doctor?.name || "Hệ thống tự gợi ý"}{" "}
-            <br />
-            <b>Ngày hẹn:</b> {registerInfo.appointmentDate} <br />
-            <b>Giờ:</b> {registerInfo.appointmentTime} <br />
-            <b>Ghi chú:</b> {registerInfo.notes} <br />
-          </div>
+          <p>
+            <b>Mã đơn:</b> {registerInfo.id}
+          </p>
+          <p>
+            <b>Ngày hẹn:</b> {registerInfo.appointmentDate}
+          </p>
+          <p>
+            <b>Giờ:</b> {registerInfo.appointmentTime}
+          </p>
+          <p>
+            <b>Dịch vụ:</b> {registerInfo.service?.name}
+          </p>
+          <p>
+            <b>Bác sĩ:</b> {registerInfo.doctor?.fullName || "Tự động chọn"}
+          </p>
           <button onClick={() => setShowSuccess(false)}>Đóng</button>
         </div>
       )}
