@@ -1,38 +1,115 @@
 import axiosClient from "./axiosClient";
 
-export const apiLogin = async (email, password) => {
-  try {
-    console.log("🔐 [apiLogin] Gửi dữ liệu đăng nhập:");
-    console.log("📧 Email:", email);
-    console.log("🔑 Password:", password);
+const apiLogin = {
+  // Đăng nhập thường
+  login: async (email, password) => {
+    try {
+      console.log("🔐 [apiLogin] Gửi dữ liệu đăng nhập:");
+      console.log("📧 Email:", email);
+      console.log("🔑 Password:", password ? "***" : "empty");
 
-    const response = await axiosClient.post("/api/auth/login", {
-      email,
-      password,
-    });
+      const response = await axiosClient.post("/api/auth/login", {
+        email,
+        password,
+      });
 
-    console.log("✅ [apiLogin] Phản hồi từ server:", response.data);
-    return response.data;
-  } catch (error) {
-    console.error(
-      "❌ [apiLogin] Lỗi khi đăng nhập:",
-      error.response?.data || error.message
-    );
-    throw error;
-  }
+      console.log("✅ [apiLogin] Phản hồi từ server:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error(
+        "❌ [apiLogin] Lỗi khi đăng nhập:",
+        error.response?.data || error.message
+      );
+      throw error;
+    }
+  },
+
+  // Đăng nhập Google
+  googleLogin: async (googleData) => {
+    try {
+      console.log("🔐 [apiLogin] Google login data:", {
+        email: googleData.email,
+        fullName: googleData.name || googleData.fullName,
+        avatarUrl: googleData.picture || googleData.avatarUrl,
+      });
+
+      const response = await axiosClient.post("/api/auth/google-login", {
+        googleToken: googleData.credential,
+        email: googleData.email,
+        fullName: googleData.name || googleData.fullName,
+        avatarUrl: googleData.picture || googleData.avatarUrl,
+      });
+
+      console.log("✅ [apiLogin] Google login thành công:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error(
+        "❌ [apiLogin] Lỗi Google login:",
+        error.response?.data || error.message
+      );
+      throw error;
+    }
+  },
+
+  // Quên mật khẩu
+  forgotPassword: async (email) => {
+    try {
+      console.log("📧 [apiLogin] Gửi email reset password:", email);
+
+      const response = await axiosClient.post("/api/auth/forgot-password", {
+        email,
+      });
+
+      console.log("✅ [apiLogin] Email reset password đã gửi:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error(
+        "❌ [apiLogin] Lỗi gửi email reset:",
+        error.response?.data || error.message
+      );
+      throw error;
+    }
+  },
+
+  // Reset mật khẩu
+  resetPassword: async (token, newPassword) => {
+    try {
+      console.log("🔑 [apiLogin] Reset password với token:", token);
+
+      const response = await axiosClient.post("/api/auth/reset-password", {
+        token,
+        newPassword,
+      });
+
+      console.log("✅ [apiLogin] Reset password thành công:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error(
+        "❌ [apiLogin] Lỗi reset password:",
+        error.response?.data || error.message
+      );
+      throw error;
+    }
+  },
+
+  // Đăng xuất (nếu cần gọi API)
+  logout: async () => {
+    try {
+      const response = await axiosClient.post("/api/auth/logout");
+      console.log("✅ [apiLogin] Đăng xuất thành công:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error(
+        "❌ [apiLogin] Lỗi đăng xuất:",
+        error.response?.data || error.message
+      );
+      // Không throw error vì đăng xuất local vẫn có thể thực hiện
+      return null;
+    }
+  },
 };
 
-// Đăng nhập Google
-export const apiGoogleLogin = async (googleUser) => {
-  try {
-    const res = await axiosClient.post("/api/auth/google-login", {
-      googleToken: googleUser.credential,
-      email: googleUser.email,
-      fullName: googleUser.name,
-      avatarUrl: googleUser.picture,
-    });
-    return res.data;
-  } catch (error) {
-    throw error;
-  }
-};
+// Export both named and default cho compatibility
+export const { login: apiLoginFunction, googleLogin: apiGoogleLogin } =
+  apiLogin;
+export default apiLogin;

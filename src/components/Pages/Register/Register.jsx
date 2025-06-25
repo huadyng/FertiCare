@@ -1,3 +1,4 @@
+//
 import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Register.css";
@@ -37,7 +38,6 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [touched, setTouched] = useState({});
 
-  // --- Validation từng trường ---
   function validateField(name, value) {
     switch (name) {
       case "fullName":
@@ -80,7 +80,6 @@ export default function Register() {
     return "";
   }
 
-  // --- Validate toàn bộ form ---
   const validateForm = (data) => {
     const errs = {};
     Object.keys(data).forEach((key) => {
@@ -90,13 +89,10 @@ export default function Register() {
     return errs;
   };
 
-  // --- Xử lý khi user nhập ---
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     const val = type === "checkbox" ? checked : value;
     setFormData((prev) => ({ ...prev, [name]: val }));
-
-    // validate realtime khi đã touch hoặc sau submit
     if (touched[name]) {
       setErrors((prev) => ({
         ...prev,
@@ -106,7 +102,6 @@ export default function Register() {
     setServerMessage("");
   };
 
-  // --- Đánh dấu đã focus khỏi trường để hiện lỗi realtime ---
   const handleBlur = (e) => {
     const { name } = e.target;
     setTouched((prev) => ({ ...prev, [name]: true }));
@@ -116,10 +111,10 @@ export default function Register() {
     }));
   };
 
-  // --- Submit form ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     setServerMessage("");
+
     setTouched(
       Object.keys(formData).reduce((acc, k) => ({ ...acc, [k]: true }), {})
     );
@@ -127,7 +122,6 @@ export default function Register() {
     setErrors(err);
 
     if (Object.keys(err).length > 0) {
-      // focus vào field đầu tiên bị lỗi
       const firstErr = Object.keys(err)[0];
       const el = document.querySelector(`[name='${firstErr}']`);
       el && el.focus();
@@ -137,36 +131,36 @@ export default function Register() {
     setLoading(true);
     const { confirmPassword, acceptTerms, ...dataToSend } = formData;
 
+    // ✅ Log dữ liệu gửi lên
+    console.log("📤 Payload gửi lên server:", dataToSend);
+
     try {
       const response = await apiRegist.register(dataToSend);
-      console.log("✅ Đăng ký thành công:", response);
+      console.log("✅ Phản hồi thành công:", response.data);
 
       setServerMessage(
-        "🎉 Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản. " +
-          "Sau khi xác thực, bạn có thể đăng nhập."
+        "🎉 Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản."
       );
-
-      // Không tự động chuyển về login ngay, để user có thời gian đọc thông báo
       setFormData(INIT_DATA);
       setTouched({});
 
-      // Hiển thị thông báo hướng dẫn thêm
       setTimeout(() => {
         setServerMessage(
-          "📧 Email xác thực đã được gửi! Vui lòng kiểm tra hộp thư (kể cả thư spam). " +
-            "Nhấn vào liên kết trong email để kích hoạt tài khoản."
+          "📧 Email xác thực đã được gửi! Vui lòng kiểm tra hộp thư (kể cả thư spam). Nhấn vào liên kết trong email để kích hoạt tài khoản."
         );
       }, 3000);
     } catch (error) {
-      console.error("❌ Lỗi đăng ký:", error);
       let msg = "❌ Đăng ký thất bại.";
 
-      if (error.response && error.response.data) {
+      // ✅ Ghi log chi tiết lỗi
+      if (error.response) {
+        console.error("❗Lỗi từ server:", error.response.data);
+        console.error("📄 Status code:", error.response.status);
+
         const errorData = error.response.data;
         msg =
           typeof errorData === "string" ? errorData : errorData.message || msg;
 
-        // Xử lý các lỗi cụ thể
         if (error.response.status === 409) {
           msg =
             "❌ Email này đã được đăng ký. Vui lòng sử dụng email khác hoặc đăng nhập.";
@@ -176,8 +170,11 @@ export default function Register() {
           msg = "❌ Lỗi server. Vui lòng thử lại sau ít phút.";
         }
       } else if (error.request) {
+        console.error("❌ Không nhận được phản hồi từ server:", error.request);
         msg =
           "❌ Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.";
+      } else {
+        console.error("❌ Lỗi không xác định:", error.message);
       }
 
       setServerMessage(msg);
@@ -186,7 +183,6 @@ export default function Register() {
     }
   };
 
-  // --- Render ---
   return (
     <div className="register-page">
       <div className="register-container">
@@ -207,7 +203,6 @@ export default function Register() {
         >
           <h2>ĐĂNG KÝ</h2>
 
-          {/* Họ tên */}
           <label htmlFor="fullName">Họ và tên:</label>
           <input
             id="fullName"
@@ -216,7 +211,7 @@ export default function Register() {
             value={formData.fullName}
             onChange={handleChange}
             onBlur={handleBlur}
-            placeholder="Nhập họ và tên"
+            placeholder="Nhập họ và tên đầy đủ (2-50 ký tự)"
             required
             autoComplete="off"
             className={errors.fullName && touched.fullName ? "input-error" : ""}
@@ -225,7 +220,6 @@ export default function Register() {
             <p className="field-error">{errors.fullName}</p>
           )}
 
-          {/* Giới tính */}
           <label htmlFor="gender">Giới tính:</label>
           <select
             id="gender"
@@ -244,7 +238,6 @@ export default function Register() {
             <p className="field-error">{errors.gender}</p>
           )}
 
-          {/* Ngày sinh */}
           <label htmlFor="dateOfBirth">Ngày tháng năm sinh:</label>
           <input
             id="dateOfBirth"
@@ -263,7 +256,6 @@ export default function Register() {
             <p className="field-error">{errors.dateOfBirth}</p>
           )}
 
-          {/* Email */}
           <label htmlFor="email">Email:</label>
           <input
             id="email"
@@ -281,7 +273,6 @@ export default function Register() {
             <p className="field-error">{errors.email}</p>
           )}
 
-          {/* Password */}
           <label htmlFor="password">Mật khẩu:</label>
           <input
             id="password"
@@ -299,7 +290,6 @@ export default function Register() {
             <p className="field-error">{errors.password}</p>
           )}
 
-          {/* Confirm password */}
           <label htmlFor="confirmPassword">Xác nhận mật khẩu:</label>
           <input
             id="confirmPassword"
@@ -321,7 +311,6 @@ export default function Register() {
             <p className="field-error">{errors.confirmPassword}</p>
           )}
 
-          {/* Phone */}
           <label htmlFor="phone">SĐT:</label>
           <input
             id="phone"
@@ -338,7 +327,6 @@ export default function Register() {
             <p className="field-error">{errors.phone}</p>
           )}
 
-          {/* Address */}
           <label htmlFor="address">Địa chỉ:</label>
           <input
             id="address"
@@ -355,7 +343,6 @@ export default function Register() {
             <p className="field-error">{errors.address}</p>
           )}
 
-          {/* Điều khoản */}
           <div className="checkbox-group">
             <input
               id="acceptTerms"
@@ -374,7 +361,6 @@ export default function Register() {
             <p className="field-error">{errors.acceptTerms}</p>
           )}
 
-          {/* Nút đăng ký */}
           <button
             type="submit"
             className="btn-register"
@@ -383,6 +369,7 @@ export default function Register() {
           >
             {loading ? "Đang xử lý..." : "ĐĂNG KÝ"}
           </button>
+
           {serverMessage && (
             <div
               className={
@@ -393,7 +380,6 @@ export default function Register() {
               style={{ marginTop: 10 }}
             >
               {serverMessage}
-              {/* Hiện nút login nếu đăng ký thành công */}
               {(serverMessage.startsWith("🎉") ||
                 serverMessage.startsWith("📧")) && (
                 <div style={{ marginTop: 15 }}>

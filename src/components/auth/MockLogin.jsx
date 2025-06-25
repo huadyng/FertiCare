@@ -69,7 +69,7 @@ const MockLogin = () => {
         navigate("/manager/dashboard");
         break;
       case USER_ROLES.DOCTOR:
-        navigate("/doctor/dashboard");
+        navigate("/doctor-dashboard");
         break;
       case USER_ROLES.PATIENT:
         navigate("/patient/dashboard");

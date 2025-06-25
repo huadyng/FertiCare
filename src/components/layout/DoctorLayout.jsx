@@ -49,46 +49,46 @@ const DoctorLayout = () => {
 
   const sidebarItems = [
     {
-      key: "/doctor/dashboard",
+      key: "/doctor-dashboard",
       icon: <DashboardOutlined />,
       label: "Dashboard",
-      onClick: () => navigate("/doctor/dashboard"),
+      onClick: () => navigate("/doctor-dashboard"),
     },
     {
-      key: "/doctor/patients",
+      key: "/doctor-panel/patients",
       icon: <UserOutlined />,
       label: "Danh sách bệnh nhân",
-      onClick: () => navigate("/doctor/patients"),
+      onClick: () => navigate("/doctor-panel/patients"),
     },
     {
-      key: "/doctor/treatment-plans",
+      key: "/doctor-panel/treatment-plans",
       icon: <MedicineBoxOutlined />,
       label: "Phác đồ điều trị",
-      onClick: () => navigate("/doctor/treatment-plans"),
+      onClick: () => navigate("/doctor-panel/treatment-plans"),
     },
     {
-      key: "/doctor/clinical-examination",
+      key: "/doctor-panel/clinical-examination",
       icon: <ExperimentOutlined />,
       label: "Khám lâm sàng",
-      onClick: () => navigate("/doctor/clinical-examination"),
+      onClick: () => navigate("/doctor-panel/clinical-examination"),
     },
     {
-      key: "/doctor/treatment-monitoring",
+      key: "/doctor-panel/treatment-monitoring",
       icon: <HeartOutlined />,
       label: "Theo dõi điều trị",
-      onClick: () => navigate("/doctor/treatment-monitoring"),
+      onClick: () => navigate("/doctor-panel/treatment-monitoring"),
     },
     {
-      key: "/doctor/schedule",
+      key: "/doctor-panel/schedule",
       icon: <CalendarOutlined />,
       label: "Lịch làm việc",
-      onClick: () => navigate("/doctor/schedule"),
+      onClick: () => navigate("/doctor-panel/schedule"),
     },
     {
-      key: "/doctor/reports",
+      key: "/doctor-panel/reports",
       icon: <FileTextOutlined />,
       label: "Báo cáo cá nhân",
-      onClick: () => navigate("/doctor/reports"),
+      onClick: () => navigate("/doctor-panel/reports"),
     },
   ];
 

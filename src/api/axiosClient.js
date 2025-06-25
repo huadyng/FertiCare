@@ -10,8 +10,14 @@ const axiosClient = axios.create({
 axiosClient.interceptors.request.use((config) => {
   const storedUser = localStorage.getItem("user");
   if (storedUser) {
-    const userData = JSON.parse(storedUser);
-    config.headers.Authorization = `Bearer ${userData.token}`;
+    try {
+      const userData = JSON.parse(storedUser);
+      if (userData.token) {
+        config.headers.Authorization = `Bearer ${userData.token}`;
+      }
+    } catch (e) {
+      console.warn("User data không hợp lệ:", e);
+    }
   }
   return config;
 });

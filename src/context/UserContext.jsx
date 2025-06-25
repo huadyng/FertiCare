@@ -127,7 +127,7 @@ export const UserProvider = ({ children }) => {
       case USER_ROLES.MANAGER:
         return "/manager/dashboard";
       case USER_ROLES.DOCTOR:
-        return "/doctor-panel/dashboard";
+        return "/doctor-dashboard";
       case USER_ROLES.PATIENT:
         return "/patient/dashboard";
       case USER_ROLES.CUSTOMER:
