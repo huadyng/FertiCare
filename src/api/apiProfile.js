@@ -28,39 +28,88 @@ const apiProfile = {
       let endpoint;
       let requestData = { ...profileData };
 
-      // Xác định endpoint dựa trên role
+      // Giữ lại avatarUrl nếu có để cập nhật cùng form
+      // delete requestData.avatarUrl; // Bỏ dòng này để cho phép gửi avatarUrl
+
+      // Xác định endpoint và whitelist fields dựa trên role
+      let allowedFields = [];
+
       switch (userRole?.toUpperCase()) {
         case "DOCTOR":
           endpoint = "/api/profiles/doctor/me";
-          // Đảm bảo dữ liệu phù hợp với UpdateDoctorProfileRequest
-          if (requestData.gender) {
-            requestData.gender = requestData.gender.toUpperCase();
-          }
+          allowedFields = [
+            "fullName",
+            "phone",
+            "gender",
+            "dateOfBirth",
+            "address",
+            "avatarUrl",
+            "specialty",
+            "qualification",
+            "experienceYears",
+          ];
           break;
         case "CUSTOMER":
         case "PATIENT":
           endpoint = "/api/profiles/customer/me";
-          // Đảm bảo dữ liệu phù hợp với UpdateCustomerProfileRequest
-          if (requestData.gender) {
-            requestData.gender = requestData.gender.toUpperCase();
-          }
-          if (requestData.maritalStatus) {
-            requestData.maritalStatus = requestData.maritalStatus.toUpperCase();
-          }
+          allowedFields = [
+            "fullName",
+            "phone",
+            "gender",
+            "dateOfBirth",
+            "address",
+            "maritalStatus",
+            "healthBackground",
+            // avatarUrl KHÔNG được phép cho customer - backend không hỗ trợ
+          ];
           break;
         case "MANAGER":
         case "ADMIN":
           endpoint = "/api/profiles/admin/me";
-          // Đảm bảo dữ liệu phù hợp với UpdateManagerAdminProfileRequest
-          if (requestData.gender) {
-            requestData.gender = requestData.gender.toUpperCase();
-          }
+          allowedFields = [
+            "fullName",
+            "phone",
+            "gender",
+            "dateOfBirth",
+            "address",
+            "avatarUrl",
+            "assignedDepartment",
+            "extraPermissions",
+          ];
           break;
         default:
-          // Fallback về endpoint generic
+          // Fallback về endpoint generic với fields cơ bản
           endpoint = "/api/profiles/me";
+          allowedFields = [
+            "fullName",
+            "phone",
+            "gender",
+            "dateOfBirth",
+            "address",
+            "avatarUrl",
+          ];
           break;
       }
+
+      // Chỉ giữ lại fields được phép
+      const filteredData = {};
+      allowedFields.forEach((field) => {
+        if (requestData[field] !== undefined) {
+          filteredData[field] = requestData[field];
+        }
+      });
+
+      // Chuẩn hóa format
+      if (filteredData.gender) {
+        filteredData.gender = filteredData.gender.toUpperCase();
+      }
+      if (filteredData.maritalStatus) {
+        filteredData.maritalStatus = filteredData.maritalStatus.toUpperCase();
+      }
+
+      requestData = filteredData;
+
+      console.log("📤 [apiProfile] Request data sau khi filter:", requestData);
 
       const response = await axiosClient.put(endpoint, requestData);
       console.log(
@@ -112,6 +161,29 @@ const apiProfile = {
     } catch (error) {
       console.error(
         "❌ [apiProfile] Lỗi khi upload avatar:",
+        error.response?.data || error.message
+      );
+      throw error;
+    }
+  },
+
+  // Cập nhật avatar URL - sử dụng endpoint generic cho tất cả role
+  updateAvatarUrl: async (avatarUrl) => {
+    try {
+      console.log("🌐 [apiProfile] Đang cập nhật avatar URL:", avatarUrl);
+
+      const response = await axiosClient.put("/api/profiles/me", {
+        avatarUrl: avatarUrl,
+      });
+
+      console.log(
+        "✅ [apiProfile] Cập nhật avatar URL thành công:",
+        response.data
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        "❌ [apiProfile] Lỗi khi cập nhật avatar URL:",
         error.response?.data || error.message
       );
       throw error;

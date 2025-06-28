@@ -9,8 +9,8 @@
 }
 .doctor-card img {
   width: 100%;
-  height: 200px;           /* 🔧 cố định chiều cao */
-  object-fit: cover;       /* 🔧 ảnh không méo, cắt gọn */
+  height: 200px; /* 🔧 cố định chiều cao */
+  object-fit: cover; /* 🔧 ảnh không méo, cắt gọn */
   border-radius: 12px;
   margin-bottom: 15px;
 }
