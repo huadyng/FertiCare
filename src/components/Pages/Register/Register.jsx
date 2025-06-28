@@ -37,6 +37,9 @@ export default function Register() {
   const [serverMessage, setServerMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [touched, setTouched] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   function validateField(name, value) {
     switch (name) {
@@ -58,9 +61,10 @@ export default function Register() {
       case "password":
         if (!value) return "Mật khẩu không được bỏ trống.";
         if (!passwordRegex.test(value))
-          return "Mật khẩu từ 8 ký tự, có chữ hoa, chữ thường, số, ký tự @$!%*?&.";
+          return "Mật khẩu từ 8 ký tự, có chữ hoa, chữ thường, số";
         break;
       case "confirmPassword":
+        if (!value) return "Vui lòng xác nhận mật khẩu.";
         if (value !== formData.password) return "Xác nhận mật khẩu không khớp.";
         break;
       case "phone":
@@ -89,11 +93,19 @@ export default function Register() {
     return errs;
   };
 
+  // Auto-validate when values change after first submit
+  useEffect(() => {
+    if (submitted) {
+      const newErrors = validateForm(formData);
+      setErrors(newErrors);
+    }
+  }, [formData, submitted]);
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     const val = type === "checkbox" ? checked : value;
     setFormData((prev) => ({ ...prev, [name]: val }));
-    if (touched[name]) {
+    if (touched[name] || submitted) {
       setErrors((prev) => ({
         ...prev,
         [name]: validateField(name, val),
@@ -114,6 +126,7 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setServerMessage("");
+    setSubmitted(true);
 
     setTouched(
       Object.keys(formData).reduce((acc, k) => ({ ...acc, [k]: true }), {})
@@ -143,6 +156,7 @@ export default function Register() {
       );
       setFormData(INIT_DATA);
       setTouched({});
+      setSubmitted(false);
 
       setTimeout(() => {
         setServerMessage(
@@ -193,7 +207,7 @@ export default function Register() {
             className="register-image"
           />
           <div className="register-quote">
-            “Hành trình nào cũng xứng đáng với những yêu thương và chờ đợi.”
+            "Hành trình nào cũng xứng đáng với những yêu thương và chờ đợi."
           </div>
         </div>
         <form
@@ -202,6 +216,24 @@ export default function Register() {
           noValidate
         >
           <h2>ĐĂNG KÝ</h2>
+
+          {submitted && Object.keys(errors).length > 0 && (
+            <div className="validation-summary">
+              <h3>Vui lòng sửa các lỗi sau:</h3>
+              <ul>
+                {Object.entries(errors).map(([field, message]) => (
+                  <li
+                    key={field}
+                    onClick={() =>
+                      document.querySelector(`[name='${field}']`).focus()
+                    }
+                  >
+                    {message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <label htmlFor="fullName">Họ và tên:</label>
           <input
@@ -214,9 +246,11 @@ export default function Register() {
             placeholder="Nhập họ và tên đầy đủ (2-50 ký tự)"
             required
             autoComplete="off"
-            className={errors.fullName && touched.fullName ? "input-error" : ""}
+            className={
+              errors.fullName && (touched.fullName || submitted) ? "error" : ""
+            }
           />
-          {errors.fullName && touched.fullName && (
+          {errors.fullName && (touched.fullName || submitted) && (
             <p className="field-error">{errors.fullName}</p>
           )}
 
@@ -228,13 +262,15 @@ export default function Register() {
             onChange={handleChange}
             onBlur={handleBlur}
             required
-            className={errors.gender && touched.gender ? "input-error" : ""}
+            className={
+              errors.gender && (touched.gender || submitted) ? "error" : ""
+            }
           >
             <option value="">Chọn Giới tính</option>
             <option value="MALE">Nam</option>
             <option value="FEMALE">Nữ</option>
           </select>
-          {errors.gender && touched.gender && (
+          {errors.gender && (touched.gender || submitted) && (
             <p className="field-error">{errors.gender}</p>
           )}
 
@@ -249,10 +285,12 @@ export default function Register() {
             required
             max={new Date().toISOString().split("T")[0]}
             className={
-              errors.dateOfBirth && touched.dateOfBirth ? "input-error" : ""
+              errors.dateOfBirth && (touched.dateOfBirth || submitted)
+                ? "error"
+                : ""
             }
           />
-          {errors.dateOfBirth && touched.dateOfBirth && (
+          {errors.dateOfBirth && (touched.dateOfBirth || submitted) && (
             <p className="field-error">{errors.dateOfBirth}</p>
           )}
 
@@ -267,47 +305,145 @@ export default function Register() {
             placeholder="abc@gmail.com"
             required
             autoComplete="off"
-            className={errors.email && touched.email ? "input-error" : ""}
+            className={
+              errors.email && (touched.email || submitted) ? "error" : ""
+            }
           />
-          {errors.email && touched.email && (
+          {errors.email && (touched.email || submitted) && (
             <p className="field-error">{errors.email}</p>
           )}
 
           <label htmlFor="password">Mật khẩu:</label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            value={formData.password}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            required
-            placeholder="Ít nhất 8 ký tự, có chữ hoa, chữ thường, số"
-            autoComplete="new-password"
-            className={errors.password && touched.password ? "input-error" : ""}
-          />
-          {errors.password && touched.password && (
+          <div className="input-container">
+            <input
+              id="password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              value={formData.password}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              required
+              placeholder="Ít nhất 8 ký tự, có chữ hoa, chữ thường, số"
+              autoComplete="new-password"
+              className={
+                errors.password && (touched.password || submitted)
+                  ? "error"
+                  : ""
+              }
+            />
+            <button
+              type="button"
+              className="password-toggle"
+              onClick={() => setShowPassword(!showPassword)}
+              tabIndex="-1"
+              aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+            >
+              {showPassword ? (
+                <svg
+                  className="eye-icon eye-closed"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                  <line x1="1" y1="1" x2="23" y2="23"></line>
+                </svg>
+              ) : (
+                <svg
+                  className="eye-icon"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              )}
+            </button>
+          </div>
+          {!errors.password && !touched.password && !submitted && (
+            <div className="input-note">
+              <strong>Yêu cầu mật khẩu:</strong> Ít nhất 8 ký tự, bao gồm chữ
+              hoa, chữ thường, số
+            </div>
+          )}
+          {errors.password && (touched.password || submitted) && (
             <p className="field-error">{errors.password}</p>
           )}
 
           <label htmlFor="confirmPassword">Xác nhận mật khẩu:</label>
-          <input
-            id="confirmPassword"
-            name="confirmPassword"
-            type="password"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            required
-            placeholder="Nhập lại mật khẩu"
-            autoComplete="new-password"
-            className={
-              errors.confirmPassword && touched.confirmPassword
-                ? "input-error"
-                : ""
-            }
-          />
-          {errors.confirmPassword && touched.confirmPassword && (
+          <div className="input-container">
+            <input
+              id="confirmPassword"
+              name="confirmPassword"
+              type={showConfirmPassword ? "text" : "password"}
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              required
+              placeholder="Nhập lại mật khẩu"
+              autoComplete="new-password"
+              className={
+                errors.confirmPassword && (touched.confirmPassword || submitted)
+                  ? "error"
+                  : ""
+              }
+            />
+            <button
+              type="button"
+              className="password-toggle"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              tabIndex="-1"
+              aria-label={showConfirmPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+            >
+              {showConfirmPassword ? (
+                <svg
+                  className="eye-icon eye-closed"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                  <line x1="1" y1="1" x2="23" y2="23"></line>
+                </svg>
+              ) : (
+                <svg
+                  className="eye-icon"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              )}
+            </button>
+          </div>
+          {errors.confirmPassword && (touched.confirmPassword || submitted) && (
             <p className="field-error">{errors.confirmPassword}</p>
           )}
 
@@ -321,9 +457,11 @@ export default function Register() {
             onBlur={handleBlur}
             required
             placeholder="Nhập số điện thoại"
-            className={errors.phone && touched.phone ? "input-error" : ""}
+            className={
+              errors.phone && (touched.phone || submitted) ? "error" : ""
+            }
           />
-          {errors.phone && touched.phone && (
+          {errors.phone && (touched.phone || submitted) && (
             <p className="field-error">{errors.phone}</p>
           )}
 
@@ -337,13 +475,21 @@ export default function Register() {
             onBlur={handleBlur}
             required
             placeholder="Nhập địa chỉ"
-            className={errors.address && touched.address ? "input-error" : ""}
+            className={
+              errors.address && (touched.address || submitted) ? "error" : ""
+            }
           />
-          {errors.address && touched.address && (
+          {errors.address && (touched.address || submitted) && (
             <p className="field-error">{errors.address}</p>
           )}
 
-          <div className="checkbox-group">
+          <div
+            className={`checkbox-group ${
+              errors.acceptTerms && (touched.acceptTerms || submitted)
+                ? "error"
+                : ""
+            }`}
+          >
             <input
               id="acceptTerms"
               name="acceptTerms"
@@ -357,7 +503,7 @@ export default function Register() {
               Tôi chấp nhận Điều khoản sử dụng và Chính sách bảo mật.
             </label>
           </div>
-          {errors.acceptTerms && touched.acceptTerms && (
+          {errors.acceptTerms && (touched.acceptTerms || submitted) && (
             <p className="field-error">{errors.acceptTerms}</p>
           )}
 

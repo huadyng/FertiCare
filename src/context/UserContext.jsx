@@ -2,11 +2,26 @@ import { createContext, useState, useEffect } from "react";
 
 // 1. Định nghĩa các vai trò và quyền
 export const USER_ROLES = {
-  ADMIN: "admin",
-  MANAGER: "manager",
-  DOCTOR: "doctor",
-  PATIENT: "patient",
-  CUSTOMER: "customer",
+  ADMIN: "ADMIN",
+  MANAGER: "MANAGER",
+  DOCTOR: "DOCTOR",
+  PATIENT: "PATIENT",
+  CUSTOMER: "CUSTOMER",
+};
+
+// Map backend roles to frontend roles
+const ROLE_MAPPING = {
+  ADMIN: USER_ROLES.ADMIN,
+  MANAGER: USER_ROLES.MANAGER,
+  DOCTOR: USER_ROLES.DOCTOR,
+  PATIENT: USER_ROLES.PATIENT,
+  CUSTOMER: USER_ROLES.CUSTOMER,
+  // Legacy lowercase support
+  admin: USER_ROLES.ADMIN,
+  manager: USER_ROLES.MANAGER,
+  doctor: USER_ROLES.DOCTOR,
+  patient: USER_ROLES.PATIENT,
+  customer: USER_ROLES.CUSTOMER,
 };
 
 export const ROLE_PERMISSIONS = {
@@ -67,15 +82,28 @@ export const UserProvider = ({ children }) => {
 
   // Đăng nhập (có role & trạng thái dịch vụ mặc định)
   const login = (userData) => {
+    console.log("🔍 [UserContext] Login data received:", userData);
+
+    // Map role from backend to frontend
+    const mappedRole = ROLE_MAPPING[userData.role] || USER_ROLES.CUSTOMER;
+
     const dataToStore = {
       ...userData,
-      role: userData.role || USER_ROLES.CUSTOMER,
+      role: mappedRole,
       token: userData.token,
       hasRegisteredService: userData.hasRegisteredService || false,
     };
+
+    console.log("🔍 [UserContext] Data to store:", dataToStore);
+
     setUser(dataToStore);
     setIsLoggedIn(true);
+
+    // ✅ Lưu cả user object và token riêng biệt để đảm bảo compatibility
     localStorage.setItem("user", JSON.stringify(dataToStore));
+    if (userData.token) {
+      localStorage.setItem("token", userData.token);
+    }
   };
 
   // Đăng nhập bằng Google
@@ -105,6 +133,7 @@ export const UserProvider = ({ children }) => {
   // Đăng xuất
   const logout = () => {
     localStorage.removeItem("user");
+    localStorage.removeItem("token");
     setUser(null);
     setIsLoggedIn(false);
   };
@@ -121,7 +150,7 @@ export const UserProvider = ({ children }) => {
   // Lấy dashboard path
   const getDashboardPath = () => {
     if (!user?.role) return "/";
-    switch (user.role) {
+    switch (user.role.toUpperCase()) {
       case USER_ROLES.ADMIN:
         return "/admin/dashboard";
       case USER_ROLES.MANAGER:

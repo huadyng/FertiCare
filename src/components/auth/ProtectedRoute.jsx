@@ -19,7 +19,10 @@ export const RoleBasedRoute = ({
 
   // Nếu có yêu cầu role cụ thể
   if (allowedRoles.length > 0 && user) {
-    const hasValidRole = allowedRoles.includes(user.role);
+    const userRole = user.role?.toUpperCase();
+    const hasValidRole = allowedRoles.some(
+      (role) => role.toUpperCase() === userRole
+    );
 
     if (!hasValidRole) {
       return (
@@ -71,13 +74,25 @@ export const createRoleRoute = (allowedRoles) => {
 };
 
 // Các route components cho từng role
-export const AdminRoute = createRoleRoute(["admin"]);
-export const ManagerRoute = createRoleRoute(["manager"]);
-export const DoctorRoute = createRoleRoute(["doctor"]);
-export const PatientRoute = createRoleRoute(["patient"]);
+export const AdminRoute = createRoleRoute(["ADMIN", "admin"]);
+export const ManagerRoute = createRoleRoute(["MANAGER", "manager"]);
+export const DoctorRoute = createRoleRoute(["DOCTOR", "doctor"]);
+export const PatientRoute = createRoleRoute(["PATIENT", "patient"]);
 
 // Route cho admin hoặc manager
-export const AdminManagerRoute = createRoleRoute(["admin", "manager"]);
+export const AdminManagerRoute = createRoleRoute([
+  "ADMIN",
+  "MANAGER",
+  "admin",
+  "manager",
+]);
 
 // Route cho staff (admin, manager, doctor)
-export const StaffRoute = createRoleRoute(["admin", "manager", "doctor"]);
+export const StaffRoute = createRoleRoute([
+  "ADMIN",
+  "MANAGER",
+  "DOCTOR",
+  "admin",
+  "manager",
+  "doctor",
+]);

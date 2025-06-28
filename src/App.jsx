@@ -17,7 +17,7 @@ const Header = lazy(() => import("./components/layout/Header/Header"));
 const Doctor = lazy(() => import("./components/pages/DoctorTeam/Doctor"));
 const Login = lazy(() => import("./components/pages/Login/Login"));
 const Register = lazy(() => import("./components/pages/Register/Register"));
-const RegisterPage = lazy(() => import("./components/pages/Register/Register")); // Nếu RegisterPage khác với Register, điều chỉnh lại
+const RegisterPage = lazy(() => import("./components/pages/Register/Register"));
 const DoctorDetail = lazy(() =>
   import("./components/pages/DoctorTeam/Card/DoctorDetail/DoctorDetail")
 );
@@ -28,17 +28,30 @@ const RegistrationForm = lazy(() =>
   import("./components/pages/RegistrationServiceForm/index/RegistrationForm")
 );
 const Pie = lazy(() => import("./components/pages/ChartsForm/Pie"));
-//const Contact = lazy(() => import("./components/pages/Contact/ContactForm"));
-//const BlogPage = lazy(() => import("./components/pages/Blog/BlogPage"));
-//const BlogPublic = lazy(() => import("./components/Pages/Blog/BlogPublic"));
-//const BlogManager = lazy(() => import("./components/Pages/Blog/BlogManager"));
-//const BlogDetail = lazy(() => import("./components/Pages/Blog/BlogDetail"));
+const Contact = lazy(() => import("./components/pages/Contact/ContactForm"));
+const BlogPublic = lazy(() => import("./components/pages/Blog/BlogPublic"));
+const BlogManager = lazy(() => import("./components/pages/Blog/BlogManager"));
+const BlogDetail = lazy(() => import("./components/pages/Blog/BlogDetail"));
 const ForgotPassword = lazy(() =>
   import("./components/pages/Login/ForgotPassword")
 );
 const VerifyEmail = lazy(() =>
   import("./components/pages/VerifyEmail/VerifyEmail")
 );
+const UserProfile = lazy(() =>
+  import("./components/pages/Profile/UserProfile")
+);
+const ProfileDebug = lazy(() =>
+  import("./components/pages/Profile/ProfileDebug")
+);
+const TestProfile = lazy(() =>
+  import("./components/pages/Profile/TestProfile")
+);
+const TokenDebug = lazy(() => import("./components/pages/Profile/TokenDebug"));
+const TokenGenerator = lazy(() =>
+  import("./components/pages/Profile/TokenGenerator")
+);
+const LoginDebug = lazy(() => import("./components/pages/Profile/LoginDebug"));
 
 // Lazy load layouts và dashboard
 const AdminLayout = lazy(() => import("./components/layout/AdminLayout"));
@@ -214,7 +227,7 @@ function AppContent() {
             </LayoutWrapper>
           }
         /> */}
-        {/* <Route
+        <Route
           path="/blog-public"
           element={
             <LayoutWrapper>
@@ -237,7 +250,7 @@ function AppContent() {
               <BlogDetail />
             </LayoutWrapper>
           }
-        /> */}
+        />
         <Route
           path="/verify-email"
           element={
@@ -246,14 +259,14 @@ function AppContent() {
             </LayoutWrapper>
           }
         />
-        {/* <Route
+        <Route
           path="/contact"
           element={
             <LayoutWrapper>
               <Contact />
             </LayoutWrapper>
           }
-        /> */}
+        />
         <Route
           path="/chart"
           element={
@@ -295,6 +308,78 @@ function AppContent() {
         {/* Mock Login for testing */}
         <Route path="/mock-login" element={<MockLogin />} />
 
+        {/* Profile Debug Page */}
+        <Route
+          path="/profile-debug"
+          element={
+            <LayoutWrapper>
+              <ProfileDebug />
+            </LayoutWrapper>
+          }
+        />
+
+        {/* Test Profile Page */}
+        <Route
+          path="/test-profile"
+          element={
+            <LayoutWrapper>
+              <TestProfile />
+            </LayoutWrapper>
+          }
+        />
+
+        {/* Token Debug Page */}
+        <Route
+          path="/token-debug"
+          element={
+            <LayoutWrapper>
+              <TokenDebug />
+            </LayoutWrapper>
+          }
+        />
+
+        {/* Token Generator Page */}
+        <Route
+          path="/token-generator"
+          element={
+            <LayoutWrapper>
+              <TokenGenerator />
+            </LayoutWrapper>
+          }
+        />
+
+        {/* Login Debug Page */}
+        <Route
+          path="/login-debug"
+          element={
+            <LayoutWrapper>
+              <LoginDebug />
+            </LayoutWrapper>
+          }
+        />
+
+        {/* User Profile - Test Route (No Auth Required for Testing) */}
+        <Route
+          path="/profile-test"
+          element={
+            <LayoutWrapper>
+              <UserProfile />
+            </LayoutWrapper>
+          }
+        />
+
+        {/* User Profile - Protected Route */}
+        <Route
+          path="/profile"
+          element={
+            <AuthRequiredRoute>
+              <LayoutWrapper>
+                <UserProfile />
+              </LayoutWrapper>
+            </AuthRequiredRoute>
+          }
+        />
+
         {/* Dashboard auto redirect */}
         <Route path="/dashboard" element={<DashboardRedirect />} />
 
@@ -321,10 +406,7 @@ function AppContent() {
           />
           <Route path="reports" element={<SystemReports />} />
           <Route path="settings" element={<SystemSettings />} />
-          <Route
-            path="profile"
-            element={<ComingSoon title="Thông tin cá nhân" />}
-          />
+          <Route path="profile" element={<UserProfile />} />
         </Route>
 
         {/* Manager Dashboard + quản lý */}
@@ -346,10 +428,7 @@ function AppContent() {
             element={<ComingSoon title="Duyệt phác đồ điều trị" />}
           />
           <Route path="reports" element={<ComingSoon title="Báo cáo nhóm" />} />
-          <Route
-            path="profile"
-            element={<ComingSoon title="Thông tin cá nhân" />}
-          />
+          <Route path="profile" element={<UserProfile />} />
         </Route>
 
         {/* Doctor Dashboard - tích hợp mới */}
@@ -400,10 +479,7 @@ function AppContent() {
             path="reports"
             element={<ComingSoon title="Báo cáo cá nhân" />}
           />
-          <Route
-            path="profile"
-            element={<ComingSoon title="Thông tin cá nhân" />}
-          />
+          <Route path="profile" element={<UserProfile />} />
         </Route>
 
         {/* Patient Dashboard */}
@@ -431,10 +507,7 @@ function AppContent() {
             path="notifications"
             element={<ComingSoon title="Thông báo" />}
           />
-          <Route
-            path="profile"
-            element={<ComingSoon title="Thông tin cá nhân" />}
-          />
+          <Route path="profile" element={<UserProfile />} />
           <Route path="settings" element={<ComingSoon title="Cài đặt" />} />
         </Route>
 
