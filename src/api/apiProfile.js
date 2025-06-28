@@ -104,7 +104,18 @@ const apiProfile = {
         filteredData.gender = filteredData.gender.toUpperCase();
       }
       if (filteredData.maritalStatus) {
-        filteredData.maritalStatus = filteredData.maritalStatus.toUpperCase();
+        // Mapping từ tiếng Việt sang tiếng Anh cho backend
+        const maritalStatusMapping = {
+          "độc thân": "SINGLE",
+          "đã kết hôn": "MARRIED",
+          "đã ly hôn": "DIVORCED",
+          góa: "WIDOWED",
+        };
+
+        const vietnameseValue = filteredData.maritalStatus.toLowerCase();
+        filteredData.maritalStatus =
+          maritalStatusMapping[vietnameseValue] ||
+          filteredData.maritalStatus.toUpperCase();
       }
 
       requestData = filteredData;

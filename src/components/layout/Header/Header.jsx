@@ -6,9 +6,10 @@ import { UserContext } from "../../../context/UserContext";
 
 export default function Header() {
   const navigate = useNavigate();
-  const { user, logout, isLoggedIn, getDashboardPath } =
+  const { user, logout, isLoggedIn, getDashboardPath, refreshUserData } =
     useContext(UserContext);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [avatarKey, setAvatarKey] = useState(Date.now()); // Force refresh avatar
   const dropdownRef = useRef(null);
 
   const handleLoginClick = () => {
@@ -39,12 +40,22 @@ export default function Header() {
     };
   }, []);
 
+  // Force refresh avatar when user changes
+  useEffect(() => {
+    if (user?.avatarUrl) {
+      setAvatarKey(Date.now());
+    }
+  }, [user?.avatarUrl]);
+
   const handleDropdownItemClick = (action) => {
     setShowDropdown(false);
     if (action === "profile") {
       navigate("/profile");
     } else if (action === "dashboard") {
       navigate(getDashboardPath());
+    } else if (action === "refresh-avatar") {
+      // Refresh user data để sync avatar mới
+      refreshUserData?.();
     }
   };
 
@@ -52,48 +63,55 @@ export default function Header() {
     <div className="header">
       <div className="logo">
         <img src={logo} alt="Logo" />
+        <span className="logo-text">FertiCare</span>
       </div>
 
       <div className="navbar">
         <ul>
           <li>
-            <Link to="/">Giới thiệu</Link>
-          </li>
-          <li>
-            <Link to="/">Dịch vụ</Link>
-          </li>
-          <li>
-            <Link to="/doctor">Chuyên gia - bác sĩ</Link>
-          </li>
-          <li>
-            <Link to="/chart">Thành tựu</Link>
-          </li>
-          <li>
-            <Link to="/">Tin tức</Link>
-          </li>
-          <li>
-            <Link to="/contact">Liên hệ</Link>
-          </li>
-          <li>
-            {isLoggedIn && user?.role?.toUpperCase() === "MANAGER" ? (
-              <Link to="/blog-manager">Quản lý Blog</Link>
-            ) : (
-              <Link to="/blog-public">Cộng đồng Blog</Link>
-            )}
-          </li>
-          <li>
-            <Link to="/test-profile" style={{ fontSize: "12px", opacity: 0.7 }}>
-              🧪
+            <Link to="/">
+              <span className="navbar-icon">🏠</span>
+              <span>Trang chủ</span>
             </Link>
           </li>
           <li>
-            <Link
-              to="/profile-debug"
-              style={{ fontSize: "12px", opacity: 0.7 }}
-            >
-              🔧
+            <Link to="/#services">
+              <span className="navbar-icon">⚕️</span>
+              <span>Dịch vụ</span>
             </Link>
           </li>
+          <li>
+            <Link to="/doctor">
+              <span className="navbar-icon">👨‍⚕️</span>
+              <span>Chuyên gia - bác sĩ</span>
+            </Link>
+          </li>
+          <li>
+            <Link to="/chart">
+              <span className="navbar-icon">🏆</span>
+              <span>Thành tựu</span>
+            </Link>
+          </li>
+          <li>
+            <Link to="/blog-public">
+              <span className="navbar-icon">📰</span>
+              <span>Tin tức</span>
+            </Link>
+          </li>
+          <li>
+            <Link to="/contact">
+              <span className="navbar-icon">📞</span>
+              <span>Liên hệ</span>
+            </Link>
+          </li>
+          {isLoggedIn && user?.role?.toUpperCase() === "MANAGER" && (
+            <li>
+              <Link to="/blog-manager">
+                <span className="navbar-icon">📝</span>
+                <span>Quản lý Blog</span>
+              </Link>
+            </li>
+          )}
         </ul>
       </div>
 
@@ -106,7 +124,7 @@ export default function Header() {
             >
               {user.avatarUrl ? (
                 <img
-                  src={user.avatarUrl}
+                  src={`${user.avatarUrl}?t=${avatarKey}`}
                   alt="avatar"
                   className="user-avatar"
                   onError={(e) => {
@@ -115,12 +133,14 @@ export default function Header() {
                 />
               ) : (
                 <div className="user-avatar-placeholder">
-                  {user.fullName?.charAt(0)?.toUpperCase() || "U"}
+                  <img
+                    src="/src/assets/img/default-avatar.png"
+                    alt="avatar"
+                    className="user-avatar"
+                  />
                 </div>
               )}
-              <span className="user-greeting">
-                Xin chào, {user.fullName || "User"}
-              </span>
+              <span className="user-greeting">{user.fullName || "User"}</span>
               <span className={`dropdown-arrow ${showDropdown ? "open" : ""}`}>
                 ▼
               </span>
@@ -128,6 +148,27 @@ export default function Header() {
 
             {showDropdown && (
               <div className="user-dropdown-menu">
+                <div className="dropdown-header">
+                  <div className="dropdown-user-info">
+                    <strong>{user.fullName || "User"}</strong>
+                    <small>{user.email}</small>
+                    <span className="user-role-badge">
+                      {user.role === "ADMIN" && "Quản trị viên"}
+                      {user.role === "MANAGER" && "Quản lý"}
+                      {user.role === "DOCTOR" && "Bác sĩ"}
+                      {user.role === "PATIENT" && "Bệnh nhân"}
+                      {user.role === "CUSTOMER" && "Khách hàng"}
+                      {![
+                        "ADMIN",
+                        "MANAGER",
+                        "DOCTOR",
+                        "PATIENT",
+                        "CUSTOMER",
+                      ].includes(user.role) && user.role}
+                    </span>
+                  </div>
+                </div>
+                <div className="dropdown-divider"></div>
                 <div
                   className="dropdown-item"
                   onClick={() => handleDropdownItemClick("profile")}
@@ -154,15 +195,17 @@ export default function Header() {
             )}
           </div>
         ) : (
-          <div>
-            <button style={{ marginRight: "10px" }} onClick={handleLoginClick}>
-              Đăng nhập
+          <div className="auth-buttons-container">
+            <button className="login-btn ripple" onClick={handleLoginClick}>
+              <span className="button-icon">👤</span>
+              <span>Đăng nhập</span>
             </button>
             <button
-              style={{ padding: "10px 22px" }}
+              className="register-btn ripple"
               onClick={handleRegisterClick}
             >
-              Đăng ký
+              <span className="button-icon">🚀</span>
+              <span>Đăng ký</span>
             </button>
           </div>
         )}

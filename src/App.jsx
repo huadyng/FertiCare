@@ -41,17 +41,6 @@ const VerifyEmail = lazy(() =>
 const UserProfile = lazy(() =>
   import("./components/pages/Profile/UserProfile")
 );
-const ProfileDebug = lazy(() =>
-  import("./components/pages/Profile/ProfileDebug")
-);
-const TestProfile = lazy(() =>
-  import("./components/pages/Profile/TestProfile")
-);
-const TokenDebug = lazy(() => import("./components/pages/Profile/TokenDebug"));
-const TokenGenerator = lazy(() =>
-  import("./components/pages/Profile/TokenGenerator")
-);
-const LoginDebug = lazy(() => import("./components/pages/Profile/LoginDebug"));
 
 // Lazy load layouts và dashboard
 const AdminLayout = lazy(() => import("./components/layout/AdminLayout"));
@@ -307,56 +296,6 @@ function AppContent() {
 
         {/* Mock Login for testing */}
         <Route path="/mock-login" element={<MockLogin />} />
-
-        {/* Profile Debug Page */}
-        <Route
-          path="/profile-debug"
-          element={
-            <LayoutWrapper>
-              <ProfileDebug />
-            </LayoutWrapper>
-          }
-        />
-
-        {/* Test Profile Page */}
-        <Route
-          path="/test-profile"
-          element={
-            <LayoutWrapper>
-              <TestProfile />
-            </LayoutWrapper>
-          }
-        />
-
-        {/* Token Debug Page */}
-        <Route
-          path="/token-debug"
-          element={
-            <LayoutWrapper>
-              <TokenDebug />
-            </LayoutWrapper>
-          }
-        />
-
-        {/* Token Generator Page */}
-        <Route
-          path="/token-generator"
-          element={
-            <LayoutWrapper>
-              <TokenGenerator />
-            </LayoutWrapper>
-          }
-        />
-
-        {/* Login Debug Page */}
-        <Route
-          path="/login-debug"
-          element={
-            <LayoutWrapper>
-              <LoginDebug />
-            </LayoutWrapper>
-          }
-        />
 
         {/* User Profile - Test Route (No Auth Required for Testing) */}
         <Route

@@ -24,7 +24,12 @@ const UserProfile = () => {
   const [avatarUpdateTime, setAvatarUpdateTime] = useState(Date.now());
 
   useEffect(() => {
-    fetchProfile();
+    fetchProfile().catch((error) => {
+      console.error(
+        "❌ [UserProfile] Failed to fetch profile on mount:",
+        error
+      );
+    });
   }, []);
 
   const fetchProfile = async () => {
@@ -83,8 +88,13 @@ const UserProfile = () => {
         profileData.avatarUrl
       );
       setProfile(profileData);
-      setFormData(profileData); // Initialize form with current data
+      setFormData({
+        ...profileData,
+        maritalStatus: convertMaritalStatusForForm(profileData.maritalStatus),
+      }); // Initialize form with current data (converted for display)
       setAvatarUpdateTime(Date.now()); // Force image refresh
+
+      return profileData; // Return profile data để có thể sử dụng ngay
     } catch (err) {
       console.error("❌ [UserProfile] Profile fetch error:", err);
       console.error("❌ [UserProfile] Error response:", err.response?.data);
@@ -112,14 +122,21 @@ const UserProfile = () => {
           extraPermissions: "",
         };
         setProfile(fallbackProfile);
-        setFormData(fallbackProfile);
+        setFormData({
+          ...fallbackProfile,
+          maritalStatus: convertMaritalStatusForForm(
+            fallbackProfile.maritalStatus
+          ),
+        });
         setError(
           "⚠️ Không thể kết nối API. Đang sử dụng dữ liệu cơ bản từ phiên đăng nhập."
         );
+        return fallbackProfile;
       } else {
         setError(
           err.response?.data?.message || "Không thể tải thông tin profile"
         );
+        throw err;
       }
     } finally {
       setLoading(false);
@@ -129,7 +146,10 @@ const UserProfile = () => {
   const handleEditToggle = () => {
     if (isEditing) {
       // Reset form data when canceling
-      setFormData(profile);
+      setFormData({
+        ...profile,
+        maritalStatus: convertMaritalStatusForForm(profile.maritalStatus),
+      });
       setValidationErrors({});
       setUpdateMessage("");
       setAvatarFile(null);
@@ -245,7 +265,7 @@ const UserProfile = () => {
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       console.log("🔄 [UserProfile] Fetching updated profile...");
-      await fetchProfile();
+      const updatedProfileData = await fetchProfile();
 
       // Cập nhật timestamp để force reload image
       console.log("🖼️ [UserProfile] Force refresh image with new timestamp");
@@ -255,6 +275,18 @@ const UserProfile = () => {
       setAvatarPreview(null);
 
       console.log("✅ [UserProfile] Avatar upload process completed!");
+
+      // BƯỚC 7: Cập nhật user context để Header hiển thị avatar mới
+      if (updatedProfileData?.avatarUrl) {
+        const updatedUser = {
+          ...user,
+          avatarUrl: updatedProfileData.avatarUrl,
+        };
+        setUser(updatedUser);
+        // Cập nhật localStorage
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+        console.log("🔄 [UserProfile] Updated user context with new avatar");
+      }
 
       // Clear success message after 3 seconds
       setTimeout(() => setUpdateMessage(""), 3000);
@@ -406,11 +438,23 @@ const UserProfile = () => {
 
       // BƯỚC 6: Fetch lại profile và force refresh image
       console.log("🔄 [UserProfile] Fetching updated profile...");
-      await fetchProfile();
+      const updatedProfileData = await fetchProfile();
 
       // Force refresh image timestamp
       setAvatarUpdateTime(Date.now());
       console.log("✅ [UserProfile] Update process completed!");
+
+      // BƯỚC 7: Cập nhật user context để Header hiển thị avatar mới
+      if (updatedProfileData?.avatarUrl) {
+        const updatedUser = {
+          ...user,
+          avatarUrl: updatedProfileData.avatarUrl,
+        };
+        setUser(updatedUser);
+        // Cập nhật localStorage
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+        console.log("🔄 [UserProfile] Updated user context with new avatar");
+      }
 
       // Clear success message after 3 seconds
       setTimeout(() => setUpdateMessage(""), 3000);
@@ -443,6 +487,37 @@ const UserProfile = () => {
         return "Khác";
       default:
         return "Chưa cập nhật";
+    }
+  };
+
+  const getMaritalStatusDisplay = (maritalStatus) => {
+    switch (maritalStatus?.toLowerCase()) {
+      case "single":
+        return "Độc thân";
+      case "married":
+        return "Đã kết hôn";
+      case "divorced":
+        return "Đã ly hôn";
+      case "widowed":
+        return "Góa";
+      default:
+        return "Chưa cập nhật";
+    }
+  };
+
+  // Function để convert giá trị từ database (tiếng Anh) sang tiếng Việt cho form
+  const convertMaritalStatusForForm = (maritalStatus) => {
+    switch (maritalStatus?.toLowerCase()) {
+      case "single":
+        return "độc thân";
+      case "married":
+        return "đã kết hôn";
+      case "divorced":
+        return "đã ly hôn";
+      case "widowed":
+        return "góa";
+      default:
+        return maritalStatus; // Giữ nguyên nếu không match
     }
   };
 
@@ -498,7 +573,7 @@ const UserProfile = () => {
             <div className="info-grid">
               <div className="info-item">
                 <label>Tình trạng hôn nhân:</label>
-                <span>{profile.maritalStatus || "Chưa cập nhật"}</span>
+                <span>{getMaritalStatusDisplay(profile.maritalStatus)}</span>
               </div>
               <div className="info-item">
                 <label>Tiền sử sức khỏe:</label>
@@ -548,7 +623,10 @@ const UserProfile = () => {
         <div className="error-state">
           <h2>Có lỗi xảy ra</h2>
           <p>{error}</p>
-          <button onClick={fetchProfile} className="retry-btn">
+          <button
+            onClick={() => fetchProfile().catch(console.error)}
+            className="retry-btn"
+          >
             Thử lại
           </button>
         </div>
@@ -913,10 +991,10 @@ const UserProfile = () => {
                       onChange={handleInputChange}
                     >
                       <option value="">Chọn tình trạng</option>
-                      <option value="single">Độc thân</option>
-                      <option value="married">Đã kết hôn</option>
-                      <option value="divorced">Đã ly hôn</option>
-                      <option value="widowed">Góa</option>
+                      <option value="độc thân">Độc thân</option>
+                      <option value="đã kết hôn">Đã kết hôn</option>
+                      <option value="đã ly hôn">Đã ly hôn</option>
+                      <option value="góa">Góa</option>
                     </select>
                   </div>
 

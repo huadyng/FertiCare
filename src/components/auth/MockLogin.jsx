@@ -54,8 +54,8 @@ const MockLogin = () => {
     },
   ];
 
-  const handleMockLogin = (user) => {
-    login(user);
+  const handleMockLogin = async (user) => {
+    await login(user);
     message.success(
       `Đăng nhập thành công với vai trò ${getRoleDisplayName(user.role)}!`
     );

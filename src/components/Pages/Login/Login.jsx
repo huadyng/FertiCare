@@ -90,7 +90,7 @@ export default function Login() {
       const userData = await apiLogin.login(formData.email, formData.password);
       console.log("✅ Đăng nhập thành công:", userData);
 
-      login(userData);
+      await login(userData);
 
       // ✅ Redirect theo role
       const dashboardPath = getDashboardPath();
@@ -160,7 +160,7 @@ export default function Login() {
 
       console.log("✅ Google login thành công:", userData);
 
-      login(userData);
+      await login(userData);
 
       // ✅ Redirect theo role
       const dashboardPath = getDashboardPath();

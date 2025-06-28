@@ -81,7 +81,7 @@ export const UserProvider = ({ children }) => {
   }, []);
 
   // Đăng nhập (có role & trạng thái dịch vụ mặc định)
-  const login = (userData) => {
+  const login = async (userData) => {
     console.log("🔍 [UserContext] Login data received:", userData);
 
     // Map role from backend to frontend
@@ -104,17 +104,65 @@ export const UserProvider = ({ children }) => {
     if (userData.token) {
       localStorage.setItem("token", userData.token);
     }
+
+    // 🔄 Fetch thêm profile data để lấy avatar mới nhất
+    try {
+      console.log("🔄 [UserContext] Fetching fresh profile data for avatar...");
+
+      // Dynamic import để tránh circular dependency
+      const { default: apiProfile } = await import("../api/apiProfile");
+
+      let profileData;
+      switch (mappedRole.toUpperCase()) {
+        case USER_ROLES.CUSTOMER:
+        case USER_ROLES.PATIENT:
+          profileData = await apiProfile.getCustomerProfile();
+          break;
+        case USER_ROLES.DOCTOR:
+          profileData = await apiProfile.getDoctorProfile();
+          break;
+        case USER_ROLES.MANAGER:
+        case USER_ROLES.ADMIN:
+          profileData = await apiProfile.getManagerAdminProfile();
+          break;
+        default:
+          profileData = await apiProfile.getMyProfile();
+          break;
+      }
+
+      // Cập nhật user với avatar mới nhất từ profile
+      if (profileData?.avatarUrl) {
+        const updatedUserData = {
+          ...dataToStore,
+          avatarUrl: profileData.avatarUrl,
+        };
+
+        console.log(
+          "✅ [UserContext] Updated user data with fresh avatar:",
+          updatedUserData.avatarUrl
+        );
+
+        setUser(updatedUserData);
+        localStorage.setItem("user", JSON.stringify(updatedUserData));
+      }
+    } catch (error) {
+      console.warn(
+        "⚠️ [UserContext] Could not fetch profile for avatar:",
+        error.message
+      );
+      // Không throw error để không block login process
+    }
   };
 
   // Đăng nhập bằng Google
-  const loginWithGoogle = (googleUser) => {
+  const loginWithGoogle = async (googleUser) => {
     const userData = {
       fullName: googleUser.name,
       email: googleUser.email,
       role: USER_ROLES.CUSTOMER,
       hasRegisteredService: false,
     };
-    login(userData);
+    await login(userData);
   };
 
   // Đăng ký dịch vụ, chuyển customer => patient
@@ -136,6 +184,52 @@ export const UserProvider = ({ children }) => {
     localStorage.removeItem("token");
     setUser(null);
     setIsLoggedIn(false);
+  };
+
+  // Force refresh user data từ server (dùng khi cần sync avatar mới)
+  const refreshUserData = async () => {
+    if (!user?.token) return;
+
+    try {
+      console.log("🔄 [UserContext] Refreshing user data...");
+
+      const { default: apiProfile } = await import("../api/apiProfile");
+
+      let profileData;
+      switch (user.role?.toUpperCase()) {
+        case USER_ROLES.CUSTOMER:
+        case USER_ROLES.PATIENT:
+          profileData = await apiProfile.getCustomerProfile();
+          break;
+        case USER_ROLES.DOCTOR:
+          profileData = await apiProfile.getDoctorProfile();
+          break;
+        case USER_ROLES.MANAGER:
+        case USER_ROLES.ADMIN:
+          profileData = await apiProfile.getManagerAdminProfile();
+          break;
+        default:
+          profileData = await apiProfile.getMyProfile();
+          break;
+      }
+
+      const updatedUser = {
+        ...user,
+        avatarUrl: profileData?.avatarUrl || user.avatarUrl,
+      };
+
+      setUser(updatedUser);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+
+      console.log("✅ [UserContext] User data refreshed successfully");
+      return updatedUser;
+    } catch (error) {
+      console.warn(
+        "⚠️ [UserContext] Failed to refresh user data:",
+        error.message
+      );
+      return user;
+    }
   };
 
   // Kiểm tra permission
@@ -183,6 +277,7 @@ export const UserProvider = ({ children }) => {
         hasRole,
         getDashboardPath,
         canAccessPatientArea,
+        refreshUserData,
         USER_ROLES,
         ROLE_PERMISSIONS,
       }}
