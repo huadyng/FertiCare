@@ -107,12 +107,6 @@ const Service = () => {
             </div>
           </div>
         </div>
-
-        <div className="service-cta">
-          <button className="service-cta-button">
-            📅 Đặt lịch tư vấn ngay
-          </button>
-        </div>
       </div>
     </div>
   );

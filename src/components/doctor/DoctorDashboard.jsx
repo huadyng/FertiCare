@@ -23,6 +23,7 @@ import {
   Modal,
   Timeline,
 } from "antd";
+import "./DoctorTheme.css";
 import {
   UserOutlined,
   MedicineBoxOutlined,
@@ -41,6 +42,7 @@ import {
   PlayCircleOutlined,
   PauseCircleOutlined,
   HistoryOutlined,
+  StarOutlined,
 } from "@ant-design/icons";
 
 import TreatmentProcess from "./treatment/TreatmentProcess";
@@ -50,6 +52,7 @@ import TreatmentScheduleForm from "./treatment/TreatmentScheduleForm";
 
 import PatientScheduleView from "./treatment/PatientScheduleView";
 import DoctorProfile from "./DoctorProfile";
+import ThemeDemo from "./ThemeDemo";
 import { UserContext } from "../../context/UserContext";
 import { useNavigate } from "react-router-dom";
 import {
@@ -302,46 +305,183 @@ const DoctorDashboard = () => {
           <Row gutter={[24, 24]}>
             {/* Statistics Cards */}
             <Col span={24}>
-              <Row gutter={16}>
-                <Col span={6}>
-                  <Card>
-                    <Statistic
-                      title="Tổng bệnh nhân"
-                      value={statistics.totalPatients}
-                      prefix={<TeamOutlined />}
-                      valueStyle={{ color: "#1890ff" }}
-                    />
+              <Row gutter={[20, 20]}>
+                <Col xs={24} sm={12} lg={6}>
+                  <Card className="doctor-stat-card doctor-fade-in doctor-bounce-in">
+                    <div style={{ textAlign: "center" }}>
+                      <div
+                        style={{
+                          background: "var(--primary-gradient)",
+                          width: "60px",
+                          height: "60px",
+                          borderRadius: "50%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          margin: "0 auto 16px",
+                          boxShadow: "0 8px 20px var(--shadow-light)",
+                        }}
+                      >
+                        <TeamOutlined
+                          style={{ fontSize: "24px", color: "white" }}
+                        />
+                      </div>
+                      <Statistic
+                        title={
+                          <Text
+                            style={{
+                              color: "var(--text-secondary)",
+                              fontWeight: 500,
+                              fontSize: "14px",
+                            }}
+                          >
+                            Tổng bệnh nhân
+                          </Text>
+                        }
+                        value={statistics.totalPatients}
+                        valueStyle={{
+                          color: "var(--primary-color)",
+                          fontWeight: 700,
+                          fontSize: "28px",
+                        }}
+                      />
+                    </div>
                   </Card>
                 </Col>
-                <Col span={6}>
-                  <Card>
-                    <Statistic
-                      title="Lịch hẹn hôm nay"
-                      value={statistics.todayAppointments}
-                      prefix={<CalendarOutlined />}
-                      valueStyle={{ color: "#52c41a" }}
-                    />
+                <Col xs={24} sm={12} lg={6}>
+                  <Card
+                    className="doctor-stat-card doctor-fade-in doctor-bounce-in"
+                    style={{ animationDelay: "0.1s" }}
+                  >
+                    <div style={{ textAlign: "center" }}>
+                      <div
+                        style={{
+                          background: "var(--secondary-gradient)",
+                          width: "60px",
+                          height: "60px",
+                          borderRadius: "50%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          margin: "0 auto 16px",
+                          boxShadow: "0 8px 20px rgba(102, 126, 234, 0.3)",
+                        }}
+                      >
+                        <CalendarOutlined
+                          style={{ fontSize: "24px", color: "white" }}
+                        />
+                      </div>
+                      <Statistic
+                        title={
+                          <Text
+                            style={{
+                              color: "var(--text-secondary)",
+                              fontWeight: 500,
+                              fontSize: "14px",
+                            }}
+                          >
+                            Lịch hẹn hôm nay
+                          </Text>
+                        }
+                        value={statistics.todayAppointments}
+                        valueStyle={{
+                          color: "var(--secondary-color)",
+                          fontWeight: 700,
+                          fontSize: "28px",
+                        }}
+                      />
+                    </div>
                   </Card>
                 </Col>
-                <Col span={6}>
-                  <Card>
-                    <Statistic
-                      title="Đang điều trị"
-                      value={statistics.inTreatment}
-                      prefix={<MedicineBoxOutlined />}
-                      valueStyle={{ color: "#faad14" }}
-                    />
+                <Col xs={24} sm={12} lg={6}>
+                  <Card
+                    className="doctor-stat-card doctor-fade-in doctor-bounce-in"
+                    style={{ animationDelay: "0.2s" }}
+                  >
+                    <div style={{ textAlign: "center" }}>
+                      <div
+                        style={{
+                          background: "var(--success-gradient)",
+                          width: "60px",
+                          height: "60px",
+                          borderRadius: "50%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          margin: "0 auto 16px",
+                          boxShadow: "0 8px 20px rgba(79, 172, 254, 0.3)",
+                        }}
+                      >
+                        <MedicineBoxOutlined
+                          style={{ fontSize: "24px", color: "white" }}
+                        />
+                      </div>
+                      <Statistic
+                        title={
+                          <Text
+                            style={{
+                              color: "var(--text-secondary)",
+                              fontWeight: 500,
+                              fontSize: "14px",
+                            }}
+                          >
+                            Đang điều trị
+                          </Text>
+                        }
+                        value={statistics.inTreatment}
+                        valueStyle={{
+                          color: "#4facfe",
+                          fontWeight: 700,
+                          fontSize: "28px",
+                        }}
+                      />
+                    </div>
                   </Card>
                 </Col>
-                <Col span={6}>
-                  <Card>
-                    <Statistic
-                      title="Tỉ lệ thành công"
-                      value={statistics.successRate}
-                      suffix="%"
-                      prefix={<CheckCircleOutlined />}
-                      valueStyle={{ color: "#722ed1" }}
-                    />
+                <Col xs={24} sm={12} lg={6}>
+                  <Card
+                    className="doctor-stat-card doctor-fade-in doctor-bounce-in"
+                    style={{ animationDelay: "0.3s" }}
+                  >
+                    <div style={{ textAlign: "center" }}>
+                      <div
+                        style={{
+                          background: "var(--warning-gradient)",
+                          width: "60px",
+                          height: "60px",
+                          borderRadius: "50%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          margin: "0 auto 16px",
+                          boxShadow: "0 8px 20px rgba(250, 112, 154, 0.3)",
+                        }}
+                      >
+                        <CheckCircleOutlined
+                          style={{ fontSize: "24px", color: "white" }}
+                        />
+                      </div>
+                      <Statistic
+                        title={
+                          <Text
+                            style={{
+                              color: "var(--text-secondary)",
+                              fontWeight: 500,
+                              fontSize: "14px",
+                            }}
+                          >
+                            Tỉ lệ thành công
+                          </Text>
+                        }
+                        value={statistics.successRate}
+                        suffix="%"
+                        valueStyle={{
+                          color: "#fa709a",
+                          fontWeight: 700,
+                          fontSize: "28px",
+                        }}
+                      />
+                    </div>
                   </Card>
                 </Col>
               </Row>
@@ -351,67 +491,235 @@ const DoctorDashboard = () => {
             {treatmentFlow.currentPatient && (
               <Col span={24}>
                 <Card
-                  title={
-                    <Space>
-                      <PlayCircleOutlined />
-                      Quy trình điều trị đang thực hiện
-                    </Space>
-                  }
+                  className="doctor-glass-card doctor-slide-in"
+                  style={{ animationDelay: "0.4s" }}
                 >
-                  <Row gutter={16}>
-                    <Col span={12}>
-                      <Card type="inner" title="Thông tin bệnh nhân">
-                        <p>
-                          <Text strong>Tên:</Text>{" "}
-                          {treatmentFlow.currentPatient.name}
-                        </p>
-                        <p>
-                          <Text strong>Tuổi:</Text>{" "}
-                          {treatmentFlow.currentPatient.age}
-                        </p>
-                        <p>
-                          <Text strong>Dịch vụ:</Text>{" "}
-                          {treatmentFlow.currentPatient.servicePackage}
-                        </p>
-                        <p>
-                          <Text strong>Tiến độ:</Text>
-                          <Progress
-                            percent={(
-                              (treatmentFlow.completedSteps.length / 4) *
-                              100
-                            ).toFixed(0)}
-                            status="active"
-                            style={{ marginLeft: 8 }}
-                          />
-                        </p>
+                  <div
+                    className="doctor-header"
+                    style={{ margin: "-24px -24px 24px -24px" }}
+                  >
+                    <Space align="center">
+                      <div
+                        style={{
+                          background: "rgba(255, 255, 255, 0.2)",
+                          padding: "8px",
+                          borderRadius: "12px",
+                          backdropFilter: "blur(10px)",
+                        }}
+                      >
+                        <PlayCircleOutlined
+                          style={{ fontSize: "20px", color: "white" }}
+                        />
+                      </div>
+                      <Title level={4} style={{ color: "white", margin: 0 }}>
+                        🏥 Quy trình điều trị đang thực hiện
+                      </Title>
+                    </Space>
+                  </div>
+                  <Row gutter={[24, 24]}>
+                    <Col xs={24} lg={12}>
+                      <Card
+                        className="doctor-card"
+                        style={{ height: "100%" }}
+                        title={
+                          <Space>
+                            <UserOutlined
+                              style={{ color: "var(--primary-color)" }}
+                            />
+                            <Text
+                              strong
+                              style={{ color: "var(--primary-color)" }}
+                            >
+                              Thông tin bệnh nhân
+                            </Text>
+                          </Space>
+                        }
+                      >
+                        <Space
+                          direction="vertical"
+                          size="large"
+                          style={{ width: "100%" }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "12px",
+                            }}
+                          >
+                            <Avatar
+                              size={50}
+                              icon={<UserOutlined />}
+                              style={{
+                                background: "var(--primary-gradient)",
+                                boxShadow: "0 4px 12px var(--shadow-light)",
+                              }}
+                            />
+                            <div>
+                              <Title
+                                level={5}
+                                style={{ margin: 0, color: "var(--text-dark)" }}
+                              >
+                                {treatmentFlow.currentPatient.name}
+                              </Title>
+                              <Text type="secondary">
+                                {treatmentFlow.currentPatient.age} tuổi
+                              </Text>
+                            </div>
+                          </div>
+
+                          <Divider style={{ margin: "12px 0" }} />
+
+                          <div>
+                            <Text
+                              strong
+                              style={{ color: "var(--text-secondary)" }}
+                            >
+                              Gói dịch vụ:
+                            </Text>
+                            <br />
+                            <Tag
+                              className="doctor-tag-primary"
+                              style={{
+                                marginTop: "8px",
+                                padding: "8px 16px",
+                                fontSize: "14px",
+                              }}
+                            >
+                              {treatmentFlow.currentPatient.servicePackage}
+                            </Tag>
+                          </div>
+
+                          <div>
+                            <Text
+                              strong
+                              style={{ color: "var(--text-secondary)" }}
+                            >
+                              Tiến độ điều trị:
+                            </Text>
+                            <div style={{ marginTop: "12px" }}>
+                              <Progress
+                                percent={Math.round(
+                                  (treatmentFlow.completedSteps.length / 4) *
+                                    100
+                                )}
+                                status="active"
+                                className="doctor-progress"
+                                strokeWidth={12}
+                                format={(percent) => (
+                                  <Text
+                                    strong
+                                    style={{ color: "var(--primary-color)" }}
+                                  >
+                                    {percent}%
+                                  </Text>
+                                )}
+                              />
+                              <Text
+                                type="secondary"
+                                style={{
+                                  fontSize: "12px",
+                                  marginTop: "4px",
+                                  display: "block",
+                                }}
+                              >
+                                {treatmentFlow.completedSteps.length}/4 bước
+                                hoàn thành
+                              </Text>
+                            </div>
+                          </div>
+                        </Space>
                       </Card>
                     </Col>
-                    <Col span={12}>
-                      <Card type="inner" title="Lịch sử hoàn thành">
-                        <Timeline
-                          size="small"
-                          items={treatmentFlow.stepHistory.map(
-                            (step, index) => ({
-                              color: "green",
-                              dot: (
-                                <CheckCircleOutlined
-                                  style={{ color: "green" }}
-                                />
-                              ),
-                              children: (
-                                <div>
-                                  <Text strong>{step.title}</Text>
-                                  <br />
-                                  <Text type="secondary">
-                                    {new Date(step.completedAt).toLocaleString(
-                                      "vi-VN"
-                                    )}
-                                  </Text>
-                                </div>
-                              ),
-                            })
-                          )}
-                        />
+                    <Col xs={24} lg={12}>
+                      <Card
+                        className="doctor-card"
+                        style={{ height: "100%" }}
+                        title={
+                          <Space>
+                            <HistoryOutlined
+                              style={{ color: "var(--secondary-color)" }}
+                            />
+                            <Text
+                              strong
+                              style={{ color: "var(--secondary-color)" }}
+                            >
+                              Lịch sử hoàn thành
+                            </Text>
+                          </Space>
+                        }
+                      >
+                        {treatmentFlow.stepHistory.length > 0 ? (
+                          <Timeline
+                            className="doctor-timeline"
+                            items={treatmentFlow.stepHistory.map(
+                              (step, index) => ({
+                                color: "var(--primary-color)",
+                                dot: (
+                                  <div
+                                    style={{
+                                      background: "var(--primary-gradient)",
+                                      width: "24px",
+                                      height: "24px",
+                                      borderRadius: "50%",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      boxShadow:
+                                        "0 4px 12px var(--shadow-light)",
+                                    }}
+                                  >
+                                    <CheckCircleOutlined
+                                      style={{
+                                        color: "white",
+                                        fontSize: "12px",
+                                      }}
+                                    />
+                                  </div>
+                                ),
+                                children: (
+                                  <div style={{ paddingBottom: "16px" }}>
+                                    <Text
+                                      strong
+                                      style={{
+                                        color: "var(--text-dark)",
+                                        fontSize: "15px",
+                                      }}
+                                    >
+                                      ✅ {step.title}
+                                    </Text>
+                                    <br />
+                                    <Text
+                                      type="secondary"
+                                      style={{ fontSize: "13px" }}
+                                    >
+                                      🕒{" "}
+                                      {new Date(
+                                        step.completedAt
+                                      ).toLocaleString("vi-VN")}
+                                    </Text>
+                                  </div>
+                                ),
+                              })
+                            )}
+                          />
+                        ) : (
+                          <div
+                            style={{ textAlign: "center", padding: "40px 0" }}
+                          >
+                            <ClockCircleOutlined
+                              style={{
+                                fontSize: "48px",
+                                color: "var(--text-muted)",
+                              }}
+                            />
+                            <div style={{ marginTop: "16px" }}>
+                              <Text type="secondary">
+                                Chưa có bước nào hoàn thành
+                              </Text>
+                            </div>
+                          </div>
+                        )}
                       </Card>
                     </Col>
                   </Row>
@@ -420,97 +728,288 @@ const DoctorDashboard = () => {
             )}
 
             {/* Today's Schedule */}
-            <Col span={12}>
+            <Col xs={24} lg={12}>
               <Card
-                title="Lịch hẹn hôm nay"
+                className="doctor-card doctor-fade-in"
+                style={{ animationDelay: "0.5s", height: "100%" }}
+                title={
+                  <Space>
+                    <CalendarOutlined
+                      style={{ color: "var(--secondary-color)" }}
+                    />
+                    <Text strong style={{ color: "var(--secondary-color)" }}>
+                      📅 Lịch hẹn hôm nay
+                    </Text>
+                  </Space>
+                }
                 extra={
-                  <Button type="primary" icon={<PlusOutlined />}>
+                  <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    className="doctor-btn-primary"
+                    size="small"
+                  >
                     Thêm lịch hẹn
                   </Button>
                 }
               >
-                <List
-                  dataSource={todayAppointments}
-                  renderItem={(item) => (
-                    <List.Item>
-                      <List.Item.Meta
-                        avatar={<Avatar icon={<ClockCircleOutlined />} />}
-                        title={`${item.time} - ${item.patient}`}
-                        description={item.type}
+                <div className="doctor-list">
+                  {todayAppointments.length > 0 ? (
+                    <List
+                      dataSource={todayAppointments}
+                      renderItem={(item, index) => (
+                        <List.Item
+                          style={{
+                            border: "none",
+                            padding: "16px",
+                            borderRadius: "12px",
+                            background: "var(--bg-card)",
+                            marginBottom: "12px",
+                            boxShadow: "0 2px 8px var(--shadow-soft)",
+                            transition: "var(--transition-normal)",
+                          }}
+                          className="doctor-fade-in"
+                          actions={[
+                            <Button
+                              size="small"
+                              className="doctor-btn-secondary"
+                              icon={<FileTextOutlined />}
+                            >
+                              Chi tiết
+                            </Button>,
+                          ]}
+                        >
+                          <List.Item.Meta
+                            avatar={
+                              <div
+                                style={{
+                                  background: "var(--secondary-gradient)",
+                                  width: "40px",
+                                  height: "40px",
+                                  borderRadius: "50%",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  boxShadow:
+                                    "0 4px 12px rgba(102, 126, 234, 0.3)",
+                                }}
+                              >
+                                <ClockCircleOutlined
+                                  style={{ color: "white", fontSize: "16px" }}
+                                />
+                              </div>
+                            }
+                            title={
+                              <div>
+                                <Text
+                                  strong
+                                  style={{
+                                    color: "var(--text-dark)",
+                                    fontSize: "15px",
+                                  }}
+                                >
+                                  🕒 {item.time}
+                                </Text>
+                                <br />
+                                <Text
+                                  style={{
+                                    color: "var(--primary-color)",
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {item.patient}
+                                </Text>
+                              </div>
+                            }
+                            description={
+                              <Tag
+                                className="doctor-tag-secondary"
+                                style={{ marginTop: "4px" }}
+                              >
+                                {item.type}
+                              </Tag>
+                            }
+                          />
+                        </List.Item>
+                      )}
+                    />
+                  ) : (
+                    <div style={{ textAlign: "center", padding: "40px 0" }}>
+                      <CalendarOutlined
+                        style={{ fontSize: "48px", color: "var(--text-muted)" }}
                       />
-                      <Button size="small">Chi tiết</Button>
-                    </List.Item>
+                      <div style={{ marginTop: "16px" }}>
+                        <Text type="secondary">Không có lịch hẹn hôm nay</Text>
+                      </div>
+                    </div>
                   )}
-                />
+                </div>
               </Card>
             </Col>
 
             {/* Patient List */}
-            <Col span={12}>
+            <Col xs={24} lg={12}>
               <Card
-                title="Bệnh nhân của tôi"
+                className="doctor-card doctor-fade-in"
+                style={{ animationDelay: "0.6s", height: "100%" }}
+                title={
+                  <Space>
+                    <TeamOutlined style={{ color: "var(--primary-color)" }} />
+                    <Text strong style={{ color: "var(--primary-color)" }}>
+                      👥 Bệnh nhân của tôi
+                    </Text>
+                  </Space>
+                }
                 extra={
-                  <Button type="primary" icon={<PlusOutlined />}>
+                  <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    className="doctor-btn-primary"
+                    size="small"
+                  >
                     Thêm bệnh nhân
                   </Button>
                 }
               >
-                <List
-                  dataSource={mockPatients}
-                  renderItem={(patient) => (
-                    <List.Item
-                      actions={[
-                        <Button
-                          size="small"
-                          onClick={() => handleStartNewTreatment(patient)}
-                          type="primary"
-                          disabled={
-                            treatmentFlow.currentPatient?.id === patient.id
+                <div className="doctor-list">
+                  <List
+                    dataSource={mockPatients}
+                    renderItem={(patient, index) => (
+                      <List.Item
+                        style={{
+                          border: "none",
+                          padding: "20px",
+                          borderRadius: "12px",
+                          background: "var(--bg-card)",
+                          marginBottom: "16px",
+                          boxShadow: "0 2px 8px var(--shadow-soft)",
+                          transition: "var(--transition-normal)",
+                        }}
+                        className="doctor-fade-in"
+                        actions={[
+                          <Button
+                            size="small"
+                            onClick={() => handleStartNewTreatment(patient)}
+                            type="primary"
+                            className="doctor-btn-primary"
+                            disabled={
+                              treatmentFlow.currentPatient?.id === patient.id
+                            }
+                            icon={<PlayCircleOutlined />}
+                          >
+                            Bắt đầu điều trị
+                          </Button>,
+                          <Button
+                            size="small"
+                            className="doctor-btn-secondary"
+                            onClick={() => {
+                              setSelectedPatient(patient);
+                              setSelectedSection("patient-view");
+                            }}
+                            icon={<FileTextOutlined />}
+                          >
+                            Xem hồ sơ
+                          </Button>,
+                        ]}
+                      >
+                        <List.Item.Meta
+                          avatar={
+                            <Avatar
+                              size={50}
+                              icon={<UserOutlined />}
+                              style={{
+                                background: "var(--primary-gradient)",
+                                boxShadow: "0 4px 12px var(--shadow-light)",
+                              }}
+                            />
                           }
-                        >
-                          🏥 Bắt đầu điều trị
-                        </Button>,
-                        <Button
-                          size="small"
-                          onClick={() => {
-                            setSelectedPatient(patient);
-                            setSelectedSection("patient-view");
-                          }}
-                        >
-                          📋 Xem hồ sơ
-                        </Button>,
-                      ]}
-                    >
-                      <List.Item.Meta
-                        avatar={<Avatar icon={<UserOutlined />} />}
-                        title={patient.name}
-                        description={
-                          <Space direction="vertical" size="small">
-                            <Text type="secondary">
-                              {patient.age} tuổi - {patient.treatmentType}
-                            </Text>
-                            <Progress percent={patient.progress} size="small" />
-                            <Tag
-                              color={
-                                patient.status === "completed"
-                                  ? "green"
-                                  : patient.status === "in-treatment"
-                                  ? "blue"
-                                  : "orange"
-                              }
+                          title={
+                            <div style={{ marginBottom: "8px" }}>
+                              <Text
+                                strong
+                                style={{
+                                  fontSize: "16px",
+                                  color: "var(--text-dark)",
+                                }}
+                              >
+                                {patient.name}
+                              </Text>
+                              {treatmentFlow.currentPatient?.id ===
+                                patient.id && (
+                                <Tag
+                                  className="doctor-tag-primary"
+                                  style={{
+                                    marginLeft: "8px",
+                                    fontSize: "11px",
+                                  }}
+                                >
+                                  🔄 Đang điều trị
+                                </Tag>
+                              )}
+                            </div>
+                          }
+                          description={
+                            <Space
+                              direction="vertical"
+                              size="small"
+                              style={{ width: "100%" }}
                             >
-                              {patient.status === "completed"
-                                ? "Hoàn thành"
-                                : patient.status === "in-treatment"
-                                ? "Đang điều trị"
-                                : "Tư vấn"}
-                            </Tag>
-                          </Space>
-                        }
-                      />
-                    </List.Item>
-                  )}
-                />
+                              <Text
+                                type="secondary"
+                                style={{ fontSize: "13px" }}
+                              >
+                                👤 {patient.age} tuổi • 🏥{" "}
+                                {patient.treatmentType}
+                              </Text>
+                              <div>
+                                <Text
+                                  type="secondary"
+                                  style={{
+                                    fontSize: "12px",
+                                    marginBottom: "4px",
+                                    display: "block",
+                                  }}
+                                >
+                                  Tiến độ điều trị:
+                                </Text>
+                                <Progress
+                                  percent={patient.progress}
+                                  size="small"
+                                  className="doctor-progress"
+                                  strokeWidth={8}
+                                  format={(percent) => (
+                                    <Text
+                                      style={{
+                                        fontSize: "11px",
+                                        color: "var(--primary-color)",
+                                      }}
+                                    >
+                                      {percent}%
+                                    </Text>
+                                  )}
+                                />
+                              </div>
+                              <Tag
+                                className={
+                                  patient.status === "completed"
+                                    ? "doctor-tag-primary"
+                                    : "doctor-tag-secondary"
+                                }
+                                style={{ fontSize: "11px" }}
+                              >
+                                {patient.status === "completed"
+                                  ? "✅ Hoàn thành"
+                                  : patient.status === "in-treatment"
+                                  ? "🔄 Đang điều trị"
+                                  : "💬 Tư vấn"}
+                              </Tag>
+                            </Space>
+                          }
+                        />
+                      </List.Item>
+                    )}
+                  />
+                </div>
               </Card>
             </Col>
           </Row>
@@ -687,6 +1186,10 @@ const DoctorDashboard = () => {
       title: "Thông tin cá nhân",
       component: <DoctorProfile />,
     },
+    "theme-demo": {
+      title: "Demo Giao Diện Mới",
+      component: <ThemeDemo />,
+    },
   };
 
   const menuItems = [
@@ -732,6 +1235,11 @@ const DoctorDashboard = () => {
       type: "divider",
     },
     {
+      key: "theme-demo",
+      icon: <StarOutlined />,
+      label: "🎨 Demo Giao Diện Mới",
+    },
+    {
       key: "profile",
       icon: <UserOutlined />,
       label: "Thông tin cá nhân",
@@ -741,223 +1249,317 @@ const DoctorDashboard = () => {
   const currentSection = treatmentSections[selectedSection];
 
   return (
-    <Layout style={{ minHeight: "100vh" }}>
-      <Sider
-        collapsible
-        collapsed={collapsed}
-        onCollapse={setCollapsed}
-        width={280}
-        style={{ background: "#fff" }}
-      >
-        <div
-          style={{
-            padding: "16px",
-            borderBottom: "1px solid #f0f0f0",
-            textAlign: "center",
-          }}
+    <div className="doctor-dashboard">
+      <Layout style={{ minHeight: "100vh", background: "transparent" }}>
+        <Sider
+          collapsible
+          collapsed={collapsed}
+          onCollapse={setCollapsed}
+          width={280}
+          className="doctor-sidebar"
         >
-          <Avatar
-            size={collapsed ? 32 : 64}
-            icon={<UserOutlined />}
-            style={{ marginBottom: 8 }}
-          />
-          {!collapsed && (
-            <div>
-              <Title level={5} style={{ margin: "8px 0 4px" }}>
-                {user?.fullName || "BS. Lê Văn Doctor"}
-              </Title>
-              <Text type="secondary">Bác sĩ điều trị</Text>
-            </div>
-          )}
-        </div>
-
-        <Menu
-          mode="inline"
-          selectedKeys={[selectedSection]}
-          onClick={({ key }) => setSelectedSection(key)}
-          items={menuItems}
-          style={{ borderRight: 0 }}
-        />
-      </Sider>
-
-      <Layout>
-        <Header
-          style={{
-            background: "#fff",
-            padding: "0 24px",
-            borderBottom: "1px solid #f0f0f0",
-          }}
-        >
-          <Row justify="space-between" align="middle">
-            <Col>
-              <Space>
-                <Title level={4} style={{ margin: 0 }}>
-                  {currentSection?.title}
-                </Title>
-                {selectedPatient && (
-                  <Tag color="blue">Bệnh nhân: {selectedPatient.name}</Tag>
-                )}
-                {treatmentFlow.lastSaved && (
-                  <Tag color="green">
-                    <HistoryOutlined /> Lưu lần cuối:{" "}
-                    {new Date(treatmentFlow.lastSaved).toLocaleTimeString(
-                      "vi-VN"
-                    )}
-                  </Tag>
-                )}
-              </Space>
-            </Col>
-            <Col>
-              <Space>
-                <Badge count={5}>
-                  <Button icon={<BellOutlined />} />
-                </Badge>
-                <Dropdown
-                  menu={{
-                    items: userMenu.props.children.map((item) => ({
-                      key: item.key,
-                      icon: item.props.icon,
-                      label: item.props.children,
-                      onClick: item.props.onClick,
-                      type:
-                        item.type?.name === "MenuDivider"
-                          ? "divider"
-                          : undefined,
-                    })),
-                  }}
-                  placement="bottomRight"
-                >
-                  <Button type="text">
-                    <Space>
-                      <Avatar size="small" icon={<UserOutlined />} />
-                      {user?.fullName || "Bác sĩ"}
-                    </Space>
-                  </Button>
-                </Dropdown>
-              </Space>
-            </Col>
-          </Row>
-        </Header>
-
-        <Content style={{ margin: "24px", minHeight: "calc(100vh - 112px)" }}>
-          {selectedSection === "dashboard" && (
-            <Alert
-              message="Chào mừng bác sĩ quay trở lại!"
-              description="Hôm nay bạn có 8 lịch hẹn và 3 bệnh nhân cần theo dõi đặc biệt."
-              type="info"
-              showIcon
-              style={{ marginBottom: 24 }}
+          <div
+            style={{
+              padding: "16px",
+              borderBottom: "1px solid #f0f0f0",
+              textAlign: "center",
+            }}
+          >
+            <Avatar
+              size={collapsed ? 32 : 64}
+              icon={<UserOutlined />}
+              style={{ marginBottom: 8 }}
             />
-          )}
+            {!collapsed && (
+              <div>
+                <Title level={5} style={{ margin: "8px 0 4px" }}>
+                  {user?.fullName || "BS. Lê Văn Doctor"}
+                </Title>
+                <Text type="secondary">Bác sĩ điều trị</Text>
+              </div>
+            )}
+          </div>
 
-          {/* Enhanced Treatment Flow Progress */}
-          {treatmentFlow.currentPatient &&
-            (selectedSection === "examination" ||
-              selectedSection === "treatment-plan" ||
-              selectedSection === "schedule" ||
-              selectedSection === "patient-view") && (
-              <Card style={{ marginBottom: 24, background: "#f8f9fa" }}>
-                <Row align="middle" gutter={16}>
-                  <Col span={6}>
-                    <div>
-                      <Text strong style={{ fontSize: "16px" }}>
-                        🏥 Điều trị cho: {treatmentFlow.currentPatient.name}
-                      </Text>
-                      <br />
-                      <Text type="secondary">
-                        {treatmentFlow.currentPatient.age} tuổi | ID:{" "}
-                        {treatmentFlow.currentPatient.id}
-                      </Text>
-                      <br />
-                      <Text type="secondary">
-                        Gói dịch vụ:{" "}
-                        {treatmentFlow.currentPatient.servicePackage}
-                      </Text>
-                    </div>
-                  </Col>
-                  <Col span={16}>
-                    <Steps
-                      current={treatmentFlow.step}
-                      size="small"
-                      onChange={handleJumpToStep}
-                      items={[
-                        {
-                          title: "Khám lâm sàng",
-                          description: "Nhập kết quả khám",
-                          icon: treatmentFlow.completedSteps.includes(0) ? (
-                            <CheckCircleOutlined />
-                          ) : (
-                            <FileTextOutlined />
-                          ),
-                          status: treatmentFlow.completedSteps.includes(0)
-                            ? "finish"
+          <Menu
+            mode="inline"
+            selectedKeys={[selectedSection]}
+            onClick={({ key }) => setSelectedSection(key)}
+            items={menuItems}
+            style={{ borderRight: 0 }}
+          />
+        </Sider>
+
+        <Layout>
+          <Header className="doctor-layout-header">
+            <Row justify="space-between" align="middle">
+              <Col>
+                <Space>
+                  <Title level={4} style={{ margin: 0 }}>
+                    {currentSection?.title}
+                  </Title>
+                  {selectedPatient && (
+                    <Tag color="blue">Bệnh nhân: {selectedPatient.name}</Tag>
+                  )}
+                  {treatmentFlow.lastSaved && (
+                    <Tag color="green">
+                      <HistoryOutlined /> Lưu lần cuối:{" "}
+                      {new Date(treatmentFlow.lastSaved).toLocaleTimeString(
+                        "vi-VN"
+                      )}
+                    </Tag>
+                  )}
+                </Space>
+              </Col>
+              <Col>
+                <Space>
+                  <Badge count={5}>
+                    <Button icon={<BellOutlined />} />
+                  </Badge>
+                  <Dropdown
+                    menu={{
+                      items: userMenu.props.children.map((item) => ({
+                        key: item.key,
+                        icon: item.props.icon,
+                        label: item.props.children,
+                        onClick: item.props.onClick,
+                        type:
+                          item.type?.name === "MenuDivider"
+                            ? "divider"
                             : undefined,
-                        },
-                        {
-                          title: "Lập phác đồ",
-                          description: "Tùy chỉnh điều trị",
-                          icon: treatmentFlow.completedSteps.includes(1) ? (
-                            <CheckCircleOutlined />
-                          ) : (
-                            <MedicineBoxOutlined />
-                          ),
-                          status: treatmentFlow.completedSteps.includes(1)
-                            ? "finish"
-                            : undefined,
-                        },
-                        {
-                          title: "Lập lịch",
-                          description: "Sắp xếp thời gian",
-                          icon: treatmentFlow.completedSteps.includes(2) ? (
-                            <CheckCircleOutlined />
-                          ) : (
-                            <CalendarOutlined />
-                          ),
-                          status: treatmentFlow.completedSteps.includes(2)
-                            ? "finish"
-                            : undefined,
-                        },
-                        {
-                          title: "Theo dõi",
-                          description: "Quản lý tiến trình",
-                          icon: treatmentFlow.completedSteps.includes(3) ? (
-                            <CheckCircleOutlined />
-                          ) : (
-                            <PlayCircleOutlined />
-                          ),
-                          status: treatmentFlow.completedSteps.includes(3)
-                            ? "finish"
-                            : undefined,
-                        },
-                      ]}
-                    />
-                  </Col>
-                  <Col span={2}>
-                    <Space direction="vertical">
-                      <Button
-                        size="small"
-                        icon={<EditOutlined />}
-                        onClick={() =>
-                          setTreatmentFlow((prev) => ({
-                            ...prev,
-                            isEditing: !prev.isEditing,
-                          }))
-                        }
+                      })),
+                    }}
+                    placement="bottomRight"
+                  >
+                    <Button type="text" className="doctor-btn-secondary">
+                      <Space>
+                        <Avatar
+                          size="small"
+                          icon={<UserOutlined />}
+                          className="doctor-avatar"
+                        />
+                        {user?.fullName || "Bác sĩ"}
+                      </Space>
+                    </Button>
+                  </Dropdown>
+                </Space>
+              </Col>
+            </Row>
+          </Header>
+
+          <Content style={{ margin: "24px", minHeight: "calc(100vh - 112px)" }}>
+            {selectedSection === "dashboard" && (
+              <div style={{ marginBottom: 24 }}>
+                <Card
+                  className="doctor-glass-card doctor-fade-in"
+                  style={{
+                    background: "var(--glass-bg)",
+                    border: "1px solid var(--glass-border)",
+                    position: "relative",
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "4px",
+                      height: "100%",
+                      background: "var(--primary-gradient)",
+                    }}
+                  />
+                  <Row align="middle" gutter={16}>
+                    <Col>
+                      <div
+                        style={{
+                          background: "var(--primary-gradient)",
+                          width: "48px",
+                          height: "48px",
+                          borderRadius: "50%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          boxShadow: "0 8px 20px var(--shadow-light)",
+                        }}
                       >
-                        {treatmentFlow.isEditing ? "Hoàn tất" : "Chỉnh sửa"}
-                      </Button>
-                    </Space>
-                  </Col>
-                </Row>
-              </Card>
+                        <BellOutlined
+                          style={{ color: "white", fontSize: "20px" }}
+                        />
+                      </div>
+                    </Col>
+                    <Col flex={1}>
+                      <Title
+                        level={4}
+                        style={{ margin: 0, color: "var(--primary-color)" }}
+                      >
+                        🎉 Chào mừng bác sĩ quay trở lại!
+                      </Title>
+                      <Text
+                        style={{
+                          color: "var(--text-secondary)",
+                          fontSize: "15px",
+                        }}
+                      >
+                        Hôm nay bạn có{" "}
+                        <Text strong style={{ color: "var(--primary-color)" }}>
+                          8 lịch hẹn
+                        </Text>{" "}
+                        và{" "}
+                        <Text strong style={{ color: "var(--primary-color)" }}>
+                          3 bệnh nhân
+                        </Text>{" "}
+                        cần theo dõi đặc biệt.
+                      </Text>
+                    </Col>
+                    <Col>
+                      <Space>
+                        <Button
+                          className="doctor-btn-primary"
+                          size="small"
+                          icon={<CalendarOutlined />}
+                        >
+                          Xem lịch
+                        </Button>
+                        <Button
+                          className="doctor-btn-secondary"
+                          size="small"
+                          icon={<TeamOutlined />}
+                        >
+                          Quản lý BN
+                        </Button>
+                      </Space>
+                    </Col>
+                  </Row>
+                </Card>
+              </div>
             )}
 
-          <Card style={{ minHeight: "calc(100vh - 200px)" }}>
-            {currentSection?.component}
-          </Card>
-        </Content>
+            {/* Enhanced Treatment Flow Progress */}
+            {treatmentFlow.currentPatient &&
+              (selectedSection === "examination" ||
+                selectedSection === "treatment-plan" ||
+                selectedSection === "schedule" ||
+                selectedSection === "patient-view") && (
+                <Card style={{ marginBottom: 24, background: "#f8f9fa" }}>
+                  <Row align="middle" gutter={16}>
+                    <Col span={6}>
+                      <div>
+                        <Text strong style={{ fontSize: "16px" }}>
+                          🏥 Điều trị cho: {treatmentFlow.currentPatient.name}
+                        </Text>
+                        <br />
+                        <Text type="secondary">
+                          {treatmentFlow.currentPatient.age} tuổi | ID:{" "}
+                          {treatmentFlow.currentPatient.id}
+                        </Text>
+                        <br />
+                        <Text type="secondary">
+                          Gói dịch vụ:{" "}
+                          {treatmentFlow.currentPatient.servicePackage}
+                        </Text>
+                      </div>
+                    </Col>
+                    <Col span={16}>
+                      <Steps
+                        current={treatmentFlow.step}
+                        size="small"
+                        className="doctor-steps"
+                        onChange={handleJumpToStep}
+                        items={[
+                          {
+                            title: "Khám lâm sàng",
+                            description: "Nhập kết quả khám",
+                            icon: treatmentFlow.completedSteps.includes(0) ? (
+                              <CheckCircleOutlined />
+                            ) : (
+                              <FileTextOutlined />
+                            ),
+                            status: treatmentFlow.completedSteps.includes(0)
+                              ? "finish"
+                              : undefined,
+                          },
+                          {
+                            title: "Lập phác đồ",
+                            description: "Tùy chỉnh điều trị",
+                            icon: treatmentFlow.completedSteps.includes(1) ? (
+                              <CheckCircleOutlined />
+                            ) : (
+                              <MedicineBoxOutlined />
+                            ),
+                            status: treatmentFlow.completedSteps.includes(1)
+                              ? "finish"
+                              : undefined,
+                          },
+                          {
+                            title: "Lập lịch",
+                            description: "Sắp xếp thời gian",
+                            icon: treatmentFlow.completedSteps.includes(2) ? (
+                              <CheckCircleOutlined />
+                            ) : (
+                              <CalendarOutlined />
+                            ),
+                            status: treatmentFlow.completedSteps.includes(2)
+                              ? "finish"
+                              : undefined,
+                          },
+                          {
+                            title: "Theo dõi",
+                            description: "Quản lý tiến trình",
+                            icon: treatmentFlow.completedSteps.includes(3) ? (
+                              <CheckCircleOutlined />
+                            ) : (
+                              <PlayCircleOutlined />
+                            ),
+                            status: treatmentFlow.completedSteps.includes(3)
+                              ? "finish"
+                              : undefined,
+                          },
+                        ]}
+                      />
+                    </Col>
+                    <Col span={2}>
+                      <Space direction="vertical">
+                        <Button
+                          size="small"
+                          icon={<EditOutlined />}
+                          onClick={() =>
+                            setTreatmentFlow((prev) => ({
+                              ...prev,
+                              isEditing: !prev.isEditing,
+                            }))
+                          }
+                        >
+                          {treatmentFlow.isEditing ? "Hoàn tất" : "Chỉnh sửa"}
+                        </Button>
+                      </Space>
+                    </Col>
+                  </Row>
+                </Card>
+              )}
+
+            <Card
+              className="doctor-card"
+              style={{
+                minHeight: "calc(100vh - 200px)",
+                background: "var(--bg-card)",
+                border: "1px solid var(--border-light)",
+                borderRadius: "var(--radius-lg)",
+                overflow: "hidden",
+                position: "relative",
+              }}
+              bodyStyle={{
+                padding: selectedSection === "dashboard" ? "24px" : "32px",
+                background: "transparent",
+              }}
+            >
+              <div style={{ position: "relative", zIndex: 1 }}>
+                {currentSection?.component}
+              </div>
+            </Card>
+          </Content>
+        </Layout>
       </Layout>
-    </Layout>
+    </div>
   );
 };
 

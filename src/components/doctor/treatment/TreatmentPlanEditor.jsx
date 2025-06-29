@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useCallback } from "react";
+import "../DoctorTheme.css";
 import {
   Card,
   Form,
@@ -812,9 +813,12 @@ const TreatmentPlanEditor = ({
   };
 
   return (
-    <div style={{ padding: "24px", background: "#f5f5f5", minHeight: "100vh" }}>
+    <div
+      className="doctor-dashboard"
+      style={{ padding: "24px", minHeight: "100vh" }}
+    >
       {hasError ? (
-        <Card>
+        <Card className="doctor-card">
           <Alert
             message="Có lỗi xảy ra"
             description="Vui lòng tải lại trang hoặc liên hệ hỗ trợ kỹ thuật."
@@ -823,6 +827,7 @@ const TreatmentPlanEditor = ({
             action={
               <Button
                 size="small"
+                className="doctor-btn-primary"
                 onClick={() => {
                   setHasError(false);
                   window.location.reload();
@@ -835,471 +840,539 @@ const TreatmentPlanEditor = ({
         </Card>
       ) : (
         <>
-          <Card>
-            <Title level={2}>Lập Phác Đồ Điều Trị Cá Nhân Hóa</Title>
-
-            {/* Thông tin bệnh nhân và chẩn đoán */}
-            <Card
-              size="small"
-              style={{ marginBottom: 24, background: "#f9f9f9" }}
-            >
-              <Row gutter={16}>
-                <Col span={8}>
-                  <Text strong>Bệnh nhân:</Text> {patientInfo?.name}
-                  <br />
-                  <Text strong>Chẩn đoán:</Text> {examinationData?.diagnosis}
-                </Col>
-                <Col span={8}>
-                  <Text strong>Khuyến nghị:</Text>{" "}
-                  {examinationData?.recommendations}
-                </Col>
-                <Col span={8}>
-                  <Text strong>Bác sĩ khám:</Text> {examinationData?.doctorId}
-                </Col>
-              </Row>
-            </Card>
-
-            <Form form={form} layout="vertical" onFinish={handleSubmit}>
-              <Form.Item
-                label="Chọn loại điều trị"
-                name="treatmentType"
-                rules={[
-                  { required: true, message: "Vui lòng chọn loại điều trị" },
-                ]}
+          <Card className="doctor-card doctor-fade-in">
+            <div className="doctor-header">
+              <Title
+                level={2}
+                style={{ color: "var(--text-white)", margin: 0 }}
               >
-                <Select
-                  placeholder="Chọn dịch vụ điều trị..."
-                  onChange={handleTemplateChange}
-                  size="large"
+                💊 Lập Phác Đồ Điều Trị Cá Nhân Hóa
+              </Title>
+            </div>
+
+            <div style={{ padding: "24px" }}>
+              {/* Thông tin bệnh nhân và chẩn đoán */}
+              <Card className="doctor-glass-card" style={{ marginBottom: 24 }}>
+                <Title
+                  level={4}
+                  style={{ color: "var(--primary-color)", marginBottom: 16 }}
                 >
-                  <Option value="IVF">
-                    🧪 IVF - Thụ tinh trong ống nghiệm
-                  </Option>
-                  <Option value="IUI">
-                    💉 IUI - Thụ tinh nhân tạo trong tử cung
-                  </Option>
-                </Select>
-              </Form.Item>
+                  👤 Thông tin bệnh nhân & Chẩn đoán
+                </Title>
+                <Row gutter={16}>
+                  <Col span={8}>
+                    <div>
+                      <Text strong style={{ color: "var(--primary-dark)" }}>
+                        Bệnh nhân:
+                      </Text>
+                      <br />
+                      <Text style={{ fontSize: "16px" }}>
+                        {patientInfo?.name}
+                      </Text>
+                      <br />
+                      <br />
+                      <Text strong style={{ color: "var(--primary-dark)" }}>
+                        Chẩn đoán:
+                      </Text>
+                      <br />
+                      <Text style={{ fontSize: "14px" }}>
+                        {examinationData?.diagnosis}
+                      </Text>
+                    </div>
+                  </Col>
+                  <Col span={8}>
+                    <div>
+                      <Text strong style={{ color: "var(--primary-dark)" }}>
+                        Khuyến nghị:
+                      </Text>
+                      <br />
+                      <Text style={{ fontSize: "14px" }}>
+                        {examinationData?.recommendations}
+                      </Text>
+                    </div>
+                  </Col>
+                  <Col span={8}>
+                    <div>
+                      <Text strong style={{ color: "var(--primary-dark)" }}>
+                        Bác sĩ khám:
+                      </Text>
+                      <br />
+                      <Text style={{ fontSize: "14px" }}>
+                        {examinationData?.doctorId}
+                      </Text>
+                    </div>
+                  </Col>
+                </Row>
+              </Card>
 
-              {/* Gợi ý của bác sĩ */}
-              {doctorNotes && (
-                <Alert
-                  message="💡 Gợi ý từ hệ thống dựa trên kết quả khám"
-                  description={
-                    <pre
-                      style={{ whiteSpace: "pre-line", fontFamily: "inherit" }}
-                    >
-                      {doctorNotes}
-                    </pre>
-                  }
-                  type="info"
-                  showIcon
-                  style={{ marginBottom: 24 }}
-                />
-              )}
-
-              {/* Template Details with Real-time Updates */}
-              {selectedTemplate && (
-                <Card
-                  title="Chi Tiết Phác Đồ Được Chọn"
-                  style={{ marginBottom: 24 }}
+              <Form form={form} layout="vertical" onFinish={handleSubmit}>
+                <Form.Item
+                  label="Chọn loại điều trị"
+                  name="treatmentType"
+                  rules={[
+                    { required: true, message: "Vui lòng chọn loại điều trị" },
+                  ]}
                 >
-                  <Row gutter={16} style={{ marginBottom: 16 }}>
-                    <Col span={8}>
-                      <Statistic
-                        title="Thời gian dự kiến"
-                        value={selectedTemplate.estimatedDuration}
-                        prefix={<ClockCircleOutlined />}
-                      />
-                    </Col>
-                    <Col span={8}>
-                      <Statistic
-                        title="Chi phí ước tính"
-                        value={selectedTemplate.cost}
-                        prefix={<DollarOutlined />}
-                        suffix=""
-                      />
-                    </Col>
-                    <Col span={8}>
-                      <Statistic
-                        title="Tỷ lệ thành công"
-                        value={selectedTemplate.successRate}
-                        suffix=""
-                        prefix={<CheckCircleOutlined />}
-                      />
-                    </Col>
-                  </Row>
+                  <Select
+                    placeholder="Chọn dịch vụ điều trị..."
+                    onChange={handleTemplateChange}
+                    size="large"
+                  >
+                    <Option value="IVF">
+                      🧪 IVF - Thụ tinh trong ống nghiệm
+                    </Option>
+                    <Option value="IUI">
+                      💉 IUI - Thụ tinh nhân tạo trong tử cung
+                    </Option>
+                  </Select>
+                </Form.Item>
 
-                  <Divider />
-
-                  {/* Enhanced Phase Display with Customizations */}
-                  <Title level={4}>
-                    Các Giai Đoạn Điều Trị
-                    {Object.keys(customizations.phases || {}).length > 0 && (
-                      <Badge
-                        count={Object.keys(customizations.phases).length}
-                        offset={[10, 0]}
+                {/* Gợi ý của bác sĩ */}
+                {doctorNotes && (
+                  <Alert
+                    message="💡 Gợi ý từ hệ thống dựa trên kết quả khám"
+                    description={
+                      <pre
+                        style={{
+                          whiteSpace: "pre-line",
+                          fontFamily: "inherit",
+                        }}
                       >
-                        <Tag color="orange">Đã tùy chỉnh</Tag>
-                      </Badge>
-                    )}
-                  </Title>
+                        {doctorNotes}
+                      </pre>
+                    }
+                    type="info"
+                    showIcon
+                    style={{ marginBottom: 24 }}
+                  />
+                )}
 
-                  <Collapse
-                    accordion
-                    items={selectedTemplate.phases.map((phase, index) => {
-                      const effectivePhase = getEffectivePhase(phase);
-                      const isCustomized = customizations.phases?.[phase.id];
+                {/* Template Details with Real-time Updates */}
+                {selectedTemplate && (
+                  <Card
+                    className="doctor-glass-card"
+                    title="Chi Tiết Phác Đồ Được Chọn"
+                    style={{ marginBottom: 24 }}
+                  >
+                    <Row gutter={16} style={{ marginBottom: 16 }}>
+                      <Col span={8}>
+                        <Statistic
+                          title="Thời gian dự kiến"
+                          value={selectedTemplate.estimatedDuration}
+                          prefix={<ClockCircleOutlined />}
+                        />
+                      </Col>
+                      <Col span={8}>
+                        <Statistic
+                          title="Chi phí ước tính"
+                          value={selectedTemplate.cost}
+                          prefix={<DollarOutlined />}
+                          suffix=""
+                        />
+                      </Col>
+                      <Col span={8}>
+                        <Statistic
+                          title="Tỷ lệ thành công"
+                          value={selectedTemplate.successRate}
+                          suffix=""
+                          prefix={<CheckCircleOutlined />}
+                        />
+                      </Col>
+                    </Row>
 
-                      return {
-                        key: phase.id,
-                        label: (
-                          <Space>
-                            <Badge
-                              status={isCustomized ? "warning" : "default"}
-                              text={
-                                <span
-                                  style={{
-                                    fontWeight: isCustomized
-                                      ? "bold"
-                                      : "normal",
+                    <Divider />
+
+                    {/* Enhanced Phase Display with Customizations */}
+                    <Title level={4}>
+                      Các Giai Đoạn Điều Trị
+                      {Object.keys(customizations.phases || {}).length > 0 && (
+                        <Badge
+                          count={Object.keys(customizations.phases).length}
+                          offset={[10, 0]}
+                        >
+                          <Tag color="orange">Đã tùy chỉnh</Tag>
+                        </Badge>
+                      )}
+                    </Title>
+
+                    <Collapse
+                      accordion
+                      items={selectedTemplate.phases.map((phase, index) => {
+                        const effectivePhase = getEffectivePhase(phase);
+                        const isCustomized = customizations.phases?.[phase.id];
+
+                        return {
+                          key: phase.id,
+                          label: (
+                            <Space>
+                              <Badge
+                                status={isCustomized ? "warning" : "default"}
+                                text={
+                                  <span
+                                    style={{
+                                      fontWeight: isCustomized
+                                        ? "bold"
+                                        : "normal",
+                                    }}
+                                  >
+                                    {index + 1}. {effectivePhase.name} (
+                                    {effectivePhase.duration})
+                                    {isCustomized && (
+                                      <Tag
+                                        color="orange"
+                                        size="small"
+                                        style={{ marginLeft: 8 }}
+                                      >
+                                        Đã sửa
+                                      </Tag>
+                                    )}
+                                  </span>
+                                }
+                              />
+                              <Tooltip title="Chỉnh sửa giai đoạn này">
+                                <Button
+                                  size="small"
+                                  icon={<EditOutlined />}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    try {
+                                      handleEditPhase(effectivePhase);
+                                    } catch (error) {
+                                      console.error(
+                                        "Error editing phase:",
+                                        error
+                                      );
+                                      setHasError(true);
+                                    }
                                   }}
-                                >
-                                  {index + 1}. {effectivePhase.name} (
-                                  {effectivePhase.duration})
-                                  {isCustomized && (
-                                    <Tag
-                                      color="orange"
+                                />
+                              </Tooltip>
+                            </Space>
+                          ),
+                          children: (
+                            <div>
+                              <div style={{ marginBottom: 16 }}>
+                                <Text strong>Mô tả:</Text>{" "}
+                                {effectivePhase.description}
+                                {isCustomized && (
+                                  <Alert
+                                    message="Giai đoạn này đã được tùy chỉnh"
+                                    type="info"
+                                    showIcon
+                                    size="small"
+                                    style={{ marginTop: 8 }}
+                                  />
+                                )}
+                              </div>
+
+                              {/* Activities Table with Real-time Updates */}
+                              <Table
+                                size="small"
+                                dataSource={effectivePhase.activities}
+                                pagination={false}
+                                rowKey={(record, index) => `activity-${index}`}
+                                columns={[
+                                  {
+                                    title: "Ngày",
+                                    dataIndex: "day",
+                                    key: "day",
+                                    width: 60,
+                                    render: (day) => (
+                                      <Tag color="blue">Ngày {day}</Tag>
+                                    ),
+                                  },
+                                  {
+                                    title: "Hoạt động",
+                                    dataIndex: "name",
+                                    key: "name",
+                                    render: (name, record) => (
+                                      <Space direction="vertical" size="small">
+                                        <Text strong>{name}</Text>
+                                        <Space size="small">
+                                          <Tag icon={<ClockCircleOutlined />}>
+                                            {record.duration} phút
+                                          </Tag>
+                                          <Tag
+                                            color={
+                                              record.required ? "red" : "green"
+                                            }
+                                          >
+                                            {record.required
+                                              ? "Bắt buộc"
+                                              : "Tùy chọn"}
+                                          </Tag>
+                                          <Tag color="purple">
+                                            {record.room}
+                                          </Tag>
+                                        </Space>
+                                      </Space>
+                                    ),
+                                  },
+                                ]}
+                              />
+
+                              {/* Medications for this phase */}
+                              {effectivePhase.medications &&
+                                effectivePhase.medications.length > 0 && (
+                                  <div style={{ marginTop: 16 }}>
+                                    <Title level={5}>
+                                      Thuốc trong giai đoạn này:
+                                    </Title>
+                                    <Table
                                       size="small"
-                                      style={{ marginLeft: 8 }}
-                                    >
-                                      Đã sửa
-                                    </Tag>
-                                  )}
-                                </span>
+                                      dataSource={effectivePhase.medications}
+                                      pagination={false}
+                                      rowKey={(record, index) =>
+                                        `medication-${index}`
+                                      }
+                                      columns={[
+                                        {
+                                          title: "Tên thuốc",
+                                          dataIndex: "name",
+                                          key: "name",
+                                        },
+                                        {
+                                          title: "Liều lượng",
+                                          dataIndex: "dosage",
+                                          key: "dosage",
+                                        },
+                                        {
+                                          title: "Tần suất",
+                                          dataIndex: "frequency",
+                                          key: "frequency",
+                                        },
+                                        {
+                                          title: "Thời gian",
+                                          key: "duration",
+                                          render: (_, record) => (
+                                            <Tag>
+                                              Ngày {record.startDay} -{" "}
+                                              {record.startDay +
+                                                record.duration -
+                                                1}
+                                            </Tag>
+                                          ),
+                                        },
+                                      ]}
+                                    />
+                                  </div>
+                                )}
+                            </div>
+                          ),
+                        };
+                      })}
+                    />
+                  </Card>
+                )}
+
+                {/* Custom Medications */}
+                {customMedications.length > 0 && (
+                  <Card
+                    className="doctor-glass-card"
+                    title="💊 Thuốc tùy chỉnh thêm"
+                    size="small"
+                    style={{ marginTop: 16 }}
+                  >
+                    {customMedications.map((med) => (
+                      <Card
+                        key={med.id}
+                        type="inner"
+                        size="small"
+                        style={{ marginBottom: 8 }}
+                      >
+                        <Row gutter={8}>
+                          <Col span={6}>
+                            <Input
+                              placeholder="Tên thuốc"
+                              value={med.name}
+                              onChange={(e) =>
+                                handleUpdateMedication(
+                                  med.id,
+                                  "name",
+                                  e.target.value
+                                )
                               }
                             />
-                            <Tooltip title="Chỉnh sửa giai đoạn này">
-                              <Button
-                                size="small"
-                                icon={<EditOutlined />}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  try {
-                                    handleEditPhase(effectivePhase);
-                                  } catch (error) {
-                                    console.error(
-                                      "Error editing phase:",
-                                      error
-                                    );
-                                    setHasError(true);
-                                  }
-                                }}
-                              />
-                            </Tooltip>
-                          </Space>
-                        ),
-                        children: (
-                          <div>
-                            <div style={{ marginBottom: 16 }}>
-                              <Text strong>Mô tả:</Text>{" "}
-                              {effectivePhase.description}
-                              {isCustomized && (
-                                <Alert
-                                  message="Giai đoạn này đã được tùy chỉnh"
-                                  type="info"
-                                  showIcon
-                                  size="small"
-                                  style={{ marginTop: 8 }}
-                                />
-                              )}
-                            </div>
-
-                            {/* Activities Table with Real-time Updates */}
-                            <Table
-                              size="small"
-                              dataSource={effectivePhase.activities}
-                              pagination={false}
-                              rowKey={(record, index) => `activity-${index}`}
-                              columns={[
-                                {
-                                  title: "Ngày",
-                                  dataIndex: "day",
-                                  key: "day",
-                                  width: 60,
-                                  render: (day) => (
-                                    <Tag color="blue">Ngày {day}</Tag>
-                                  ),
-                                },
-                                {
-                                  title: "Hoạt động",
-                                  dataIndex: "name",
-                                  key: "name",
-                                  render: (name, record) => (
-                                    <Space direction="vertical" size="small">
-                                      <Text strong>{name}</Text>
-                                      <Space size="small">
-                                        <Tag icon={<ClockCircleOutlined />}>
-                                          {record.duration} phút
-                                        </Tag>
-                                        <Tag
-                                          color={
-                                            record.required ? "red" : "green"
-                                          }
-                                        >
-                                          {record.required
-                                            ? "Bắt buộc"
-                                            : "Tùy chọn"}
-                                        </Tag>
-                                        <Tag color="purple">{record.room}</Tag>
-                                      </Space>
-                                    </Space>
-                                  ),
-                                },
-                              ]}
+                          </Col>
+                          <Col span={4}>
+                            <Input
+                              placeholder="Liều lượng"
+                              value={med.dosage}
+                              onChange={(e) =>
+                                handleUpdateMedication(
+                                  med.id,
+                                  "dosage",
+                                  e.target.value
+                                )
+                              }
                             />
+                          </Col>
+                          <Col span={4}>
+                            <Input
+                              placeholder="Tần suất"
+                              value={med.frequency}
+                              onChange={(e) =>
+                                handleUpdateMedication(
+                                  med.id,
+                                  "frequency",
+                                  e.target.value
+                                )
+                              }
+                            />
+                          </Col>
+                          <Col span={3}>
+                            <Select
+                              value={med.route}
+                              onChange={(value) =>
+                                handleUpdateMedication(med.id, "route", value)
+                              }
+                            >
+                              <Option value="Uống">Uống</Option>
+                              <Option value="Tiêm">Tiêm</Option>
+                              <Option value="Bôi">Bôi</Option>
+                            </Select>
+                          </Col>
+                          <Col span={3}>
+                            <InputNumber
+                              placeholder="Ngày bắt đầu"
+                              value={med.startDay}
+                              onChange={(value) =>
+                                handleUpdateMedication(
+                                  med.id,
+                                  "startDay",
+                                  value
+                                )
+                              }
+                              min={1}
+                            />
+                          </Col>
+                          <Col span={3}>
+                            <InputNumber
+                              placeholder="Thời gian (ngày)"
+                              value={med.duration}
+                              onChange={(value) =>
+                                handleUpdateMedication(
+                                  med.id,
+                                  "duration",
+                                  value
+                                )
+                              }
+                              min={1}
+                            />
+                          </Col>
+                          <Col span={1}>
+                            <Popconfirm
+                              title="Xóa thuốc này?"
+                              onConfirm={() => handleDeleteMedication(med.id)}
+                            >
+                              <Button
+                                icon={<DeleteOutlined />}
+                                size="small"
+                                danger
+                              />
+                            </Popconfirm>
+                          </Col>
+                        </Row>
+                      </Card>
+                    ))}
+                  </Card>
+                )}
 
-                            {/* Medications for this phase */}
-                            {effectivePhase.medications &&
-                              effectivePhase.medications.length > 0 && (
-                                <div style={{ marginTop: 16 }}>
-                                  <Title level={5}>
-                                    Thuốc trong giai đoạn này:
-                                  </Title>
-                                  <Table
-                                    size="small"
-                                    dataSource={effectivePhase.medications}
-                                    pagination={false}
-                                    rowKey={(record, index) =>
-                                      `medication-${index}`
-                                    }
-                                    columns={[
-                                      {
-                                        title: "Tên thuốc",
-                                        dataIndex: "name",
-                                        key: "name",
-                                      },
-                                      {
-                                        title: "Liều lượng",
-                                        dataIndex: "dosage",
-                                        key: "dosage",
-                                      },
-                                      {
-                                        title: "Tần suất",
-                                        dataIndex: "frequency",
-                                        key: "frequency",
-                                      },
-                                      {
-                                        title: "Thời gian",
-                                        key: "duration",
-                                        render: (_, record) => (
-                                          <Tag>
-                                            Ngày {record.startDay} -{" "}
-                                            {record.startDay +
-                                              record.duration -
-                                              1}
-                                          </Tag>
-                                        ),
-                                      },
-                                    ]}
-                                  />
-                                </div>
-                              )}
-                          </div>
-                        ),
-                      };
-                    })}
-                  />
-                </Card>
-              )}
+                {/* Requirements and Contraindications */}
+                {selectedTemplate && (
+                  <>
+                    <Row gutter={16} style={{ marginTop: 16 }}>
+                      <Col span={12}>
+                        <Card
+                          className="doctor-glass-card"
+                          title="✅ Yêu cầu"
+                          size="small"
+                        >
+                          <ul>
+                            {selectedTemplate.requirements.map((req, index) => (
+                              <li key={index}>
+                                <Text>{req}</Text>
+                              </li>
+                            ))}
+                          </ul>
+                        </Card>
+                      </Col>
+                      <Col span={12}>
+                        <Card
+                          className="doctor-glass-card"
+                          title="⚠️ Chống chỉ định"
+                          size="small"
+                        >
+                          <ul>
+                            {selectedTemplate.contraindications.map(
+                              (contra, index) => (
+                                <li key={index}>
+                                  <Text type="danger">{contra}</Text>
+                                </li>
+                              )
+                            )}
+                          </ul>
+                        </Card>
+                      </Col>
+                    </Row>
+                  </>
+                )}
 
-              {/* Custom Medications */}
-              {customMedications.length > 0 && (
-                <Card
-                  title="💊 Thuốc tùy chỉnh thêm"
-                  size="small"
+                <Form.Item
+                  label="Mức độ ưu tiên"
+                  name="priority"
                   style={{ marginTop: 16 }}
                 >
-                  {customMedications.map((med) => (
-                    <Card
-                      key={med.id}
-                      type="inner"
-                      size="small"
-                      style={{ marginBottom: 8 }}
+                  <Select>
+                    <Option value="high">🔴 Cao (Khẩn cấp)</Option>
+                    <Option value="normal">🟡 Bình thường</Option>
+                    <Option value="low">🟢 Thấp</Option>
+                  </Select>
+                </Form.Item>
+
+                <Form.Item
+                  label="Ghi chú riêng của bác sĩ"
+                  name="doctorNotes"
+                  tooltip="Những điều chỉnh, lưu ý đặc biệt cho bệnh nhân này"
+                >
+                  <Input.TextArea
+                    rows={4}
+                    placeholder="VD: Bệnh nhân có tiền sử dị ứng với thuốc X, cần theo dõi đặc biệt giai đoạn Y..."
+                    value={doctorNotes}
+                    onChange={(e) => setDoctorNotes(e.target.value)}
+                  />
+                </Form.Item>
+
+                <Form.Item style={{ marginTop: 24 }}>
+                  <Space>
+                    <Button
+                      icon={<SaveOutlined />}
+                      onClick={handleSaveDraft}
+                      disabled={!selectedTemplate}
+                      className="doctor-btn-secondary"
                     >
-                      <Row gutter={8}>
-                        <Col span={6}>
-                          <Input
-                            placeholder="Tên thuốc"
-                            value={med.name}
-                            onChange={(e) =>
-                              handleUpdateMedication(
-                                med.id,
-                                "name",
-                                e.target.value
-                              )
-                            }
-                          />
-                        </Col>
-                        <Col span={4}>
-                          <Input
-                            placeholder="Liều lượng"
-                            value={med.dosage}
-                            onChange={(e) =>
-                              handleUpdateMedication(
-                                med.id,
-                                "dosage",
-                                e.target.value
-                              )
-                            }
-                          />
-                        </Col>
-                        <Col span={4}>
-                          <Input
-                            placeholder="Tần suất"
-                            value={med.frequency}
-                            onChange={(e) =>
-                              handleUpdateMedication(
-                                med.id,
-                                "frequency",
-                                e.target.value
-                              )
-                            }
-                          />
-                        </Col>
-                        <Col span={3}>
-                          <Select
-                            value={med.route}
-                            onChange={(value) =>
-                              handleUpdateMedication(med.id, "route", value)
-                            }
-                          >
-                            <Option value="Uống">Uống</Option>
-                            <Option value="Tiêm">Tiêm</Option>
-                            <Option value="Bôi">Bôi</Option>
-                          </Select>
-                        </Col>
-                        <Col span={3}>
-                          <InputNumber
-                            placeholder="Ngày bắt đầu"
-                            value={med.startDay}
-                            onChange={(value) =>
-                              handleUpdateMedication(med.id, "startDay", value)
-                            }
-                            min={1}
-                          />
-                        </Col>
-                        <Col span={3}>
-                          <InputNumber
-                            placeholder="Thời gian (ngày)"
-                            value={med.duration}
-                            onChange={(value) =>
-                              handleUpdateMedication(med.id, "duration", value)
-                            }
-                            min={1}
-                          />
-                        </Col>
-                        <Col span={1}>
-                          <Popconfirm
-                            title="Xóa thuốc này?"
-                            onConfirm={() => handleDeleteMedication(med.id)}
-                          >
-                            <Button
-                              icon={<DeleteOutlined />}
-                              size="small"
-                              danger
-                            />
-                          </Popconfirm>
-                        </Col>
-                      </Row>
-                    </Card>
-                  ))}
-                </Card>
-              )}
-
-              {/* Requirements and Contraindications */}
-              {selectedTemplate && (
-                <>
-                  <Row gutter={16} style={{ marginTop: 16 }}>
-                    <Col span={12}>
-                      <Card title="✅ Yêu cầu" size="small">
-                        <ul>
-                          {selectedTemplate.requirements.map((req, index) => (
-                            <li key={index}>
-                              <Text>{req}</Text>
-                            </li>
-                          ))}
-                        </ul>
-                      </Card>
-                    </Col>
-                    <Col span={12}>
-                      <Card title="⚠️ Chống chỉ định" size="small">
-                        <ul>
-                          {selectedTemplate.contraindications.map(
-                            (contra, index) => (
-                              <li key={index}>
-                                <Text type="danger">{contra}</Text>
-                              </li>
-                            )
-                          )}
-                        </ul>
-                      </Card>
-                    </Col>
-                  </Row>
-                </>
-              )}
-
-              <Form.Item
-                label="Mức độ ưu tiên"
-                name="priority"
-                style={{ marginTop: 16 }}
-              >
-                <Select>
-                  <Option value="high">🔴 Cao (Khẩn cấp)</Option>
-                  <Option value="normal">🟡 Bình thường</Option>
-                  <Option value="low">🟢 Thấp</Option>
-                </Select>
-              </Form.Item>
-
-              <Form.Item
-                label="Ghi chú riêng của bác sĩ"
-                name="doctorNotes"
-                tooltip="Những điều chỉnh, lưu ý đặc biệt cho bệnh nhân này"
-              >
-                <Input.TextArea
-                  rows={4}
-                  placeholder="VD: Bệnh nhân có tiền sử dị ứng với thuốc X, cần theo dõi đặc biệt giai đoạn Y..."
-                  value={doctorNotes}
-                  onChange={(e) => setDoctorNotes(e.target.value)}
-                />
-              </Form.Item>
-
-              <Form.Item style={{ marginTop: 24 }}>
-                <Space>
-                  <Button
-                    icon={<SaveOutlined />}
-                    onClick={handleSaveDraft}
-                    disabled={!selectedTemplate}
-                  >
-                    💾 Lưu nháp
-                  </Button>
-                  <Button
-                    type="primary"
-                    htmlType="submit"
-                    loading={loading}
-                    size="large"
-                    disabled={!selectedTemplate}
-                    style={{ minWidth: "200px" }}
-                  >
-                    ✅ Xác nhận phác đồ & Lập lịch
-                  </Button>
-                </Space>
-              </Form.Item>
-            </Form>
+                      💾 Lưu nháp
+                    </Button>
+                    <Button
+                      type="primary"
+                      htmlType="submit"
+                      loading={loading}
+                      size="large"
+                      disabled={!selectedTemplate}
+                      style={{ minWidth: "200px" }}
+                      className="doctor-btn-primary"
+                    >
+                      ✅ Xác nhận phác đồ & Lập lịch
+                    </Button>
+                  </Space>
+                </Form.Item>
+              </Form>
+            </div>
           </Card>
 
           {/* Edit Phase Modal */}
           <Modal
+            className="doctor-modal"
             title={
               <div
                 style={{ display: "flex", alignItems: "center", gap: "12px" }}
@@ -2149,6 +2222,7 @@ const TreatmentPlanEditor = ({
 
           {/* Detailed Activity Editing Modal */}
           <Modal
+            className="doctor-modal"
             title={
               <div
                 style={{ display: "flex", alignItems: "center", gap: "8px" }}

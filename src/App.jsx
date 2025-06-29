@@ -77,7 +77,7 @@ const ScheduleManagement = lazy(() =>
 const ShiftManagement = lazy(() =>
   import("./components/manager/ShiftManagement")
 );
-
+const Services = lazy(() => import("./components/pages/Services/Services"));
 const MockLogin = lazy(() => import("./components/auth/MockLogin"));
 
 // Import auth routes (hoặc dùng component cũ cũng được)
@@ -90,6 +90,7 @@ import {
   DoctorRoute,
   PatientRoute,
 } from "./components/auth/ProtectedRoute";
+import ScrollToTop from "./components/common/ScrollToTop";
 
 // Loading Spinner
 const LoadingSpinner = () => (
@@ -182,6 +183,7 @@ function AppContent() {
 
   return (
     <Suspense fallback={<LoadingSpinner />}>
+      <ScrollToTop />
       <Routes>
         {/* Public routes */}
         <Route
@@ -253,6 +255,14 @@ function AppContent() {
           element={
             <LayoutWrapper>
               <Contact />
+            </LayoutWrapper>
+          }
+        />
+        <Route
+          path="/services"
+          element={
+            <LayoutWrapper>
+              <Services />
             </LayoutWrapper>
           }
         />

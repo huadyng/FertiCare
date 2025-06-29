@@ -1,104 +1,163 @@
-import React from "react";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./Footer.css";
 
 const Footer = () => {
+  const navigate = useNavigate();
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  const handleNavigation = async (path) => {
+    setIsNavigating(true);
+    try {
+      navigate(path);
+      // Scroll to top immediately
+      window.scrollTo(0, 0);
+    } catch (error) {
+      console.error("Navigation error:", error);
+    } finally {
+      setTimeout(() => setIsNavigating(false), 300);
+    }
+  };
+
+  const handleExternalLink = (url) => {
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const currentYear = new Date().getFullYear();
+
   return (
     <footer className="footer">
       <div className="footer-content">
-        <div className="footer-section">
+        {/* Brand Section */}
+        <div className="footer-section brand-section">
           <div className="footer-logo">
-            <span className="footer-logo-icon">🩺</span>
-            <h3>FertiCare</h3>
+            <span className="footer-logo-icon">💖</span>
+            <h3>Fertix</h3>
           </div>
-          <p>
-            Trung tâm điều trị hiếm muộn hàng đầu Việt Nam với hơn 15 năm kinh
-            nghiệm. Chúng tôi đồng hành cùng bạn trên hành trình tìm kiếm hạnh
-            phúc gia đình.
+          <p className="footer-description">
+            Trung tâm Hỗ trợ Sinh sản hàng đầu Việt Nam - Đồng hành cùng hạnh
+            phúc gia đình với công nghệ tiên tiến và đội ngũ chuyên gia giàu
+            kinh nghiệm.
           </p>
-          <div className="footer-social">
-            <div className="footer-social-item">
-              <span className="footer-social-icon">📘</span>
-            </div>
-            <div className="footer-social-item">
-              <span className="footer-social-icon">📷</span>
-            </div>
-            <div className="footer-social-item">
-              <span className="footer-social-icon">🐦</span>
-            </div>
-            <div className="footer-social-item">
-              <span className="footer-social-icon">📺</span>
-            </div>
+          <div className="footer-cta">
+            <button
+              onClick={() => handleNavigation("/services")}
+              className="footer-cta-btn"
+              disabled={isNavigating}
+            >
+              <span className="cta-icon">🌟</span>
+              {isNavigating ? "Đang chuyển..." : "Khám phá dịch vụ"}
+            </button>
           </div>
         </div>
 
+        {/* Quick Links */}
         <div className="footer-section">
-          <h3>Dịch vụ</h3>
+          <h3>Liên kết nhanh</h3>
           <ul>
             <li>
-              <a href="#ivf">🧪 Thụ tinh ống nghiệm (IVF)</a>
+              <button
+                onClick={() => handleNavigation("/services")}
+                className="footer-link-btn"
+                disabled={isNavigating}
+              >
+                🏥 Dịch vụ y tế
+              </button>
             </li>
             <li>
-              <a href="#icsi">💉 Tiêm tinh trùng (ICSI)</a>
+              <button
+                onClick={() => handleNavigation("/doctor")}
+                className="footer-link-btn"
+                disabled={isNavigating}
+              >
+                👨‍⚕️ Đội ngũ bác sĩ
+              </button>
             </li>
             <li>
-              <a href="#consultation">👩‍⚕️ Tư vấn chuyên khoa</a>
+              <button
+                onClick={() => handleNavigation("/blog-public")}
+                className="footer-link-btn"
+                disabled={isNavigating}
+              >
+                📰 Tin tức & Blog
+              </button>
             </li>
             <li>
-              <a href="#ultrasound">🔍 Siêu âm theo dõi</a>
-            </li>
-            <li>
-              <a href="#health-check">📋 Khám sức khỏe tổng quát</a>
+              <button
+                onClick={() => handleNavigation("/contact")}
+                className="footer-link-btn"
+                disabled={isNavigating}
+              >
+                📞 Liên hệ tư vấn
+              </button>
             </li>
           </ul>
         </div>
 
-        <div className="footer-section">
-          <h3>Thông tin</h3>
-          <ul>
-            <li>
-              <a href="/about">ℹ️ Về chúng tôi</a>
-            </li>
-            <li>
-              <a href="/doctors">👨‍⚕️ Đội ngũ bác sĩ</a>
-            </li>
-            <li>
-              <a href="/news">📰 Tin tức</a>
-            </li>
-            <li>
-              <a href="/achievements">🏆 Thành tựu</a>
-            </li>
-            <li>
-              <a href="/faq">❓ Câu hỏi thường gặp</a>
-            </li>
-          </ul>
-        </div>
-
-        <div className="footer-section">
-          <h3>Liên hệ</h3>
-          <div className="footer-contact-item">
-            <span className="footer-contact-icon">📍</span>
-            <span>123 Đường ABC, Quận 1, TP.HCM</span>
-          </div>
-          <div className="footer-contact-item">
-            <span className="footer-contact-icon">📞</span>
-            <span>1900 1234</span>
-          </div>
-          <div className="footer-contact-item">
-            <span className="footer-contact-icon">✉️</span>
-            <span>info@ferticare.com</span>
-          </div>
-          <div className="footer-contact-item">
-            <span className="footer-contact-icon">🕒</span>
-            <span>T2-T7: 7:00 - 18:00</span>
+        {/* Contact Information */}
+        <div className="footer-section contact-section">
+          <h3>Thông tin liên hệ</h3>
+          <div className="footer-contact-info">
+            <div className="footer-contact-item">
+              <span className="footer-contact-icon">📍</span>
+              <span>108 Hoàng Như Tiếp, Long Biên, Hà Nội</span>
+            </div>
+            <div className="footer-contact-item">
+              <span className="footer-contact-icon">📞</span>
+              <span className="hotline-number">Hotline: 1800 6858</span>
+            </div>
+            <div className="footer-contact-item">
+              <span className="footer-contact-icon">⏰</span>
+              <span>Thứ 2 - Chủ nhật: 7:00 - 20:00</span>
+            </div>
+            <div className="footer-contact-item">
+              <span className="footer-contact-icon">✉️</span>
+              <span>info@ferticare.vn</span>
+            </div>
+            <div className="footer-contact-item">
+              <span className="footer-contact-icon">🌐</span>
+              <span>www.ferticare.vn</span>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="footer-bottom">
-        <p>
-          &copy; 2024 FertiCare. Tất cả quyền được bảo lưu. | 🔒 Chính sách bảo
-          mật | 📋 Điều khoản sử dụng
-        </p>
+        <div className="footer-bottom-content">
+          <p className="copyright">
+            © {currentYear} FertiCare. Tất cả quyền được bảo lưu.
+          </p>
+          <div className="footer-social">
+            <div
+              className="footer-social-item"
+              title="Facebook"
+              onClick={() => handleExternalLink("https://facebook.com")}
+            >
+              <span className="footer-social-icon">📘</span>
+            </div>
+            <div
+              className="footer-social-item"
+              title="Instagram"
+              onClick={() => handleExternalLink("https://instagram.com")}
+            >
+              <span className="footer-social-icon">📷</span>
+            </div>
+            <div
+              className="footer-social-item"
+              title="YouTube"
+              onClick={() => handleExternalLink("https://youtube.com")}
+            >
+              <span className="footer-social-icon">📺</span>
+            </div>
+            <div
+              className="footer-social-item"
+              title="Zalo"
+              onClick={() => handleExternalLink("https://zalo.me")}
+            >
+              <span className="footer-social-icon">💬</span>
+            </div>
+          </div>
+        </div>
       </div>
     </footer>
   );

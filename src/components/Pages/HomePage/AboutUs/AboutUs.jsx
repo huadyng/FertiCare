@@ -25,7 +25,9 @@ const AboutUs = () => {
         </div>
       </section>
 
-      <div className="about-sections">
+      {/* Main Content - 2 Column Layout */}
+      <div className="about-main-content">
+        {/* Left Column - Values */}
         <div className="about-section about-values">
           <h2>
             <span className="section-icon">💎</span>
@@ -55,6 +57,7 @@ const AboutUs = () => {
           </ul>
         </div>
 
+        {/* Right Column - Achievements */}
         <div className="about-section about-numbers">
           <h2>
             <span className="section-icon">📊</span>
@@ -83,40 +86,34 @@ const AboutUs = () => {
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="about-section about-team">
-          <h2>
-            <span className="section-icon">👨‍⚕️</span>
-            Đội ngũ chuyên gia
-          </h2>
-          <div className="team-highlights">
-            <div className="team-highlight">
-              <span className="team-highlight-icon">🔬</span>
-              <h4>Chuyên gia IVF</h4>
+      {/* Compact Team Section */}
+      <div className="about-team-compact">
+        <h2>
+          <span className="section-icon">👨‍⚕️</span>
+          Đội ngũ chuyên gia hàng đầu
+        </h2>
+        <div className="team-summary">
+          <div className="team-stat">
+            <span className="team-stat-icon">🔬</span>
+            <div className="team-stat-content">
+              <h4>Chuyên gia IVF & Phôi học</h4>
               <p>
-                Bác sĩ chuyên khoa Sản phụ khoa, có nhiều năm kinh nghiệm trong
-                lĩnh vực hỗ trợ sinh sản
+                15+ bác sĩ chuyên khoa Sản phụ khoa & kỹ thuật viên phòng lab
               </p>
-            </div>
-            <div className="team-highlight">
-              <span className="team-highlight-icon">🩺</span>
-              <h4>Bác sĩ Nội tiết</h4>
-              <p>Chuyên gia điều trị các rối loạn nội tiết sinh sản, hormone</p>
-            </div>
-            <div className="team-highlight">
-              <span className="team-highlight-icon">🧪</span>
-              <h4>Chuyên viên Phôi học</h4>
-              <p>
-                Đội ngũ kỹ thuật viên phòng lab chuyên nghiệp, được đào tạo bài
-                bản
-              </p>
-            </div>
-            <div className="team-highlight">
-              <span className="team-highlight-icon">💭</span>
-              <h4>Tư vấn tâm lý</h4>
-              <p>Hỗ trợ tâm lý cho các cặp đôi trong suốt quá trình điều trị</p>
             </div>
           </div>
+          <div className="team-stat">
+            <span className="team-stat-icon">🩺</span>
+            <div className="team-stat-content">
+              <h4>Bác sĩ Nội tiết & Tư vấn</h4>
+              <p>Chuyên gia điều trị nội tiết và hỗ trợ tâm lý chuyên nghiệp</p>
+            </div>
+          </div>
+        </div>
+        <div className="team-cta">
+          <p>Được đào tạo tại Nhật Bản, Mỹ, Úc với chứng chỉ quốc tế</p>
         </div>
       </div>
     </div>

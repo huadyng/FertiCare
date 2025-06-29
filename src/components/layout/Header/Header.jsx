@@ -63,7 +63,7 @@ export default function Header() {
     <div className="header">
       <div className="logo">
         <img src={logo} alt="Logo" />
-        <span className="logo-text">FertiCare</span>
+        <span className="logo-text">Fertix</span>
       </div>
 
       <div className="navbar">
@@ -75,7 +75,7 @@ export default function Header() {
             </Link>
           </li>
           <li>
-            <Link to="/#services">
+            <Link to="/services">
               <span className="navbar-icon">⚕️</span>
               <span>Dịch vụ</span>
             </Link>

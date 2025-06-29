@@ -15,12 +15,12 @@
 
 .register-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #85d1fa, #f9b4fd);
+  background: linear-gradient(135deg, #ff7eb3 0%, #ff758c 50%, #ff6b9d 100%);
   display: flex;
   justify-content: center;
   align-items: center;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  padding: 10px;
+  font-family: "Inter", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  padding: 20px;
   position: relative;
   overflow: hidden;
 }
@@ -28,19 +28,14 @@
 .register-page::before {
   content: "";
   position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(
-      circle,
-      rgba(236, 233, 255, 0.4) 20%,
-      transparent 70%
-    )
-    center/25% 25%;
-  animation: moveWaves 20s linear infinite;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="registerGrain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="%23ffffff" opacity="0.03"/><circle cx="25" cy="75" r="0.8" fill="%23ffffff" opacity="0.02"/><circle cx="75" cy="25" r="1.2" fill="%23ffffff" opacity="0.025"/></pattern></defs><rect width="100" height="100" fill="url(%23registerGrain)"/></svg>');
+  animation: moveWaves 25s linear infinite;
   z-index: 0;
-  opacity: 0.6;
+  opacity: 0.8;
 }
 
 @keyframes moveWaves {
@@ -68,38 +63,43 @@
 
 /* Container */
 .register-container {
-  background-color: #fff;
-  width: 1500px;
-  max-width: 94%;
-  height: 900px;
-  min-height: 92vh;
-  border-radius: 28px;
+  background-color: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(20px);
+  width: 100%;
+  max-width: 1000px;
+  min-height: 90vh;
+  border-radius: 30px;
   display: flex;
   overflow: hidden;
   position: relative;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  box-shadow: 0 25px 60px rgba(255, 126, 179, 0.15),
+    0 10px 30px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-family: "Inter", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
   z-index: 1;
-  transform: scale(1.08);
   animation: containerAppear 0.8s ease-out forwards;
 }
 
 @keyframes containerAppear {
   0% {
     opacity: 0;
-    transform: scale(0.94) translateY(20px);
+    transform: scale(0.95) translateY(30px);
   }
   100% {
     opacity: 1;
-    transform: scale(1.08) translateY(0);
+    transform: scale(1) translateY(0);
   }
 }
 
 /* Left side */
 .register-left {
   flex: 1.2;
-  background-color: #fdf1f7;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 126, 179, 0.1) 0%,
+    rgba(255, 117, 140, 0.08) 100%
+  );
   display: flex;
   justify-content: center;
   align-items: center;
@@ -159,23 +159,25 @@
 }
 
 .register-form h2 {
-  color: #f0619a;
-  letter-spacing: 1px;
+  color: #ff6b9d;
+  letter-spacing: 0.5px;
   margin-bottom: 40px;
   text-align: center;
-  font-weight: 700;
-  font-size: 42px;
+  font-weight: 800;
+  font-size: 2.5rem;
   position: relative;
+  text-shadow: 0 2px 10px rgba(255, 107, 157, 0.2);
 }
 
 .register-form h2::after {
   content: "";
   display: block;
-  width: 100px;
-  height: 5px;
-  background: linear-gradient(90deg, #ec4899, #93c5fd);
-  margin: 15px auto 0;
-  border-radius: 3px;
+  width: 80px;
+  height: 4px;
+  background: linear-gradient(135deg, #ff7eb3, #ff758c);
+  margin: 20px auto 0;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(255, 126, 179, 0.3);
 }
 
 .register-form label {
@@ -190,7 +192,7 @@
 
 .register-form label::after {
   content: "*";
-  color: #ec4899;
+  color: #ff6b9d;
   margin-left: 4px;
   font-weight: bold;
 }
@@ -203,16 +205,17 @@
 .register-form select {
   width: 100%;
   padding: 18px 22px;
-  border-radius: 12px;
-  border: 2px solid #d1b3e0;
+  border-radius: 15px;
+  border: 2px solid rgba(255, 126, 179, 0.2);
   margin-top: 8px;
   font-size: 18px;
   outline: none;
-  transition: border-color 0.3s, box-shadow 0.3s, transform 0.2s ease;
-  background-color: #fafafa;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background-color: rgba(255, 255, 255, 0.9);
   margin-bottom: 2px;
   height: 60px;
   box-sizing: border-box;
+  font-family: inherit;
 }
 
 .register-form input::placeholder {
@@ -227,9 +230,10 @@
 .register-form input[type="date"].error,
 .register-form input[type="tel"].error,
 .register-form select.error {
-  border-color: #e74c3c;
-  background-color: #fff5f5;
-  box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.2);
+  border-color: #ef4444;
+  background-color: rgba(254, 242, 242, 0.9);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+  animation: errorShake 0.5s ease-in-out;
 }
 
 .register-form input[type="text"]:focus,
@@ -238,9 +242,10 @@
 .register-form input[type="date"]:focus,
 .register-form input[type="tel"]:focus,
 .register-form select:focus {
-  border-color: #ec4899;
-  box-shadow: 0 0 12px rgba(236, 72, 153, 0.25);
-  transform: scale(1.02);
+  border-color: #ff7eb3;
+  box-shadow: 0 0 0 4px rgba(255, 126, 179, 0.1);
+  background-color: rgba(255, 255, 255, 1);
+  transform: translateY(-2px);
 }
 
 .register-form input[type="text"]:hover,
@@ -249,8 +254,8 @@
 .register-form input[type="date"]:hover,
 .register-form input[type="tel"]:hover,
 .register-form select:hover {
-  border-color: #d1709d;
-  background-color: #fcfcfc;
+  border-color: rgba(255, 126, 179, 0.4);
+  background-color: rgba(255, 255, 255, 0.95);
 }
 
 /* Custom select arrow */
@@ -268,18 +273,27 @@
   display: flex;
   align-items: center;
   margin: 25px 0 25px 0;
-  background-color: #f8f2fd;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 126, 179, 0.08),
+    rgba(255, 255, 255, 0.9)
+  );
   padding: 22px 25px;
   border-radius: 15px;
-  border: 2px solid #d1b3e0;
-  transition: all 0.3s ease;
+  border: 2px solid rgba(255, 126, 179, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+  backdrop-filter: blur(5px);
 }
 
 .checkbox-group:hover {
-  background-color: #fcf6ff;
-  border-color: #ec4899;
-  box-shadow: 0 8px 20px rgba(236, 72, 153, 0.18);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 126, 179, 0.12),
+    rgba(255, 255, 255, 0.95)
+  );
+  border-color: #ff7eb3;
+  box-shadow: 0 8px 25px rgba(255, 126, 179, 0.15);
   transform: translateY(-3px);
 }
 
@@ -288,13 +302,13 @@
   position: absolute;
   top: -8px;
   left: 20px;
-  background: #f0619a;
+  background: linear-gradient(135deg, #ff7eb3, #ff758c);
   color: white;
   padding: 4px 12px;
   border-radius: 10px;
   font-size: 14px;
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(240, 97, 154, 0.25);
+  box-shadow: 0 2px 8px rgba(255, 126, 179, 0.3);
 }
 
 .checkbox-group input[type="checkbox"] {
@@ -302,7 +316,7 @@
   width: 30px;
   height: 30px;
   cursor: pointer;
-  accent-color: #ec4899;
+  accent-color: #ff7eb3;
   border-radius: 6px;
 }
 
@@ -317,24 +331,30 @@
 }
 
 .checkbox-group:hover label {
-  color: #ec4899;
+  color: #ff6b9d;
 }
 
 /* Error and success message */
 .field-error {
-  color: #e74c3c;
+  color: #ef4444;
   font-size: 15px;
-  margin: 5px 0 8px 2px;
-  font-style: italic;
-  animation: errorShake 0.4s ease-in-out;
+  margin: 8px 0 10px 2px;
+  font-style: normal;
+  font-weight: 600;
+  animation: errorSlideIn 0.3s ease-out;
   display: flex;
   align-items: center;
+  background: rgba(254, 242, 242, 0.8);
+  padding: 8px 12px;
+  border-radius: 8px;
+  border-left: 3px solid #ef4444;
+  backdrop-filter: blur(5px);
 }
 
 .field-error::before {
   content: "⚠️";
-  margin-right: 5px;
-  font-size: 14px;
+  margin-right: 8px;
+  font-size: 16px;
 }
 
 @keyframes errorShake {
@@ -353,15 +373,30 @@
   }
 }
 
+@keyframes errorSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .server-error {
-  color: #e74c3c;
-  font-weight: 500;
-  font-size: 17px;
-  background-color: #ffefef;
-  padding: 12px 18px;
-  border-radius: 8px;
-  border-left: 4px solid #e74c3c;
+  color: #ef4444;
+  font-weight: 600;
+  font-size: 16px;
+  background: rgba(254, 242, 242, 0.9);
+  backdrop-filter: blur(10px);
+  padding: 15px 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-left: 4px solid #ef4444;
   margin: 15px 0;
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.1);
+  animation: errorSlideIn 0.3s ease-out;
 }
 
 .server-success {
