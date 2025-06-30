@@ -1,4 +1,4 @@
-import axiosClient from "../services/axiosClient";
+import axiosClient from "./axiosClient";
 
 const apiAuth = {
   // Login với email/password để lấy JWT token thật

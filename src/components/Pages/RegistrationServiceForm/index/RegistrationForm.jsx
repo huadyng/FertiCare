@@ -19,10 +19,34 @@ const RegistrationForm = () => {
   const [availableSlots, setAvailableSlots] = useState([]);
   const [showSuccess, setShowSuccess] = useState(false);
   const [registerInfo, setRegisterInfo] = useState(null);
+  const [connectionError, setConnectionError] = useState(false);
+
+  // Kiểm tra kết nối API khi component mount
+  useEffect(() => {
+    const checkAPIConnection = async () => {
+      try {
+        await axiosClient.get("/api/services");
+        setConnectionError(false);
+      } catch (error) {
+        console.error("❌ [RegistrationForm] API Connection failed:", error);
+        setConnectionError(true);
+      }
+    };
+    checkAPIConnection();
+  }, []);
 
   // Lấy danh sách dịch vụ
   useEffect(() => {
-    axiosClient.get("/api/services").then((res) => setServices(res.data));
+    axiosClient
+      .get("/api/services")
+      .then((res) => {
+        setServices(res.data);
+        setConnectionError(false); // Reset error nếu thành công
+      })
+      .catch((error) => {
+        console.error("❌ [RegistrationForm] Failed to load services:", error);
+        setConnectionError(true);
+      });
   }, []);
 
   // Khi chọn dịch vụ, lấy danh sách bác sĩ
@@ -55,19 +79,13 @@ const RegistrationForm = () => {
         setFormData((prev) => ({ ...prev, doctorId: autoDoctorId }));
 
         try {
+          // Sử dụng endpoint mới để lấy danh sách ngày có sẵn
           const res = await axiosClient.get(
-            `/api/service-request/doctor-available-times/${autoDoctorId}`
+            `/api/service-request/available-dates/${autoDoctorId}`
           );
-          const grouped = {};
-          res.data.forEach((item) => {
-            const date = item.dateTime.split("T")[0];
-            const time = item.time;
-            if (!grouped[date]) grouped[date] = [];
-            grouped[date].push(time);
-          });
-          const dateList = Object.keys(grouped).map((d) => ({
-            date: d,
-            slots: grouped[d],
+          const dateList = res.data.map((dateStr) => ({
+            date: dateStr,
+            slots: [], // Slots sẽ được load khi chọn ngày
           }));
           setAvailableDates(dateList);
           setAvailableSlots([]);
@@ -90,33 +108,43 @@ const RegistrationForm = () => {
     }));
     if (!doctorId) return;
 
-    const res = await axiosClient.get(
-      `/api/service-request/doctor-available-times/${doctorId}`
-    );
-    const grouped = {};
-    res.data.forEach((item) => {
-      const date = item.dateTime.split("T")[0];
-      const time = item.time;
-      if (!grouped[date]) grouped[date] = [];
-      grouped[date].push(time);
-    });
-    const dateList = Object.keys(grouped).map((d) => ({
-      date: d,
-      slots: grouped[d],
-    }));
-    setAvailableDates(dateList);
-    setAvailableSlots([]);
+    try {
+      // Sử dụng endpoint mới để lấy danh sách ngày có sẵn
+      const res = await axiosClient.get(
+        `/api/service-request/available-dates/${doctorId}`
+      );
+      const dateList = res.data.map((dateStr) => ({
+        date: dateStr,
+        slots: [], // Slots sẽ được load khi chọn ngày
+      }));
+      setAvailableDates(dateList);
+      setAvailableSlots([]);
+    } catch (err) {
+      console.error("Lỗi lấy danh sách ngày:", err);
+    }
   };
 
-  const handleDateChange = (e) => {
+  const handleDateChange = async (e) => {
     const date = e.target.value;
     setFormData((prev) => ({
       ...prev,
       appointmentDate: date,
       appointmentTime: "",
     }));
-    const selected = availableDates.find((d) => d.date === date);
-    setAvailableSlots(selected?.slots || []);
+
+    if (!date || !formData.doctorId) return;
+
+    try {
+      // Lấy slots cho ngày được chọn
+      const res = await axiosClient.get(
+        `/api/service-request/doctor-available-times/${formData.doctorId}?date=${date}`
+      );
+      const slots = res.data.map((item) => item.time);
+      setAvailableSlots(slots);
+    } catch (err) {
+      console.error("Lỗi lấy slots cho ngày:", err);
+      setAvailableSlots([]);
+    }
   };
 
   const handleSlotChange = (e) => {
@@ -163,22 +191,20 @@ const RegistrationForm = () => {
         const doctorId = res.data.doctor.id;
         setFormData((prev) => ({ ...prev, doctorId }));
 
-        const res2 = await axiosClient.get(
-          `/api/service-request/doctor-available-times/${doctorId}`
-        );
-        const grouped = {};
-        res2.data.forEach((item) => {
-          const date = item.dateTime.split("T")[0];
-          const time = item.time;
-          if (!grouped[date]) grouped[date] = [];
-          grouped[date].push(time);
-        });
-        const dateList = Object.keys(grouped).map((d) => ({
-          date: d,
-          slots: grouped[d],
-        }));
-        setAvailableDates(dateList);
-        setAvailableSlots([]);
+        try {
+          // Sử dụng endpoint mới để lấy danh sách ngày có sẵn
+          const res2 = await axiosClient.get(
+            `/api/service-request/available-dates/${doctorId}`
+          );
+          const dateList = res2.data.map((dateStr) => ({
+            date: dateStr,
+            slots: [], // Slots sẽ được load khi chọn ngày
+          }));
+          setAvailableDates(dateList);
+          setAvailableSlots([]);
+        } catch (err) {
+          console.error("Lỗi cập nhật lịch sau khi đăng ký:", err);
+        }
       }
     } catch (err) {
       alert("Đăng ký thất bại: " + (err.response?.data || err.message));
@@ -187,6 +213,32 @@ const RegistrationForm = () => {
 
   return (
     <main className="registration-form-container">
+      {connectionError && (
+        <div
+          className="error-banner"
+          style={{
+            backgroundColor: "#ffebee",
+            border: "1px solid #f44336",
+            borderRadius: "4px",
+            padding: "12px",
+            marginBottom: "20px",
+            color: "#c62828",
+          }}
+        >
+          <strong>⚠️ Lỗi kết nối:</strong> Không thể kết nối tới server. Vui
+          lòng kiểm tra:
+          <ul style={{ margin: "8px 0", paddingLeft: "20px" }}>
+            <li>Backend có đang chạy trên port 8080 không</li>
+            <li>
+              Chạy lệnh: <code>npm run backend</code>
+            </li>
+            <li>
+              Hoặc chạy: <code>npm start</code> để khởi động cả frontend và
+              backend
+            </li>
+          </ul>
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="registration-form">
         <h1 className="h1">ĐĂNG KÝ DỊCH VỤ</h1>
 

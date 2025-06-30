@@ -1,4 +1,4 @@
-import axiosClient from "../services/axiosClient";
+import axiosClient from "./axiosClient";
 
 const apiProfile = {
   // Lấy profile của user hiện tại (tự động detect role)

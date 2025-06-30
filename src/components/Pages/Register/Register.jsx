@@ -169,6 +169,7 @@ export default function Register() {
       }, 3000);
     } catch (error) {
       let msg = "❌ Đăng ký thất bại.";
+      let isMailError = false;
 
       // ✅ Ghi log chi tiết lỗi
       if (error.response) {
@@ -176,15 +177,28 @@ export default function Register() {
         console.error("📄 Status code:", error.response.status);
 
         const errorData = error.response.data;
-        msg =
-          typeof errorData === "string" ? errorData : errorData.message || msg;
+        const errorMessage =
+          typeof errorData === "string" ? errorData : errorData.message || "";
+
+        // Kiểm tra lỗi mail server
+        if (
+          errorMessage.includes("MailSendException") ||
+          errorMessage.includes("Mail server connection failed") ||
+          errorMessage.includes("PKIX path building failed")
+        ) {
+          isMailError = true;
+          msg =
+            "✅ Tài khoản đã được tạo thành công! \n⚠️ Tuy nhiên, hệ thống gặp sự cố khi gửi email xác thực. \n📧 Vui lòng liên hệ admin để kích hoạt tài khoản hoặc thử đăng nhập trực tiếp.";
+        } else {
+          msg = errorMessage || msg;
+        }
 
         if (error.response.status === 409) {
           msg =
             "❌ Email này đã được đăng ký. Vui lòng sử dụng email khác hoặc đăng nhập.";
         } else if (error.response.status === 400) {
           msg = "❌ Thông tin đăng ký không hợp lệ. Vui lòng kiểm tra lại.";
-        } else if (error.response.status === 500) {
+        } else if (error.response.status === 500 && !isMailError) {
           msg = "❌ Lỗi server. Vui lòng thử lại sau ít phút.";
         }
       } else if (error.request) {
@@ -196,6 +210,13 @@ export default function Register() {
       }
 
       setServerMessage(msg);
+
+      // Nếu là lỗi mail nhưng tài khoản đã tạo thành công, reset form
+      if (isMailError) {
+        setFormData(INIT_DATA);
+        setTouched({});
+        setSubmitted(false);
+      }
     } finally {
       setLoading(false);
     }
@@ -567,15 +588,22 @@ export default function Register() {
           {serverMessage && (
             <div
               className={
-                serverMessage.startsWith("🎉") || serverMessage.startsWith("📧")
+                serverMessage.startsWith("🎉") ||
+                serverMessage.startsWith("📧") ||
+                serverMessage.startsWith("✅")
                   ? "server-success"
                   : "server-error"
               }
-              style={{ marginTop: 10 }}
+              style={{
+                marginTop: 10,
+                whiteSpace: "pre-line",
+                textAlign: "left",
+              }}
             >
               {serverMessage}
               {(serverMessage.startsWith("🎉") ||
-                serverMessage.startsWith("📧")) && (
+                serverMessage.startsWith("📧") ||
+                serverMessage.startsWith("✅")) && (
                 <div style={{ marginTop: 15 }}>
                   <button
                     type="button"
