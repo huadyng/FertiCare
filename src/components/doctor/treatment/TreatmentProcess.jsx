@@ -35,6 +35,12 @@ import {
   ClockCircleOutlined,
   TrophyOutlined,
   HeartOutlined,
+  ArrowRightOutlined,
+  ArrowLeftOutlined,
+  EyeOutlined,
+  PrinterOutlined,
+  StarOutlined,
+  ThunderboltOutlined,
 } from "@ant-design/icons";
 
 import ExaminationForm from "./ExaminationForm";
@@ -42,6 +48,7 @@ import TreatmentPlanEditor from "./TreatmentPlanEditor";
 import TreatmentScheduleForm from "./TreatmentScheduleForm";
 import PatientScheduleView from "./PatientScheduleView";
 import { treatmentStateManager } from "../../../utils/treatmentStateManager";
+import "./TreatmentProcess.css";
 
 const { Step } = Steps;
 const { Title, Text } = Typography;
@@ -304,30 +311,35 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
       description: "Nhập kết quả khám và xét nghiệm",
       icon: <FileTextOutlined />,
       component: ExaminationForm,
+      color: "#ff6b9d",
     },
     {
       title: "Lập phác đồ",
       description: "Chọn và cá nhân hóa phác đồ điều trị",
       icon: <MedicineBoxOutlined />,
       component: TreatmentPlanEditor,
+      color: "#ff758c",
     },
     {
       title: "Lập lịch điều trị",
       description: "Tạo lịch trình các buổi điều trị",
       icon: <CalendarOutlined />,
       component: TreatmentScheduleForm,
+      color: "#ff7eb3",
     },
     {
       title: "Theo dõi tiến trình",
       description: "Cập nhật và theo dõi các buổi điều trị",
       icon: <PlayCircleOutlined />,
       component: "TreatmentProgress",
+      color: "#ff9cbd",
     },
     {
       title: "Hoàn thành dịch vụ",
       description: "Tổng kết và hoàn tất quy trình",
       icon: <CheckCircleOutlined />,
       component: PatientScheduleView,
+      color: "#ffb3cd",
     },
   ];
 
@@ -399,12 +411,23 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
         title: "Ngày",
         dataIndex: "date",
         key: "date",
-        render: (date) => new Date(date).toLocaleDateString("vi-VN"),
+        render: (date) => (
+          <div className="treatment-date">
+            <CalendarOutlined />
+            <span>{new Date(date).toLocaleDateString("vi-VN")}</span>
+          </div>
+        ),
       },
       {
         title: "Hoạt động",
         dataIndex: "activity",
         key: "activity",
+        render: (activity) => (
+          <div className="treatment-activity">
+            <MedicineBoxOutlined />
+            <span>{activity}</span>
+          </div>
+        ),
       },
       {
         title: "Trạng thái",
@@ -412,29 +435,61 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
         key: "status",
         render: (status) => {
           const statusConfig = {
-            completed: { color: "green", text: "Hoàn thành" },
-            in_progress: { color: "blue", text: "Đang thực hiện" },
-            pending: { color: "orange", text: "Chờ thực hiện" },
-            cancelled: { color: "red", text: "Đã hủy" },
+            completed: {
+              color: "success",
+              text: "Hoàn thành",
+              icon: <CheckCircleOutlined />,
+            },
+            in_progress: {
+              color: "processing",
+              text: "Đang thực hiện",
+              icon: <PlayCircleOutlined />,
+            },
+            pending: {
+              color: "warning",
+              text: "Chờ thực hiện",
+              icon: <ClockCircleOutlined />,
+            },
+            cancelled: {
+              color: "error",
+              text: "Đã hủy",
+              icon: <PauseCircleOutlined />,
+            },
           };
           const config = statusConfig[status] || statusConfig.pending;
-          return <Tag color={config.color}>{config.text}</Tag>;
+          return (
+            <Tag color={config.color} className="status-tag">
+              {config.icon}
+              {config.text}
+            </Tag>
+          );
         },
       },
       {
         title: "Đánh giá",
         dataIndex: "rating",
         key: "rating",
-        render: (rating) => (rating ? <Rate disabled value={rating} /> : "-"),
+        render: (rating) => (
+          <div className="treatment-rating">
+            {rating ? (
+              <Rate disabled value={rating} style={{ fontSize: 14 }} />
+            ) : (
+              <Text type="secondary">Chưa đánh giá</Text>
+            )}
+          </div>
+        ),
       },
       {
         title: "Thao tác",
         key: "actions",
         render: (_, record) => (
           <Button
-            type="link"
+            type="primary"
+            size="small"
             onClick={() => handleUpdateSession(record)}
             disabled={mode === "patient"}
+            className="update-btn"
+            icon={<EyeOutlined />}
           >
             Cập nhật
           </Button>
@@ -443,88 +498,126 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
     ];
 
     return (
-      <div>
+      <div className="treatment-progress-container">
         {/* Tổng quan tiến trình */}
-        <Row gutter={16} style={{ marginBottom: 24 }}>
+        <Row gutter={[24, 24]} className="progress-stats">
           <Col span={6}>
-            <Card>
+            <Card className="stat-card total-sessions">
+              <div className="stat-icon">
+                <CalendarOutlined />
+              </div>
               <Statistic
                 title="Tổng số buổi"
                 value={progress.totalSessions}
-                prefix={<CalendarOutlined />}
+                valueStyle={{ color: "#ff6b9d", fontWeight: "bold" }}
               />
             </Card>
           </Col>
           <Col span={6}>
-            <Card>
+            <Card className="stat-card completed-sessions">
+              <div className="stat-icon">
+                <CheckCircleOutlined />
+              </div>
               <Statistic
                 title="Đã hoàn thành"
                 value={progress.completedSessions}
-                prefix={<CheckCircleOutlined />}
-                valueStyle={{ color: "#3f8600" }}
+                valueStyle={{ color: "#52c41a", fontWeight: "bold" }}
               />
             </Card>
           </Col>
           <Col span={6}>
-            <Card>
+            <Card className="stat-card upcoming-sessions">
+              <div className="stat-icon">
+                <ClockCircleOutlined />
+              </div>
               <Statistic
                 title="Sắp tới"
                 value={progress.upcomingSessions}
-                prefix={<ClockCircleOutlined />}
-                valueStyle={{ color: "#1890ff" }}
+                valueStyle={{ color: "#1890ff", fontWeight: "bold" }}
               />
             </Card>
           </Col>
           <Col span={6}>
-            <Card>
+            <Card className="stat-card progress-percentage">
+              <div className="stat-icon">
+                <TrophyOutlined />
+              </div>
               <Statistic
                 title="Tiến độ"
                 value={progress.overallProgress}
                 suffix="%"
-                prefix={<TrophyOutlined />}
-                valueStyle={{ color: "#cf1322" }}
+                valueStyle={{ color: "#ff758c", fontWeight: "bold" }}
               />
             </Card>
           </Col>
         </Row>
 
         {/* Giai đoạn hiện tại */}
-        <Card title="Giai đoạn điều trị hiện tại" style={{ marginBottom: 24 }}>
-          <div style={{ marginBottom: 16 }}>
-            <Text strong>Giai đoạn: </Text>
-            <Badge status="processing" text={progress.currentPhase} />
-            <Text type="secondary" style={{ marginLeft: 16 }}>
-              Cập nhật lần cuối: {progress.lastUpdated}
-            </Text>
+        <Card
+          className="current-phase-card"
+          title={
+            <div className="phase-title">
+              <ThunderboltOutlined />
+              <span>Giai đoạn điều trị hiện tại</span>
+            </div>
+          }
+        >
+          <div className="phase-info">
+            <div className="phase-details">
+              <Text strong>Giai đoạn: </Text>
+              <Badge status="processing" text={progress.currentPhase} />
+              <Text type="secondary" style={{ marginLeft: 16 }}>
+                Cập nhật lần cuối: {progress.lastUpdated}
+              </Text>
+            </div>
+            <div className="phase-progress">
+              <Progress
+                percent={progress.phaseProgress}
+                status="active"
+                strokeColor={{
+                  "0%": "#ff7eb3",
+                  "100%": "#ff6b9d",
+                }}
+                trailColor="rgba(255, 126, 179, 0.1)"
+                strokeWidth={12}
+              />
+            </div>
           </div>
-          <Progress
-            percent={progress.phaseProgress}
-            status="active"
-            strokeColor={{
-              "0%": "#108ee9",
-              "100%": "#87d068",
-            }}
-          />
         </Card>
 
         {/* Lịch sử hoạt động */}
-        <Card title="Lịch sử điều trị">
+        <Card
+          className="activity-history-card"
+          title={
+            <div className="activity-title">
+              <StarOutlined />
+              <span>Lịch sử điều trị</span>
+            </div>
+          }
+        >
           <Table
             columns={columns}
             dataSource={progress.recentActivities}
             rowKey="date"
             pagination={false}
             size="small"
+            className="treatment-table"
           />
         </Card>
 
         {/* Modal cập nhật session */}
         <Modal
-          title="Cập nhật tiến trình điều trị"
+          title={
+            <div className="modal-title">
+              <MedicineBoxOutlined />
+              <span>Cập nhật tiến trình điều trị</span>
+            </div>
+          }
           open={sessionUpdateModal}
           onOk={handleSubmitSessionUpdate}
           onCancel={() => setSessionUpdateModal(false)}
           width={600}
+          className="update-session-modal"
         >
           <Form form={progressForm} layout="vertical">
             <Form.Item label="Hoạt động">
@@ -560,25 +653,35 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
         </Modal>
 
         {/* Navigation buttons cho bước này */}
-        <div style={{ marginTop: 24, textAlign: "center" }}>
-          <Space>
-            <Button onClick={handlePrevious}>Quay lại</Button>
+        <div className="step-navigation">
+          <Space size="large">
+            <Button
+              onClick={handlePrevious}
+              className="nav-btn prev-btn"
+              icon={<ArrowLeftOutlined />}
+            >
+              Quay lại
+            </Button>
             <Button
               type="primary"
               onClick={() => handleNext(progress)}
               disabled={
                 progress.completedSessions < progress.totalSessions * 0.8
               }
+              className="nav-btn next-btn"
+              icon={<ArrowRightOutlined />}
             >
               Hoàn thành quy trình
             </Button>
           </Space>
           {progress.completedSessions < progress.totalSessions * 0.8 && (
-            <div style={{ marginTop: 8 }}>
-              <Text type="secondary">
-                Cần hoàn thành ít nhất 80% các buổi điều trị để kết thúc quy
-                trình
-              </Text>
+            <div className="completion-requirement">
+              <Alert
+                message="Yêu cầu hoàn thành"
+                description="Cần hoàn thành ít nhất 80% các buổi điều trị để kết thúc quy trình"
+                type="info"
+                showIcon
+              />
             </div>
           )}
         </div>
@@ -636,236 +739,296 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
 
   if (!processData.patient) {
     return (
-      <div style={{ padding: "50px", textAlign: "center" }}>
-        <Spin size="large" />
-        <div style={{ marginTop: 16 }}>
-          <Text>Đang tải thông tin bệnh nhân...</Text>
+      <div className="loading-container">
+        <div className="loading-content">
+          <Spin size="large" />
+          <div className="loading-text">
+            <Text>Đang tải thông tin bệnh nhân...</Text>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: "24px", background: "#f5f5f5", minHeight: "100vh" }}>
-      <Card>
-        <Title level={2}>
-          <Space>
-            <HeartOutlined style={{ color: "#ff4d4f" }} />
-            Quy Trình Điều Trị IVF
-          </Space>
-        </Title>
-
-        {/* Thông tin bệnh nhân với examination status */}
-        <Card size="small" style={{ marginBottom: 24, background: "#f9f9f9" }}>
-          <Row gutter={16}>
-            <Col span={5}>
-              <Text strong>Bệnh nhân:</Text> {processData.patient.name}
-            </Col>
-            <Col span={4}>
-              <Text strong>Giới tính:</Text>{" "}
-              {processData.patient.gender === "male" ? "Nam" : "Nữ"}
-            </Col>
-            <Col span={4}>
-              <Text strong>Tuổi:</Text> {processData.patient.age}
-            </Col>
-            <Col span={5}>
-              <Text strong>Liên hệ:</Text> {processData.patient.contact}
-            </Col>
-            <Col span={6}>
-              <Text strong>Quy trình:</Text>
-              <Tag color="blue" style={{ marginLeft: 8 }}>
-                Bước {currentStep + 1}/5
-              </Tag>
-            </Col>
-          </Row>
-        </Card>
-
-        {/* Alert when examination data synced from standalone page */}
-        {processData.examination?.fromStandalonePage && (
-          <Alert
-            message="🔄 Đã đồng bộ kết quả khám lâm sàng"
-            description={`Kết quả khám từ trang riêng đã được cập nhật thành công. Chẩn đoán: "${processData.examination.diagnosis}". Bạn có thể tiếp tục với bước lập phác đồ.`}
-            type="success"
-            showIcon
-            closable
-            style={{ marginBottom: 24 }}
-            action={
+    <div className="treatment-process-container">
+      <div className="treatment-process-content">
+        <Card className="main-card">
+          <div className="header-section">
+            <Title level={2} className="main-title">
               <Space>
-                <Button
-                  size="small"
-                  onClick={() => {
-                    // Option to view full examination details
-                    Modal.info({
-                      title: "Chi tiết kết quả khám",
-                      content: (
-                        <div>
-                          <p>
-                            <strong>Chẩn đoán:</strong>{" "}
-                            {processData.examination.diagnosis}
-                          </p>
-                          <p>
-                            <strong>Khuyến nghị:</strong>{" "}
-                            {processData.examination.recommendations}
-                          </p>
-                          <p>
-                            <strong>Thời gian hoàn thành:</strong>{" "}
-                            {new Date(
-                              processData.examination.completedAt
-                            ).toLocaleString("vi-VN")}
-                          </p>
-                          {processData.examination.symptoms?.length > 0 && (
-                            <p>
-                              <strong>Triệu chứng:</strong>{" "}
-                              {processData.examination.symptoms.join(", ")}
-                            </p>
-                          )}
-                        </div>
-                      ),
-                      width: 600,
-                    });
-                  }}
-                >
-                  Xem chi tiết
-                </Button>
+                <HeartOutlined className="title-icon" />
+                Quy Trình Điều Trị IVF
+              </Space>
+            </Title>
+          </div>
 
-                {/* Manual navigation button */}
-                {currentStep === 0 && (
+          {/* Thông tin bệnh nhân với examination status */}
+          <Card className="patient-info-card">
+            <Row gutter={16} align="middle">
+              <Col span={5}>
+                <div className="info-item">
+                  <UserOutlined className="info-icon" />
+                  <div>
+                    <Text type="secondary">Bệnh nhân</Text>
+                    <div className="info-value">{processData.patient.name}</div>
+                  </div>
+                </div>
+              </Col>
+              <Col span={4}>
+                <div className="info-item">
+                  <div>
+                    <Text type="secondary">Giới tính</Text>
+                    <div className="info-value">
+                      {processData.patient.gender === "male" ? "Nam" : "Nữ"}
+                    </div>
+                  </div>
+                </div>
+              </Col>
+              <Col span={4}>
+                <div className="info-item">
+                  <div>
+                    <Text type="secondary">Tuổi</Text>
+                    <div className="info-value">{processData.patient.age}</div>
+                  </div>
+                </div>
+              </Col>
+              <Col span={5}>
+                <div className="info-item">
+                  <div>
+                    <Text type="secondary">Liên hệ</Text>
+                    <div className="info-value">
+                      {processData.patient.contact}
+                    </div>
+                  </div>
+                </div>
+              </Col>
+              <Col span={6}>
+                <div className="info-item process-status">
+                  <div>
+                    <Text type="secondary">Quy trình</Text>
+                    <div className="info-value">
+                      <Tag className="step-tag">Bước {currentStep + 1}/5</Tag>
+                    </div>
+                  </div>
+                </div>
+              </Col>
+            </Row>
+          </Card>
+
+          {/* Alert when examination data synced from standalone page */}
+          {processData.examination?.fromStandalonePage && (
+            <Alert
+              message="🔄 Đã đồng bộ kết quả khám lâm sàng"
+              description={`Kết quả khám từ trang riêng đã được cập nhật thành công. Chẩn đoán: "${processData.examination.diagnosis}". Bạn có thể tiếp tục với bước lập phác đồ.`}
+              type="success"
+              showIcon
+              closable
+              className="sync-alert"
+              action={
+                <Space>
                   <Button
-                    type="primary"
                     size="small"
+                    icon={<EyeOutlined />}
                     onClick={() => {
-                      setCurrentStep(1);
-                      // message.success("➡️ Đã chuyển sang bước lập phác đồ!");
+                      Modal.info({
+                        title: "Chi tiết kết quả khám",
+                        content: (
+                          <div>
+                            <p>
+                              <strong>Chẩn đoán:</strong>{" "}
+                              {processData.examination.diagnosis}
+                            </p>
+                            <p>
+                              <strong>Khuyến nghị:</strong>{" "}
+                              {processData.examination.recommendations}
+                            </p>
+                            <p>
+                              <strong>Thời gian hoàn thành:</strong>{" "}
+                              {new Date(
+                                processData.examination.completedAt
+                              ).toLocaleString("vi-VN")}
+                            </p>
+                            {processData.examination.symptoms?.length > 0 && (
+                              <p>
+                                <strong>Triệu chứng:</strong>{" "}
+                                {processData.examination.symptoms.join(", ")}
+                              </p>
+                            )}
+                          </div>
+                        ),
+                        width: 600,
+                      });
                     }}
                   >
-                    ➡️ Chuyển sang lập phác đồ
+                    Xem chi tiết
+                  </Button>
+
+                  {currentStep === 0 && (
+                    <Button
+                      type="primary"
+                      size="small"
+                      icon={<ArrowRightOutlined />}
+                      onClick={() => {
+                        setCurrentStep(1);
+                      }}
+                    >
+                      Chuyển sang lập phác đồ
+                    </Button>
+                  )}
+                </Space>
+              }
+            />
+          )}
+
+          {/* Steps - quy trình theo thứ tự với trạng thái từ state manager */}
+          <div className="steps-section">
+            <Steps current={currentStep} className="treatment-steps">
+              {steps.map((step, index) => {
+                const stepData = treatmentStateManager.getStepData(index);
+                let stepStatus = stepData.status;
+                let stepDescription = step.description;
+
+                if (stepData.isCompleted) {
+                  stepStatus = "finish";
+                  stepDescription = `✅ Đã hoàn thành${
+                    stepData.completedAt
+                      ? ` - ${new Date(stepData.completedAt).toLocaleString(
+                          "vi-VN"
+                        )}`
+                      : ""
+                  }`;
+                } else if (index === currentStep) {
+                  stepStatus = "process";
+                } else if (index < currentStep) {
+                  stepStatus = "finish";
+                } else {
+                  stepStatus = "wait";
+                }
+
+                return (
+                  <Step
+                    key={index}
+                    title={step.title}
+                    description={stepDescription}
+                    icon={step.icon}
+                    status={stepStatus}
+                    className={`step-${index} ${stepStatus}`}
+                  />
+                );
+              })}
+            </Steps>
+          </div>
+
+          {/* Progress summary từ state manager */}
+          <Card className="progress-summary-card">
+            {(() => {
+              const progress = treatmentStateManager.getOverallProgress();
+              return (
+                <Row gutter={16} align="middle">
+                  <Col span={14}>
+                    <div className="progress-info">
+                      <Text strong>Tiến độ tổng thể: </Text>
+                      <Tag className="progress-tag">
+                        {progress.completed}/{progress.total} bước
+                      </Tag>
+                      <Progress
+                        percent={progress.percentage}
+                        size="small"
+                        strokeColor={{
+                          "0%": "#ff7eb3",
+                          "100%": "#ff6b9d",
+                        }}
+                        trailColor="rgba(255, 126, 179, 0.1)"
+                        className="overall-progress"
+                        status={
+                          progress.current >= progress.total
+                            ? "success"
+                            : "active"
+                        }
+                      />
+                    </div>
+                  </Col>
+                  <Col span={10} style={{ textAlign: "right" }}>
+                    {progress.state.lastUpdated && (
+                      <Text type="secondary" className="last-updated">
+                        Cập nhật cuối:{" "}
+                        {new Date(progress.state.lastUpdated).toLocaleString(
+                          "vi-VN"
+                        )}
+                      </Text>
+                    )}
+                  </Col>
+                </Row>
+              );
+            })()}
+          </Card>
+
+          {/* Navigation buttons */}
+          {currentStep < steps.length - 1 && (
+            <div className="main-navigation">
+              <Space size="large">
+                <Button
+                  onClick={handlePrevious}
+                  disabled={currentStep === 0}
+                  className="nav-btn prev-btn"
+                  icon={<ArrowLeftOutlined />}
+                >
+                  Quay lại
+                </Button>
+                <div className="step-indicator">
+                  <Text type="secondary">
+                    Bước {currentStep + 1} / {steps.length}:{" "}
+                    <span className="current-step-name">
+                      {steps[currentStep].title}
+                    </span>
+                  </Text>
+                </div>
+
+                {currentStep === 0 && processData.examination && (
+                  <Button
+                    type="primary"
+                    onClick={() => {
+                      setCurrentStep(1);
+                    }}
+                    className="nav-btn next-btn"
+                    icon={<ArrowRightOutlined />}
+                  >
+                    Tiếp theo: Lập phác đồ
                   </Button>
                 )}
               </Space>
-            }
-          />
-        )}
+            </div>
+          )}
 
-        {/* Steps - quy trình theo thứ tự với trạng thái từ state manager */}
-        <Steps current={currentStep} style={{ marginBottom: 32 }}>
-          {steps.map((step, index) => {
-            // Get step data from state manager
-            const stepData = treatmentStateManager.getStepData(index);
-            let stepStatus = stepData.status;
-            let stepDescription = step.description;
+          {/* Step content */}
+          <div className="step-content-wrapper">{renderStepContent()}</div>
 
-            // Show completion info if step is completed
-            if (stepData.isCompleted) {
-              stepStatus = "finish";
-              stepDescription = `✅ Đã hoàn thành${
-                stepData.completedAt
-                  ? ` - ${new Date(stepData.completedAt).toLocaleString(
-                      "vi-VN"
-                    )}`
-                  : ""
-              }`;
-            } else if (index === currentStep) {
-              stepStatus = "process";
-            } else if (index < currentStep) {
-              stepStatus = "finish";
-            } else {
-              stepStatus = "wait";
-            }
-
-            return (
-              <Step
-                key={index}
-                title={step.title}
-                description={stepDescription}
-                icon={step.icon}
-                status={stepStatus}
-              />
-            );
-          })}
-        </Steps>
-
-        {/* Progress summary từ state manager */}
-        {(() => {
-          const progress = treatmentStateManager.getOverallProgress();
-          return (
-            <Card size="small" style={{ marginBottom: 16 }}>
-              <Row gutter={16} align="middle">
-                <Col span={12}>
-                  <Text strong>Tiến độ tổng thể: </Text>
-                  <Tag color="blue">
-                    {progress.completed}/{progress.total} bước
-                  </Tag>
-                  <Progress
-                    percent={progress.percentage}
-                    size="small"
-                    style={{ marginLeft: 8, width: 200 }}
-                    status={
-                      progress.current >= progress.total ? "success" : "active"
-                    }
-                  />
-                </Col>
-                <Col span={12} style={{ textAlign: "right" }}>
-                  {progress.state.lastUpdated && (
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                      Cập nhật cuối:{" "}
-                      {new Date(progress.state.lastUpdated).toLocaleString(
-                        "vi-VN"
-                      )}
-                    </Text>
-                  )}
-                </Col>
-              </Row>
-            </Card>
-          );
-        })()}
-
-        {/* Navigation buttons */}
-        {currentStep < steps.length - 1 && (
-          <div style={{ marginBottom: 24, textAlign: "center" }}>
-            <Space>
-              <Button onClick={handlePrevious} disabled={currentStep === 0}>
-                Quay lại
-              </Button>
-              <Text type="secondary">
-                Bước {currentStep + 1} / {steps.length}:{" "}
-                {steps[currentStep].title}
-              </Text>
-
-              {/* Show manual next button when examination is completed */}
-              {currentStep === 0 && processData.examination && (
-                <Button
-                  type="primary"
-                  onClick={() => {
-                    setCurrentStep(1);
-                    // message.success("➡️ Tiếp tục với bước lập phác đồ!");
-                  }}
-                >
-                  ➡️ Tiếp theo: Lập phác đồ
-                </Button>
-              )}
-            </Space>
-          </div>
-        )}
-
-        {/* Step content */}
-        <div>{renderStepContent()}</div>
-
-        {/* Completion message */}
-        {currentStep === steps.length - 1 && processData.schedule && (
-          <Result
-            status="success"
-            title="Hoàn thành quy trình điều trị!"
-            subTitle="Quy trình điều trị IVF đã hoàn tất thành công. Bệnh nhân có thể theo dõi kết quả và nhận hướng dẫn chăm sóc sau điều trị."
-            extra={[
-              <Button type="primary" key="view">
-                Xem báo cáo tổng kết
-              </Button>,
-              <Button key="schedule">Đặt lịch tái khám</Button>,
-              <Button key="print">In kết quả</Button>,
-            ]}
-          />
-        )}
-      </Card>
+          {/* Completion message */}
+          {currentStep === steps.length - 1 && processData.schedule && (
+            <Result
+              status="success"
+              title="Hoàn thành quy trình điều trị!"
+              subTitle="Quy trình điều trị IVF đã hoàn tất thành công. Bệnh nhân có thể theo dõi kết quả và nhận hướng dẫn chăm sóc sau điều trị."
+              className="completion-result"
+              extra={[
+                <Button type="primary" key="view" className="result-btn">
+                  <EyeOutlined />
+                  Xem báo cáo tổng kết
+                </Button>,
+                <Button key="schedule" className="result-btn">
+                  <CalendarOutlined />
+                  Đặt lịch tái khám
+                </Button>,
+                <Button key="print" className="result-btn">
+                  <PrinterOutlined />
+                  In kết quả
+                </Button>,
+              ]}
+            />
+          )}
+        </Card>
+      </div>
     </div>
   );
 };

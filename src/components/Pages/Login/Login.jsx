@@ -22,6 +22,71 @@ export default function Login() {
   const { login, getDashboardPath } = useContext(UserContext);
   const navigate = useNavigate();
 
+  // ✅ Helper function to calculate dashboard path directly (avoiding timing issues)
+  const calculateDashboardPath = (userData) => {
+    const USER_ROLES = {
+      ADMIN: "ADMIN",
+      MANAGER: "MANAGER",
+      DOCTOR: "DOCTOR",
+      PATIENT: "PATIENT",
+      CUSTOMER: "CUSTOMER",
+    };
+
+    const ROLE_MAPPING = {
+      ADMIN: USER_ROLES.ADMIN,
+      MANAGER: USER_ROLES.MANAGER,
+      DOCTOR: USER_ROLES.DOCTOR,
+      PATIENT: USER_ROLES.PATIENT,
+      CUSTOMER: USER_ROLES.CUSTOMER,
+      Admin: USER_ROLES.ADMIN,
+      Manager: USER_ROLES.MANAGER,
+      Doctor: USER_ROLES.DOCTOR,
+      Patient: USER_ROLES.PATIENT,
+      Customer: USER_ROLES.CUSTOMER,
+      admin: USER_ROLES.ADMIN,
+      manager: USER_ROLES.MANAGER,
+      doctor: USER_ROLES.DOCTOR,
+      patient: USER_ROLES.PATIENT,
+      customer: USER_ROLES.CUSTOMER,
+    };
+
+    // Auto-detect doctor role for test accounts
+    let finalRole = userData.role;
+    if (!finalRole && userData.email) {
+      const doctorEmails = [
+        "doctor.test@ferticare.com",
+        "doctor.ivf@ferticare.com",
+        "doctor.iui@ferticare.com",
+        "doctor.ob@ferticare.com",
+      ];
+
+      if (
+        doctorEmails.includes(userData.email) ||
+        userData.fullName?.includes("BS.") ||
+        userData.fullName?.includes("Dr.") ||
+        userData.email?.includes("doctor.")
+      ) {
+        finalRole = "DOCTOR";
+      }
+    }
+
+    const mappedRole = ROLE_MAPPING[finalRole] || USER_ROLES.CUSTOMER;
+
+    switch (mappedRole.toUpperCase()) {
+      case USER_ROLES.ADMIN:
+        return "/admin/dashboard";
+      case USER_ROLES.MANAGER:
+        return "/manager/dashboard";
+      case USER_ROLES.DOCTOR:
+        return "/doctor-dashboard";
+      case USER_ROLES.PATIENT:
+        return "/patient/dashboard";
+      case USER_ROLES.CUSTOMER:
+      default:
+        return "/";
+    }
+  };
+
   // ✅ Validation functions
   const validateEmail = (email) => {
     const emailRegex = /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
@@ -89,12 +154,21 @@ export default function Login() {
     try {
       const userData = await apiLogin.login(formData.email, formData.password);
       console.log("✅ Đăng nhập thành công:", userData);
+      console.log("👤 Role từ backend:", userData.role);
 
       await login(userData);
 
+      // ✅ Calculate dashboard path directly to avoid timing issues with UserContext
+      const dashboardPath = calculateDashboardPath(userData);
+
+      console.log("🎯 Calculated dashboard path:", dashboardPath);
+      console.log(
+        "👤 User context sau login:",
+        JSON.parse(localStorage.getItem("user"))
+      );
+
       // ✅ Redirect theo role
-      const dashboardPath = getDashboardPath();
-      navigate(dashboardPath || "/");
+      navigate(dashboardPath);
     } catch (error) {
       console.error("❌ Lỗi đăng nhập:", error);
 
@@ -162,9 +236,13 @@ export default function Login() {
 
       await login(userData);
 
+      // ✅ Calculate dashboard path directly to avoid timing issues with UserContext
+      const dashboardPath = calculateDashboardPath(userData);
+
+      console.log("🎯 Google login dashboard path:", dashboardPath);
+
       // ✅ Redirect theo role
-      const dashboardPath = getDashboardPath();
-      navigate(dashboardPath || "/");
+      navigate(dashboardPath);
     } catch (error) {
       console.error("❌ Lỗi Google login:", error);
 
@@ -198,6 +276,14 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Debug function để test role mapping
+  const testRoleMapping = () => {
+    const testRoles = ["doctor", "DOCTOR", "physician", "PHYSICIAN"];
+    testRoles.forEach((role) => {
+      console.log(`Test role "${role}":`, getDashboardPath());
+    });
   };
 
   const handleGoogleLoginError = () => {

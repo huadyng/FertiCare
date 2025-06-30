@@ -55,11 +55,15 @@ import DoctorProfile from "./DoctorProfile";
 import ThemeDemo from "./ThemeDemo";
 import { UserContext } from "../../context/UserContext";
 import { useNavigate } from "react-router-dom";
-import {
-  mockPatients,
-  todayAppointments,
-  statistics,
-} from "./constants/mockData";
+// import {
+//   mockPatients,
+//   todayAppointments,
+//   statistics,
+// } from "./constants/mockData";
+
+// Import API services for real data
+import apiDoctor from "../../api/apiDoctor";
+import UserProfile from "../pages/Profile/UserProfile";
 import { getScheduleSubSteps } from "./constants/treatmentSubSteps";
 
 const { Header, Sider, Content } = Layout;
@@ -70,6 +74,21 @@ const DoctorDashboard = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const { user, logout } = useContext(UserContext);
+
+  // API data states
+  const [dashboardData, setDashboardData] = useState({
+    patients: [],
+    todayAppointments: [],
+    statistics: {
+      totalPatients: 0,
+      todayAppointments: 0,
+      inTreatment: 0,
+      completed: 0,
+      successRate: 0,
+    },
+  });
+  const [loading, setLoading] = useState(true);
+  const [dataError, setDataError] = useState(null);
 
   // Enhanced treatment flow state with persistence
   const [treatmentFlow, setTreatmentFlow] = useState({
@@ -93,6 +112,11 @@ const DoctorDashboard = () => {
 
   const navigate = useNavigate();
 
+  // Load dashboard data from API
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
   // Load saved treatment flow from localStorage
   useEffect(() => {
     const savedFlow = localStorage.getItem("treatmentFlow");
@@ -105,6 +129,59 @@ const DoctorDashboard = () => {
       }
     }
   }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      setDataError(null);
+
+      console.log("🔄 [DoctorDashboard] Loading dashboard data...");
+
+      // Load all dashboard data in parallel
+      const [patients, todayAppointments, statistics] = await Promise.all([
+        apiDoctor.getMyPatients(),
+        apiDoctor.getTodayAppointments(),
+        apiDoctor.getDashboardStats(),
+      ]);
+
+      // Transform patient data to match UI expectations
+      const transformedPatients = patients.map((patient) =>
+        apiDoctor.transformPatientData(patient)
+      );
+
+      setDashboardData({
+        patients: transformedPatients,
+        todayAppointments,
+        statistics,
+      });
+
+      console.log("✅ [DoctorDashboard] Dashboard data loaded:", {
+        patients: transformedPatients.length,
+        appointments: todayAppointments.length,
+        stats: statistics,
+      });
+    } catch (error) {
+      console.error(
+        "❌ [DoctorDashboard] Error loading dashboard data:",
+        error
+      );
+      setDataError("Không thể tải dữ liệu dashboard. Sử dụng dữ liệu mẫu.");
+
+      // Fallback to mock data if API fails
+      const {
+        mockPatients,
+        todayAppointments: mockAppointments,
+        statistics: mockStats,
+      } = await import("./constants/mockData");
+      setDashboardData({
+        patients: mockPatients,
+        todayAppointments: mockAppointments,
+        statistics: mockStats,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Save treatment flow to localStorage whenever it changes
   useEffect(() => {
@@ -302,6 +379,41 @@ const DoctorDashboard = () => {
       title: "Tổng quan",
       component: (
         <div>
+          {/* Loading State */}
+          {loading && (
+            <div style={{ textAlign: "center", padding: "40px 0" }}>
+              <div
+                className="loading-spinner"
+                style={{
+                  width: "40px",
+                  height: "40px",
+                  border: "4px solid #f3f3f3",
+                  borderTop: "4px solid var(--primary-color)",
+                  borderRadius: "50%",
+                  animation: "spin 1s linear infinite",
+                  margin: "0 auto 16px",
+                }}
+              ></div>
+              <Text type="secondary">Đang tải dữ liệu dashboard...</Text>
+            </div>
+          )}
+
+          {/* Error State */}
+          {dataError && (
+            <Alert
+              message="Thông báo"
+              description={dataError}
+              type="warning"
+              showIcon
+              style={{ marginBottom: "24px" }}
+              action={
+                <Button size="small" onClick={loadDashboardData}>
+                  Thử lại
+                </Button>
+              }
+            />
+          )}
+
           <Row gutter={[24, 24]}>
             {/* Statistics Cards */}
             <Col span={24}>
@@ -338,7 +450,7 @@ const DoctorDashboard = () => {
                             Tổng bệnh nhân
                           </Text>
                         }
-                        value={statistics.totalPatients}
+                        value={dashboardData.statistics.totalPatients}
                         valueStyle={{
                           color: "var(--primary-color)",
                           fontWeight: 700,
@@ -383,7 +495,7 @@ const DoctorDashboard = () => {
                             Lịch hẹn hôm nay
                           </Text>
                         }
-                        value={statistics.todayAppointments}
+                        value={dashboardData.statistics.todayAppointments}
                         valueStyle={{
                           color: "var(--secondary-color)",
                           fontWeight: 700,
@@ -428,7 +540,7 @@ const DoctorDashboard = () => {
                             Đang điều trị
                           </Text>
                         }
-                        value={statistics.inTreatment}
+                        value={dashboardData.statistics.inTreatment}
                         valueStyle={{
                           color: "#4facfe",
                           fontWeight: 700,
@@ -473,7 +585,7 @@ const DoctorDashboard = () => {
                             Tỉ lệ thành công
                           </Text>
                         }
-                        value={statistics.successRate}
+                        value={dashboardData.statistics.successRate}
                         suffix="%"
                         valueStyle={{
                           color: "#fa709a",
@@ -605,7 +717,7 @@ const DoctorDashboard = () => {
                                 )}
                                 status="active"
                                 className="doctor-progress"
-                                strokeWidth={12}
+                                size={12}
                                 format={(percent) => (
                                   <Text
                                     strong
@@ -754,9 +866,9 @@ const DoctorDashboard = () => {
                 }
               >
                 <div className="doctor-list">
-                  {todayAppointments.length > 0 ? (
+                  {dashboardData.todayAppointments.length > 0 ? (
                     <List
-                      dataSource={todayAppointments}
+                      dataSource={dashboardData.todayAppointments}
                       renderItem={(item, index) => (
                         <List.Item
                           style={{
@@ -873,7 +985,7 @@ const DoctorDashboard = () => {
               >
                 <div className="doctor-list">
                   <List
-                    dataSource={mockPatients}
+                    dataSource={dashboardData.patients}
                     renderItem={(patient, index) => (
                       <List.Item
                         style={{
@@ -976,7 +1088,6 @@ const DoctorDashboard = () => {
                                   percent={patient.progress}
                                   size="small"
                                   className="doctor-progress"
-                                  strokeWidth={8}
                                   format={(percent) => (
                                     <Text
                                       style={{
@@ -1183,8 +1294,12 @@ const DoctorDashboard = () => {
       ),
     },
     profile: {
-      title: "Thông tin cá nhân",
-      component: <DoctorProfile />,
+      title: "Hồ sơ cá nhân",
+      component: (
+        <div className="doctor-profile-wrapper">
+          <UserProfile />
+        </div>
+      ),
     },
     "theme-demo": {
       title: "Demo Giao Diện Mới",
@@ -1242,7 +1357,7 @@ const DoctorDashboard = () => {
     {
       key: "profile",
       icon: <UserOutlined />,
-      label: "Thông tin cá nhân",
+      label: "Hồ sơ cá nhân",
     },
   ];
 
@@ -1272,10 +1387,24 @@ const DoctorDashboard = () => {
             />
             {!collapsed && (
               <div>
-                <Title level={5} style={{ margin: "8px 0 4px" }}>
+                <Title
+                  level={5}
+                  style={{ margin: "8px 0 4px", color: "var(--text-dark)" }}
+                >
                   {user?.fullName || "BS. Lê Văn Doctor"}
                 </Title>
                 <Text type="secondary">Bác sĩ điều trị</Text>
+                {dataError && (
+                  <div
+                    style={{
+                      marginTop: "8px",
+                      fontSize: "11px",
+                      color: "#faad14",
+                    }}
+                  >
+                    ⚠️ Dữ liệu mẫu
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1547,9 +1676,11 @@ const DoctorDashboard = () => {
                 overflow: "hidden",
                 position: "relative",
               }}
-              bodyStyle={{
-                padding: selectedSection === "dashboard" ? "24px" : "32px",
-                background: "transparent",
+              styles={{
+                body: {
+                  padding: selectedSection === "dashboard" ? "24px" : "32px",
+                  background: "transparent",
+                },
               }}
             >
               <div style={{ position: "relative", zIndex: 1 }}>

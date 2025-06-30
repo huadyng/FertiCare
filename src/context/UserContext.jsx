@@ -11,17 +11,34 @@ export const USER_ROLES = {
 
 // Map backend roles to frontend roles
 const ROLE_MAPPING = {
+  // Standard uppercase (backend preference)
   ADMIN: USER_ROLES.ADMIN,
   MANAGER: USER_ROLES.MANAGER,
   DOCTOR: USER_ROLES.DOCTOR,
   PATIENT: USER_ROLES.PATIENT,
   CUSTOMER: USER_ROLES.CUSTOMER,
+
+  // Capitalized (actual backend format from SQL)
+  Admin: USER_ROLES.ADMIN,
+  Manager: USER_ROLES.MANAGER,
+  Doctor: USER_ROLES.DOCTOR,
+  Patient: USER_ROLES.PATIENT,
+  Customer: USER_ROLES.CUSTOMER,
+
   // Legacy lowercase support
   admin: USER_ROLES.ADMIN,
   manager: USER_ROLES.MANAGER,
   doctor: USER_ROLES.DOCTOR,
   patient: USER_ROLES.PATIENT,
   customer: USER_ROLES.CUSTOMER,
+
+  // Additional doctor role variations
+  physician: USER_ROLES.DOCTOR,
+  medical_doctor: USER_ROLES.DOCTOR,
+  doc: USER_ROLES.DOCTOR,
+  PHYSICIAN: USER_ROLES.DOCTOR,
+  MEDICAL_DOCTOR: USER_ROLES.DOCTOR,
+  DOC: USER_ROLES.DOCTOR,
 };
 
 export const ROLE_PERMISSIONS = {
@@ -83,9 +100,42 @@ export const UserProvider = ({ children }) => {
   // Đăng nhập (có role & trạng thái dịch vụ mặc định)
   const login = async (userData) => {
     console.log("🔍 [UserContext] Login data received:", userData);
+    console.log("🔍 [UserContext] Raw role from backend:", userData.role);
+
+    // 🩺 QUICK FIX: Auto-detect doctor role for test accounts
+    let finalRole = userData.role;
+    if (!finalRole && userData.email) {
+      const doctorEmails = [
+        "doctor.test@ferticare.com",
+        "doctor.ivf@ferticare.com",
+        "doctor.iui@ferticare.com",
+        "doctor.ob@ferticare.com",
+      ];
+
+      if (
+        doctorEmails.includes(userData.email) ||
+        userData.fullName?.includes("BS.") ||
+        userData.fullName?.includes("Dr.") ||
+        userData.email?.includes("doctor.")
+      ) {
+        finalRole = "DOCTOR";
+        console.log(
+          "🩺 [UserContext] QUICK FIX: Auto-detected doctor role for:",
+          userData.email
+        );
+      }
+    }
 
     // Map role from backend to frontend
-    const mappedRole = ROLE_MAPPING[userData.role] || USER_ROLES.CUSTOMER;
+    const mappedRole = ROLE_MAPPING[finalRole] || USER_ROLES.CUSTOMER;
+
+    console.log("🔍 [UserContext] Mapped role:", finalRole, "=>", mappedRole);
+
+    // Debug: Show available mappings if role not found
+    if (!ROLE_MAPPING[finalRole]) {
+      console.warn("⚠️ [UserContext] Role not found in mapping:", finalRole);
+      console.warn("Available mappings:", Object.keys(ROLE_MAPPING));
+    }
 
     const dataToStore = {
       ...userData,
@@ -95,6 +145,10 @@ export const UserProvider = ({ children }) => {
     };
 
     console.log("🔍 [UserContext] Data to store:", dataToStore);
+    console.log(
+      "🔍 [UserContext] Dashboard path will be:",
+      getDashboardPathForRole(mappedRole)
+    );
 
     setUser(dataToStore);
     setIsLoggedIn(true);
@@ -105,52 +159,83 @@ export const UserProvider = ({ children }) => {
       localStorage.setItem("token", userData.token);
     }
 
-    // 🔄 Fetch thêm profile data để lấy avatar mới nhất
-    try {
-      console.log("🔄 [UserContext] Fetching fresh profile data for avatar...");
-
-      // Dynamic import để tránh circular dependency
-      const { default: apiProfile } = await import("../api/apiProfile");
-
-      let profileData;
-      switch (mappedRole.toUpperCase()) {
-        case USER_ROLES.CUSTOMER:
-        case USER_ROLES.PATIENT:
-          profileData = await apiProfile.getCustomerProfile();
-          break;
-        case USER_ROLES.DOCTOR:
-          profileData = await apiProfile.getDoctorProfile();
-          break;
-        case USER_ROLES.MANAGER:
-        case USER_ROLES.ADMIN:
-          profileData = await apiProfile.getManagerAdminProfile();
-          break;
-        default:
-          profileData = await apiProfile.getMyProfile();
-          break;
-      }
-
-      // Cập nhật user với avatar mới nhất từ profile
-      if (profileData?.avatarUrl) {
-        const updatedUserData = {
-          ...dataToStore,
-          avatarUrl: profileData.avatarUrl,
-        };
-
+    // 🔄 Fetch thêm profile data để lấy avatar mới nhất (skip mock tokens)
+    if (!userData.token?.includes("mock")) {
+      try {
         console.log(
-          "✅ [UserContext] Updated user data with fresh avatar:",
-          updatedUserData.avatarUrl
+          "🔄 [UserContext] Fetching fresh profile data for avatar..."
         );
 
-        setUser(updatedUserData);
-        localStorage.setItem("user", JSON.stringify(updatedUserData));
+        // Dynamic import để tránh circular dependency
+        const { default: apiProfile } = await import("../api/apiProfile");
+
+        let profileData;
+        try {
+          switch (mappedRole.toUpperCase()) {
+            case USER_ROLES.DOCTOR:
+              profileData = await apiProfile.getDoctorProfile();
+              break;
+            case USER_ROLES.MANAGER:
+            case USER_ROLES.ADMIN:
+              profileData = await apiProfile.getManagerAdminProfile();
+              break;
+            case USER_ROLES.CUSTOMER:
+            case USER_ROLES.PATIENT:
+              profileData = await apiProfile.getCustomerProfile();
+              break;
+            default:
+              profileData = await apiProfile.getMyProfile();
+              break;
+          }
+        } catch (profileError) {
+          console.warn(
+            "⚠️ [UserContext] Profile API failed:",
+            profileError.message
+          );
+          // Fallback: Try doctor profile if customer profile fails (for mis-classified users)
+          if (
+            mappedRole === USER_ROLES.CUSTOMER &&
+            userData.email?.includes("doctor.")
+          ) {
+            try {
+              console.log(
+                "🔄 [UserContext] Retrying with doctor profile API..."
+              );
+              profileData = await apiProfile.getDoctorProfile();
+            } catch (doctorError) {
+              console.warn(
+                "⚠️ [UserContext] Doctor profile also failed:",
+                doctorError.message
+              );
+              profileData = null;
+            }
+          }
+        }
+
+        // Cập nhật user với avatar mới nhất từ profile
+        if (profileData?.avatarUrl) {
+          const updatedUserData = {
+            ...dataToStore,
+            avatarUrl: profileData.avatarUrl,
+          };
+
+          console.log(
+            "✅ [UserContext] Updated user data with fresh avatar:",
+            updatedUserData.avatarUrl
+          );
+
+          setUser(updatedUserData);
+          localStorage.setItem("user", JSON.stringify(updatedUserData));
+        }
+      } catch (error) {
+        console.warn(
+          "⚠️ [UserContext] Could not fetch profile for avatar:",
+          error.message
+        );
+        // Không throw error để không block login process
       }
-    } catch (error) {
-      console.warn(
-        "⚠️ [UserContext] Could not fetch profile for avatar:",
-        error.message
-      );
-      // Không throw error để không block login process
+    } else {
+      console.log("🔄 [UserContext] Skipping profile fetch for mock token");
     }
   };
 
@@ -241,10 +326,11 @@ export const UserProvider = ({ children }) => {
   // Kiểm tra vai trò
   const hasRole = (role) => user?.role === role;
 
-  // Lấy dashboard path
-  const getDashboardPath = () => {
-    if (!user?.role) return "/";
-    switch (user.role.toUpperCase()) {
+  // Helper function to get dashboard path for any role
+  const getDashboardPathForRole = (role) => {
+    if (!role) return "/";
+    console.log("🔍 [UserContext] getDashboardPathForRole input:", role);
+    switch (role.toUpperCase()) {
       case USER_ROLES.ADMIN:
         return "/admin/dashboard";
       case USER_ROLES.MANAGER:
@@ -257,6 +343,15 @@ export const UserProvider = ({ children }) => {
       default:
         return "/";
     }
+  };
+
+  // Lấy dashboard path
+  const getDashboardPath = () => {
+    if (!user?.role) return "/";
+    console.log("🔍 [UserContext] getDashboardPath for user role:", user.role);
+    const path = getDashboardPathForRole(user.role);
+    console.log("🔍 [UserContext] Dashboard path resolved:", path);
+    return path;
   };
 
   // Có được truy cập patient area không?

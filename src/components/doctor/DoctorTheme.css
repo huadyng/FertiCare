@@ -690,6 +690,100 @@
   }
 }
 
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Doctor Profile Wrapper - Integrate UserProfile with Doctor Theme */
+.doctor-profile-wrapper {
+  /* Override UserProfile CSS to match doctor theme */
+}
+
+.doctor-profile-wrapper .profile-container {
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+.doctor-profile-wrapper .profile-header {
+  background: var(--primary-gradient) !important;
+  color: var(--text-white) !important;
+  border-radius: var(--radius-lg) !important;
+  padding: 24px !important;
+  margin-bottom: 24px !important;
+  box-shadow: 0 8px 32px var(--shadow-primary) !important;
+}
+
+.doctor-profile-wrapper .profile-header h1 {
+  color: var(--text-white) !important;
+  margin: 0 !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+.doctor-profile-wrapper .profile-header .role-badge {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: var(--text-white) !important;
+  border-radius: var(--radius-md) !important;
+  padding: 4px 12px !important;
+}
+
+.doctor-profile-wrapper .profile-header .email {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.doctor-profile-wrapper .basic-info-section,
+.doctor-profile-wrapper .role-specific-section {
+  background: var(--bg-card) !important;
+  border-radius: var(--radius-lg) !important;
+  padding: 24px !important;
+  margin-bottom: 24px !important;
+  box-shadow: 0 4px 20px var(--shadow-light) !important;
+  border: 1px solid var(--border-light) !important;
+}
+
+.doctor-profile-wrapper .basic-info-section h3,
+.doctor-profile-wrapper .role-specific-section h3 {
+  color: var(--primary-color) !important;
+  margin-bottom: 20px !important;
+  font-weight: 600 !important;
+}
+
+.doctor-profile-wrapper .edit-btn {
+  background: var(--primary-gradient) !important;
+  color: var(--text-white) !important;
+  border: none !important;
+  border-radius: var(--radius-md) !important;
+  padding: 8px 20px !important;
+  font-weight: 500 !important;
+  box-shadow: 0 4px 20px var(--shadow-light) !important;
+  transition: var(--transition-normal) !important;
+}
+
+.doctor-profile-wrapper .edit-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 30px var(--shadow-primary) !important;
+}
+
+.doctor-profile-wrapper .message.success {
+  background: rgba(76, 175, 80, 0.1) !important;
+  border: 1px solid rgba(76, 175, 80, 0.3) !important;
+  color: #2e7d32 !important;
+  border-radius: var(--radius-md) !important;
+  padding: 12px 16px !important;
+}
+
+.doctor-profile-wrapper .message.error {
+  background: rgba(244, 67, 54, 0.1) !important;
+  border: 1px solid rgba(244, 67, 54, 0.3) !important;
+  color: #c62828 !important;
+  border-radius: var(--radius-md) !important;
+  padding: 12px 16px !important;
+}
+
 @keyframes fadeInUp {
   from {
     opacity: 0;

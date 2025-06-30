@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import "./Register.css";
 import apiRegist from "../../../api/apiRegist";
 import { UserContext } from "../../../context/UserContext";
+import registerImage from "../../../assets/img/register.jpg";
 
 // Regex lấy từ backend
 const emailRegex = /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
@@ -137,7 +138,10 @@ export default function Register() {
     if (Object.keys(err).length > 0) {
       const firstErr = Object.keys(err)[0];
       const el = document.querySelector(`[name='${firstErr}']`);
-      el && el.focus();
+      if (el) {
+        el.focus();
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
       return;
     }
 
@@ -202,10 +206,57 @@ export default function Register() {
       <div className="register-container">
         <div className="register-left">
           <img
-            src="/src/assets/img/register.jpg"
-            alt="Visual"
+            src={registerImage}
+            alt="Đăng ký tài khoản FertiCare"
             className="register-image"
+            onError={(e) => {
+              e.target.style.display = "none";
+              e.target.nextElementSibling.style.display = "flex";
+            }}
           />
+          <div
+            className="register-fallback"
+            style={{
+              display: "none",
+              width: "100%",
+              height: "100%",
+              alignItems: "center",
+              justifyContent: "center",
+              background:
+                "linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)",
+            }}
+          >
+            <svg
+              viewBox="0 0 400 300"
+              style={{ width: "100%", height: "100%", maxWidth: "400px" }}
+            >
+              <rect width="400" height="300" fill="transparent" />
+              <circle cx="200" cy="120" r="40" fill="rgba(255,255,255,0.2)" />
+              <path
+                d="M160 120 L200 80 L240 120 L200 160 Z"
+                fill="rgba(255,255,255,0.3)"
+              />
+              <text
+                x="200"
+                y="200"
+                textAnchor="middle"
+                fill="white"
+                fontSize="24"
+                fontWeight="600"
+              >
+                FertiCare
+              </text>
+              <text
+                x="200"
+                y="225"
+                textAnchor="middle"
+                fill="rgba(255,255,255,0.8)"
+                fontSize="16"
+              >
+                Đăng ký tài khoản
+              </text>
+            </svg>
+          </div>
           <div className="register-quote">
             "Hành trình nào cũng xứng đáng với những yêu thương và chờ đợi."
           </div>
@@ -246,6 +297,7 @@ export default function Register() {
             placeholder="Nhập họ và tên đầy đủ (2-50 ký tự)"
             required
             autoComplete="off"
+            autoFocus
             className={
               errors.fullName && (touched.fullName || submitted) ? "error" : ""
             }
@@ -507,12 +559,8 @@ export default function Register() {
             <p className="field-error">{errors.acceptTerms}</p>
           )}
 
-          <button
-            type="submit"
-            className="btn-register"
-            disabled={loading}
-            style={loading ? { opacity: 0.7, pointerEvents: "none" } : {}}
-          >
+          <button type="submit" className="btn-register" disabled={loading}>
+            {loading && <div className="loading-spinner"></div>}
             {loading ? "Đang xử lý..." : "ĐĂNG KÝ"}
           </button>
 
