@@ -11,7 +11,9 @@ const ENV_CONFIG = {
 
   // Authentication
   AUTH: {
-    GOOGLE_CLIENT_ID: import.meta.env.VITE_GOOGLE_CLIENT_ID || "",
+    GOOGLE_CLIENT_ID:
+      import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+      "298912881431-a0l5ibtfk8jd44eh51b3f4vre3gr4pu3.apps.googleusercontent.com",
     JWT_SECRET: import.meta.env.VITE_JWT_SECRET || "dev-secret",
   },
 

@@ -24,7 +24,7 @@ const HomePage = () => {
       <HeroSection />
       <AboutUs />
       <Service />
-      {showServiceRegistration && <ServiceRegistration />}
+      {/* {showServiceRegistration && <ServiceRegistration />} */}
       <DoctorCarousel />
       <AchievementsPreview />
       <ArticlePreview />

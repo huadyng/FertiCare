@@ -96,13 +96,22 @@
 .login-form input[type="text"],
 .login-form input[type="password"],
 .login-form input[type="email"] {
-  padding: 12px 15px;
+  padding: 18px 20px;
   margin-bottom: 20px;
   border-radius: 12px;
   border: 2px solid #fbc1cc;
-  font-size: 16px;
+  font-size: 18px;
   transition: all 0.3s ease;
   outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  height: 60px;
+}
+
+.login-form input::placeholder {
+  color: #a8a8a8;
+  font-size: 16px;
+  font-weight: 400;
 }
 
 .login-form input:focus {
@@ -116,7 +125,7 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 25px;
-  font-size: 14px;
+  font-size: 16px;
   color: #f0619a;
   font-weight: 600;
 }
@@ -146,13 +155,15 @@
   border: none;
   color: white;
   font-weight: 700;
-  padding: 14px 0;
+  padding: 18px 0;
   border-radius: 12px;
   font-size: 20px;
   cursor: pointer;
   transition: background 0.4s ease;
   margin-bottom: 20px;
   box-shadow: 0 6px 15px rgba(247, 37, 133, 0.5);
+  width: 100%;
+  height: 60px;
 }
 
 .btn-login:hover {
@@ -173,6 +184,7 @@
   margin-bottom: 25px;
   color: #f0619a;
   font-weight: 600;
+  font-size: 16px;
 }
 
 .google-login p {
@@ -182,9 +194,9 @@
 /* Link đăng ký */
 .register-text {
   text-align: center;
-  font-size: 16px;
+  font-size: 18px;
   color: #bf1650;
-  margin-top: 10px;
+  margin-top: 15px;
 }
 
 .register-link {
@@ -269,13 +281,21 @@
 
 .forgot-password-modal input[type="email"] {
   width: 100%;
-  padding: 12px 15px;
-  font-size: 16px;
+  padding: 18px 20px;
+  font-size: 18px;
   border-radius: 12px;
   border: 2px solid #fbc1cc;
   margin-bottom: 25px;
   transition: all 0.3s ease;
   outline: none;
+  box-sizing: border-box;
+  height: 60px;
+}
+
+.forgot-password-modal input::placeholder {
+  color: #a8a8a8;
+  font-size: 16px;
+  font-weight: 400;
 }
 
 .forgot-password-modal input[type="email"]:focus {
@@ -291,14 +311,15 @@
 
 .forgot-actions button {
   flex: 1;
-  padding: 12px 0;
+  padding: 18px 0;
   font-weight: 600;
   border-radius: 12px;
   border: none;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 18px;
   margin: 0 5px;
   transition: background 0.3s ease;
+  height: 60px;
 }
 
 .forgot-actions button:first-child {
@@ -339,5 +360,47 @@
 
   .login-form {
     padding: 40px 30px;
+  }
+
+  .login-form input[type="text"],
+  .login-form input[type="password"],
+  .login-form input[type="email"] {
+    padding: 16px 18px;
+    font-size: 16px;
+    height: 56px;
+  }
+
+  .btn-login {
+    padding: 16px 0;
+    font-size: 18px;
+    height: 56px;
+  }
+
+  .forgot-password-modal input[type="email"] {
+    padding: 16px 18px;
+    font-size: 16px;
+    height: 56px;
+  }
+
+  .forgot-actions button {
+    padding: 16px 0;
+    font-size: 16px;
+    height: 56px;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-form {
+    padding: 30px 20px;
+  }
+
+  .login-form h2 {
+    font-size: 28px;
+  }
+
+  .login-options {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
   }
 }

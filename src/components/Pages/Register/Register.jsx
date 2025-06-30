@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import "./Register.css";
 import apiRegist from "../../../api/apiRegist";
 import { UserContext } from "../../../context/UserContext";
+import registerImage from "../../../assets/img/register.jpg";
 
 // Regex lấy từ backend
 const emailRegex = /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
@@ -37,6 +38,9 @@ export default function Register() {
   const [serverMessage, setServerMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [touched, setTouched] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   function validateField(name, value) {
     switch (name) {
@@ -58,9 +62,10 @@ export default function Register() {
       case "password":
         if (!value) return "Mật khẩu không được bỏ trống.";
         if (!passwordRegex.test(value))
-          return "Mật khẩu từ 8 ký tự, có chữ hoa, chữ thường, số, ký tự @$!%*?&.";
+          return "Mật khẩu từ 8 ký tự, có chữ hoa, chữ thường, số";
         break;
       case "confirmPassword":
+        if (!value) return "Vui lòng xác nhận mật khẩu.";
         if (value !== formData.password) return "Xác nhận mật khẩu không khớp.";
         break;
       case "phone":
@@ -89,11 +94,19 @@ export default function Register() {
     return errs;
   };
 
+  // Auto-validate when values change after first submit
+  useEffect(() => {
+    if (submitted) {
+      const newErrors = validateForm(formData);
+      setErrors(newErrors);
+    }
+  }, [formData, submitted]);
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     const val = type === "checkbox" ? checked : value;
     setFormData((prev) => ({ ...prev, [name]: val }));
-    if (touched[name]) {
+    if (touched[name] || submitted) {
       setErrors((prev) => ({
         ...prev,
         [name]: validateField(name, val),
@@ -114,6 +127,7 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setServerMessage("");
+    setSubmitted(true);
 
     setTouched(
       Object.keys(formData).reduce((acc, k) => ({ ...acc, [k]: true }), {})
@@ -124,7 +138,10 @@ export default function Register() {
     if (Object.keys(err).length > 0) {
       const firstErr = Object.keys(err)[0];
       const el = document.querySelector(`[name='${firstErr}']`);
-      el && el.focus();
+      if (el) {
+        el.focus();
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
       return;
     }
 
@@ -143,6 +160,7 @@ export default function Register() {
       );
       setFormData(INIT_DATA);
       setTouched({});
+      setSubmitted(false);
 
       setTimeout(() => {
         setServerMessage(
@@ -151,6 +169,7 @@ export default function Register() {
       }, 3000);
     } catch (error) {
       let msg = "❌ Đăng ký thất bại.";
+      let isMailError = false;
 
       // ✅ Ghi log chi tiết lỗi
       if (error.response) {
@@ -158,15 +177,28 @@ export default function Register() {
         console.error("📄 Status code:", error.response.status);
 
         const errorData = error.response.data;
-        msg =
-          typeof errorData === "string" ? errorData : errorData.message || msg;
+        const errorMessage =
+          typeof errorData === "string" ? errorData : errorData.message || "";
+
+        // Kiểm tra lỗi mail server
+        if (
+          errorMessage.includes("MailSendException") ||
+          errorMessage.includes("Mail server connection failed") ||
+          errorMessage.includes("PKIX path building failed")
+        ) {
+          isMailError = true;
+          msg =
+            "✅ Tài khoản đã được tạo thành công! \n⚠️ Tuy nhiên, hệ thống gặp sự cố khi gửi email xác thực. \n📧 Vui lòng liên hệ admin để kích hoạt tài khoản hoặc thử đăng nhập trực tiếp.";
+        } else {
+          msg = errorMessage || msg;
+        }
 
         if (error.response.status === 409) {
           msg =
             "❌ Email này đã được đăng ký. Vui lòng sử dụng email khác hoặc đăng nhập.";
         } else if (error.response.status === 400) {
           msg = "❌ Thông tin đăng ký không hợp lệ. Vui lòng kiểm tra lại.";
-        } else if (error.response.status === 500) {
+        } else if (error.response.status === 500 && !isMailError) {
           msg = "❌ Lỗi server. Vui lòng thử lại sau ít phút.";
         }
       } else if (error.request) {
@@ -178,6 +210,13 @@ export default function Register() {
       }
 
       setServerMessage(msg);
+
+      // Nếu là lỗi mail nhưng tài khoản đã tạo thành công, reset form
+      if (isMailError) {
+        setFormData(INIT_DATA);
+        setTouched({});
+        setSubmitted(false);
+      }
     } finally {
       setLoading(false);
     }
@@ -188,12 +227,59 @@ export default function Register() {
       <div className="register-container">
         <div className="register-left">
           <img
-            src="/src/assets/img/register.jpg"
-            alt="Visual"
+            src={registerImage}
+            alt="Đăng ký tài khoản FertiCare"
             className="register-image"
+            onError={(e) => {
+              e.target.style.display = "none";
+              e.target.nextElementSibling.style.display = "flex";
+            }}
           />
+          <div
+            className="register-fallback"
+            style={{
+              display: "none",
+              width: "100%",
+              height: "100%",
+              alignItems: "center",
+              justifyContent: "center",
+              background:
+                "linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)",
+            }}
+          >
+            <svg
+              viewBox="0 0 400 300"
+              style={{ width: "100%", height: "100%", maxWidth: "400px" }}
+            >
+              <rect width="400" height="300" fill="transparent" />
+              <circle cx="200" cy="120" r="40" fill="rgba(255,255,255,0.2)" />
+              <path
+                d="M160 120 L200 80 L240 120 L200 160 Z"
+                fill="rgba(255,255,255,0.3)"
+              />
+              <text
+                x="200"
+                y="200"
+                textAnchor="middle"
+                fill="white"
+                fontSize="24"
+                fontWeight="600"
+              >
+                FertiCare
+              </text>
+              <text
+                x="200"
+                y="225"
+                textAnchor="middle"
+                fill="rgba(255,255,255,0.8)"
+                fontSize="16"
+              >
+                Đăng ký tài khoản
+              </text>
+            </svg>
+          </div>
           <div className="register-quote">
-            “Hành trình nào cũng xứng đáng với những yêu thương và chờ đợi.”
+            "Hành trình nào cũng xứng đáng với những yêu thương và chờ đợi."
           </div>
         </div>
         <form
@@ -202,6 +288,24 @@ export default function Register() {
           noValidate
         >
           <h2>ĐĂNG KÝ</h2>
+
+          {submitted && Object.keys(errors).length > 0 && (
+            <div className="validation-summary">
+              <h3>Vui lòng sửa các lỗi sau:</h3>
+              <ul>
+                {Object.entries(errors).map(([field, message]) => (
+                  <li
+                    key={field}
+                    onClick={() =>
+                      document.querySelector(`[name='${field}']`).focus()
+                    }
+                  >
+                    {message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <label htmlFor="fullName">Họ và tên:</label>
           <input
@@ -214,9 +318,12 @@ export default function Register() {
             placeholder="Nhập họ và tên đầy đủ (2-50 ký tự)"
             required
             autoComplete="off"
-            className={errors.fullName && touched.fullName ? "input-error" : ""}
+            autoFocus
+            className={
+              errors.fullName && (touched.fullName || submitted) ? "error" : ""
+            }
           />
-          {errors.fullName && touched.fullName && (
+          {errors.fullName && (touched.fullName || submitted) && (
             <p className="field-error">{errors.fullName}</p>
           )}
 
@@ -228,13 +335,15 @@ export default function Register() {
             onChange={handleChange}
             onBlur={handleBlur}
             required
-            className={errors.gender && touched.gender ? "input-error" : ""}
+            className={
+              errors.gender && (touched.gender || submitted) ? "error" : ""
+            }
           >
             <option value="">Chọn Giới tính</option>
             <option value="MALE">Nam</option>
             <option value="FEMALE">Nữ</option>
           </select>
-          {errors.gender && touched.gender && (
+          {errors.gender && (touched.gender || submitted) && (
             <p className="field-error">{errors.gender}</p>
           )}
 
@@ -249,10 +358,12 @@ export default function Register() {
             required
             max={new Date().toISOString().split("T")[0]}
             className={
-              errors.dateOfBirth && touched.dateOfBirth ? "input-error" : ""
+              errors.dateOfBirth && (touched.dateOfBirth || submitted)
+                ? "error"
+                : ""
             }
           />
-          {errors.dateOfBirth && touched.dateOfBirth && (
+          {errors.dateOfBirth && (touched.dateOfBirth || submitted) && (
             <p className="field-error">{errors.dateOfBirth}</p>
           )}
 
@@ -267,47 +378,145 @@ export default function Register() {
             placeholder="abc@gmail.com"
             required
             autoComplete="off"
-            className={errors.email && touched.email ? "input-error" : ""}
+            className={
+              errors.email && (touched.email || submitted) ? "error" : ""
+            }
           />
-          {errors.email && touched.email && (
+          {errors.email && (touched.email || submitted) && (
             <p className="field-error">{errors.email}</p>
           )}
 
           <label htmlFor="password">Mật khẩu:</label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            value={formData.password}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            required
-            placeholder="Ít nhất 8 ký tự, có chữ hoa, chữ thường, số"
-            autoComplete="new-password"
-            className={errors.password && touched.password ? "input-error" : ""}
-          />
-          {errors.password && touched.password && (
+          <div className="input-container">
+            <input
+              id="password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              value={formData.password}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              required
+              placeholder="Ít nhất 8 ký tự, có chữ hoa, chữ thường, số"
+              autoComplete="new-password"
+              className={
+                errors.password && (touched.password || submitted)
+                  ? "error"
+                  : ""
+              }
+            />
+            <button
+              type="button"
+              className="password-toggle"
+              onClick={() => setShowPassword(!showPassword)}
+              tabIndex="-1"
+              aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+            >
+              {showPassword ? (
+                <svg
+                  className="eye-icon eye-closed"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                  <line x1="1" y1="1" x2="23" y2="23"></line>
+                </svg>
+              ) : (
+                <svg
+                  className="eye-icon"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              )}
+            </button>
+          </div>
+          {!errors.password && !touched.password && !submitted && (
+            <div className="input-note">
+              <strong>Yêu cầu mật khẩu:</strong> Ít nhất 8 ký tự, bao gồm chữ
+              hoa, chữ thường, số
+            </div>
+          )}
+          {errors.password && (touched.password || submitted) && (
             <p className="field-error">{errors.password}</p>
           )}
 
           <label htmlFor="confirmPassword">Xác nhận mật khẩu:</label>
-          <input
-            id="confirmPassword"
-            name="confirmPassword"
-            type="password"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            required
-            placeholder="Nhập lại mật khẩu"
-            autoComplete="new-password"
-            className={
-              errors.confirmPassword && touched.confirmPassword
-                ? "input-error"
-                : ""
-            }
-          />
-          {errors.confirmPassword && touched.confirmPassword && (
+          <div className="input-container">
+            <input
+              id="confirmPassword"
+              name="confirmPassword"
+              type={showConfirmPassword ? "text" : "password"}
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              required
+              placeholder="Nhập lại mật khẩu"
+              autoComplete="new-password"
+              className={
+                errors.confirmPassword && (touched.confirmPassword || submitted)
+                  ? "error"
+                  : ""
+              }
+            />
+            <button
+              type="button"
+              className="password-toggle"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              tabIndex="-1"
+              aria-label={showConfirmPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+            >
+              {showConfirmPassword ? (
+                <svg
+                  className="eye-icon eye-closed"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                  <line x1="1" y1="1" x2="23" y2="23"></line>
+                </svg>
+              ) : (
+                <svg
+                  className="eye-icon"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              )}
+            </button>
+          </div>
+          {errors.confirmPassword && (touched.confirmPassword || submitted) && (
             <p className="field-error">{errors.confirmPassword}</p>
           )}
 
@@ -321,9 +530,11 @@ export default function Register() {
             onBlur={handleBlur}
             required
             placeholder="Nhập số điện thoại"
-            className={errors.phone && touched.phone ? "input-error" : ""}
+            className={
+              errors.phone && (touched.phone || submitted) ? "error" : ""
+            }
           />
-          {errors.phone && touched.phone && (
+          {errors.phone && (touched.phone || submitted) && (
             <p className="field-error">{errors.phone}</p>
           )}
 
@@ -337,13 +548,21 @@ export default function Register() {
             onBlur={handleBlur}
             required
             placeholder="Nhập địa chỉ"
-            className={errors.address && touched.address ? "input-error" : ""}
+            className={
+              errors.address && (touched.address || submitted) ? "error" : ""
+            }
           />
-          {errors.address && touched.address && (
+          {errors.address && (touched.address || submitted) && (
             <p className="field-error">{errors.address}</p>
           )}
 
-          <div className="checkbox-group">
+          <div
+            className={`checkbox-group ${
+              errors.acceptTerms && (touched.acceptTerms || submitted)
+                ? "error"
+                : ""
+            }`}
+          >
             <input
               id="acceptTerms"
               name="acceptTerms"
@@ -357,31 +576,34 @@ export default function Register() {
               Tôi chấp nhận Điều khoản sử dụng và Chính sách bảo mật.
             </label>
           </div>
-          {errors.acceptTerms && touched.acceptTerms && (
+          {errors.acceptTerms && (touched.acceptTerms || submitted) && (
             <p className="field-error">{errors.acceptTerms}</p>
           )}
 
-          <button
-            type="submit"
-            className="btn-register"
-            disabled={loading}
-            style={loading ? { opacity: 0.7, pointerEvents: "none" } : {}}
-          >
+          <button type="submit" className="btn-register" disabled={loading}>
+            {loading && <div className="loading-spinner"></div>}
             {loading ? "Đang xử lý..." : "ĐĂNG KÝ"}
           </button>
 
           {serverMessage && (
             <div
               className={
-                serverMessage.startsWith("🎉") || serverMessage.startsWith("📧")
+                serverMessage.startsWith("🎉") ||
+                serverMessage.startsWith("📧") ||
+                serverMessage.startsWith("✅")
                   ? "server-success"
                   : "server-error"
               }
-              style={{ marginTop: 10 }}
+              style={{
+                marginTop: 10,
+                whiteSpace: "pre-line",
+                textAlign: "left",
+              }}
             >
               {serverMessage}
               {(serverMessage.startsWith("🎉") ||
-                serverMessage.startsWith("📧")) && (
+                serverMessage.startsWith("📧") ||
+                serverMessage.startsWith("✅")) && (
                 <div style={{ marginTop: 15 }}>
                   <button
                     type="button"

@@ -1,0 +1,978 @@
+/* Doctor Dashboard Theme CSS - Enhanced Modern Design */
+
+/* Định nghĩa CSS Variables cho màu sắc chủ đạo */
+:root,
+.doctor-dashboard {
+  --primary-gradient: linear-gradient(
+    135deg,
+    #ff7eb3 0%,
+    #ff758c 50%,
+    #ff6b9d 100%
+  );
+  --secondary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  --warning-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+
+  --primary-color: #ff6b9d;
+  --primary-light: #ff7eb3;
+  --primary-dark: #e91e63;
+  --accent-color: #ff758c;
+  --secondary-color: #667eea;
+
+  --glass-bg: rgba(255, 255, 255, 0.12);
+  --glass-bg-strong: rgba(255, 255, 255, 0.18);
+  --glass-border: rgba(255, 255, 255, 0.25);
+  --glass-shadow: 0 8px 32px rgba(255, 107, 157, 0.25);
+
+  --shadow-primary: rgba(255, 107, 157, 0.3);
+  --shadow-light: rgba(255, 126, 179, 0.2);
+  --shadow-soft: rgba(0, 0, 0, 0.05);
+  --shadow-medium: rgba(0, 0, 0, 0.1);
+
+  --text-white: #ffffff;
+  --text-dark: #374151;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+
+  --bg-light: #f8fafc;
+  --bg-gradient: linear-gradient(135deg, #fef7ff 0%, #fdf2f8 50%, #fce7f3 100%);
+  --bg-card: #ffffff;
+  --bg-overlay: rgba(0, 0, 0, 0.02);
+
+  --border-light: rgba(0, 0, 0, 0.05);
+  --border-medium: rgba(0, 0, 0, 0.1);
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+
+  --transition-fast: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Global Styles */
+.doctor-dashboard {
+  font-family: var(
+    --font-family-primary,
+    "Inter",
+    "Segoe UI",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif
+  );
+  background: var(--bg-gradient);
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.doctor-dashboard::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(
+      circle at 20% 80%,
+      rgba(255, 126, 179, 0.08) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 80% 20%,
+      rgba(255, 117, 140, 0.08) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 40% 40%,
+      rgba(255, 107, 157, 0.05) 0%,
+      transparent 50%
+    );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.doctor-dashboard > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Enhanced Card Styles */
+.doctor-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 20px var(--shadow-light), 0 1px 3px var(--shadow-soft);
+  border: 1px solid var(--border-light);
+  transition: var(--transition-normal);
+  overflow: hidden;
+  position: relative;
+  backdrop-filter: blur(10px);
+}
+
+.doctor-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--primary-gradient);
+  opacity: 0;
+  transition: var(--transition-normal);
+}
+
+.doctor-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  opacity: 0;
+  transition: var(--transition-normal);
+  pointer-events: none;
+}
+
+.doctor-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 20px 40px var(--shadow-primary), 0 8px 16px var(--shadow-light);
+  border-color: rgba(255, 126, 179, 0.2);
+}
+
+.doctor-card:hover::before {
+  opacity: 1;
+}
+
+.doctor-card:hover::after {
+  opacity: 1;
+}
+
+/* Primary Button Styles */
+.doctor-btn-primary {
+  background: var(--primary-gradient) !important;
+  border: none !important;
+  color: var(--text-white) !important;
+  border-radius: var(--radius-md) !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  padding: 8px 20px !important;
+  height: auto !important;
+  box-shadow: 0 4px 20px var(--shadow-light),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  transition: var(--transition-normal) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  text-transform: none !important;
+  letter-spacing: 0.3px !important;
+}
+
+.doctor-btn-primary::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.doctor-btn-primary:hover::before {
+  left: 100%;
+}
+
+.doctor-btn-primary:hover {
+  transform: translateY(-2px) scale(1.05) !important;
+  box-shadow: 0 8px 30px var(--shadow-primary),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+}
+
+.doctor-btn-primary:active {
+  transform: translateY(0) scale(1.02) !important;
+}
+
+/* Secondary Button Styles */
+.doctor-btn-secondary {
+  background: var(--glass-bg) !important;
+  border: 1px solid var(--glass-border) !important;
+  color: var(--primary-color) !important;
+  border-radius: var(--radius-md) !important;
+  font-weight: 500 !important;
+  backdrop-filter: blur(20px) !important;
+  transition: var(--transition-normal) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.doctor-btn-secondary::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--primary-gradient);
+  opacity: 0;
+  transition: var(--transition-normal);
+  z-index: -1;
+}
+
+.doctor-btn-secondary:hover {
+  background: var(--glass-bg-strong) !important;
+  border-color: var(--primary-color) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 25px var(--shadow-light) !important;
+}
+
+.doctor-btn-secondary:hover::before {
+  opacity: 0.1;
+}
+
+/* Glass Effect Cards */
+.doctor-glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--glass-shadow);
+  transition: var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.doctor-glass-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  pointer-events: none;
+}
+
+.doctor-glass-card:hover {
+  background: var(--glass-bg-strong);
+  transform: translateY(-4px);
+  box-shadow: 0 20px 50px var(--shadow-primary), var(--glass-shadow);
+}
+
+/* Header Styles */
+.doctor-header {
+  background: var(--primary-gradient);
+  color: var(--text-white);
+  padding: 20px 24px;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.doctor-header::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.1) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  animation: subtle-pulse 6s ease-in-out infinite;
+}
+
+.doctor-header h3 {
+  color: var(--text-white) !important;
+  margin: 0 !important;
+  font-weight: 600 !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Statistics Cards */
+.doctor-stat-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: 0 4px 20px var(--shadow-light), 0 1px 3px var(--shadow-soft);
+  border: 1px solid var(--border-light);
+  transition: var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.doctor-stat-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--primary-gradient);
+  opacity: 0;
+  transition: var(--transition-normal);
+}
+
+.doctor-stat-card::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 126, 179, 0.05) 0%,
+    transparent 70%
+  );
+  opacity: 0;
+  transition: var(--transition-normal);
+  pointer-events: none;
+}
+
+.doctor-stat-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 20px 40px var(--shadow-primary), 0 8px 16px var(--shadow-light);
+}
+
+.doctor-stat-card:hover::before {
+  opacity: 1;
+}
+
+.doctor-stat-card:hover::after {
+  opacity: 1;
+}
+
+/* Enhanced Progress Bar */
+.doctor-progress {
+  background: rgba(255, 126, 179, 0.1) !important;
+  border-radius: var(--radius-sm) !important;
+  overflow: hidden !important;
+}
+
+.doctor-progress .ant-progress-bg {
+  background: var(--primary-gradient) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: 0 2px 8px var(--shadow-light) !important;
+  position: relative !important;
+}
+
+.doctor-progress .ant-progress-bg::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: shimmer 2s infinite;
+}
+
+/* Enhanced Tags */
+.doctor-tag-primary {
+  background: var(--primary-gradient) !important;
+  border: none !important;
+  color: var(--text-white) !important;
+  border-radius: var(--radius-md) !important;
+  font-weight: 500 !important;
+  padding: 6px 16px !important;
+  font-size: 12px !important;
+  box-shadow: 0 2px 8px var(--shadow-light) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.doctor-tag-secondary {
+  background: var(--glass-bg) !important;
+  border: 1px solid var(--glass-border) !important;
+  color: var(--primary-color) !important;
+  border-radius: var(--radius-md) !important;
+  backdrop-filter: blur(10px) !important;
+  font-weight: 500 !important;
+  padding: 6px 16px !important;
+}
+
+/* Enhanced Timeline */
+.doctor-timeline .ant-timeline-item-head {
+  background: var(--primary-color) !important;
+  border-color: var(--primary-light) !important;
+  box-shadow: 0 2px 8px var(--shadow-light) !important;
+}
+
+.doctor-timeline .ant-timeline-item-tail {
+  border-left: 2px solid var(--primary-light) !important;
+}
+
+.doctor-timeline .ant-timeline-item-content {
+  padding-left: 20px !important;
+}
+
+/* Enhanced Steps */
+.doctor-steps .ant-steps-item-process .ant-steps-item-icon {
+  background: var(--primary-gradient) !important;
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 4px 12px var(--shadow-light) !important;
+}
+
+.doctor-steps .ant-steps-item-finish .ant-steps-item-icon {
+  background: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 2px 8px var(--shadow-light) !important;
+}
+
+.doctor-steps .ant-steps-item-finish .ant-steps-item-icon .ant-steps-icon {
+  color: var(--text-white) !important;
+}
+
+.doctor-steps .ant-steps-item-process .ant-steps-item-icon .ant-steps-icon {
+  color: var(--text-white) !important;
+}
+
+/* Enhanced Sidebar */
+.doctor-sidebar {
+  background: var(--bg-card) !important;
+  border-right: 1px solid var(--border-light) !important;
+  box-shadow: 4px 0 20px var(--shadow-light) !important;
+  backdrop-filter: blur(20px) !important;
+}
+
+.doctor-sidebar .ant-layout-sider-children {
+  background: transparent !important;
+}
+
+.doctor-sidebar .ant-menu {
+  background: transparent !important;
+  border-right: none !important;
+}
+
+.doctor-sidebar .ant-menu-item {
+  margin: 4px 8px !important;
+  width: calc(100% - 16px) !important;
+  border-radius: var(--radius-sm) !important;
+  transition: var(--transition-normal) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.doctor-sidebar .ant-menu-item::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--primary-gradient);
+  opacity: 0;
+  transition: var(--transition-normal);
+  z-index: -1;
+}
+
+.doctor-sidebar .ant-menu-item-selected {
+  background: var(--glass-bg) !important;
+  color: var(--primary-color) !important;
+  box-shadow: 0 2px 8px var(--shadow-light) !important;
+}
+
+.doctor-sidebar .ant-menu-item-selected::before {
+  opacity: 0.1;
+}
+
+.doctor-sidebar .ant-menu-item:hover {
+  background: rgba(255, 126, 179, 0.08) !important;
+  color: var(--primary-color) !important;
+  transform: translateX(4px) !important;
+}
+
+/* Header Layout */
+.doctor-layout-header {
+  background: var(--bg-card) !important;
+  box-shadow: 0 4px 20px var(--shadow-light) !important;
+  border-bottom: 1px solid var(--border-light) !important;
+  padding: 0 24px !important;
+  backdrop-filter: blur(20px) !important;
+  position: relative !important;
+  z-index: 10 !important;
+}
+
+/* Enhanced Avatar */
+.doctor-avatar {
+  border: 3px solid var(--primary-color) !important;
+  box-shadow: 0 4px 12px var(--shadow-light) !important;
+  transition: var(--transition-normal) !important;
+}
+
+.doctor-avatar:hover {
+  transform: scale(1.1) !important;
+  box-shadow: 0 6px 20px var(--shadow-primary) !important;
+}
+
+/* Enhanced Form Controls */
+.doctor-form .ant-input,
+.doctor-form .ant-select-selector,
+.doctor-form .ant-picker {
+  border-radius: var(--radius-md) !important;
+  border-color: var(--border-light) !important;
+  transition: var(--transition-normal) !important;
+  backdrop-filter: blur(10px) !important;
+  background: rgba(255, 255, 255, 0.8) !important;
+}
+
+.doctor-form .ant-input:focus,
+.doctor-form .ant-select-focused .ant-select-selector,
+.doctor-form .ant-picker-focused {
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 0 3px var(--shadow-light) !important;
+  background: var(--bg-card) !important;
+}
+
+/* Enhanced Table */
+.doctor-table .ant-table-thead > tr > th {
+  background: var(--glass-bg) !important;
+  border-color: var(--glass-border) !important;
+  color: var(--primary-dark) !important;
+  font-weight: 600 !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+.doctor-table .ant-table-tbody > tr {
+  transition: var(--transition-fast) !important;
+}
+
+.doctor-table .ant-table-tbody > tr:hover > td {
+  background: rgba(255, 126, 179, 0.05) !important;
+  transform: scale(1.01) !important;
+}
+
+/* Enhanced Modal */
+.doctor-modal .ant-modal-header {
+  background: var(--primary-gradient) !important;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+  border-bottom: none !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.doctor-modal .ant-modal-header::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent);
+  pointer-events: none;
+}
+
+.doctor-modal .ant-modal-title {
+  color: var(--text-white) !important;
+  font-weight: 600 !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.doctor-modal .ant-modal-content {
+  border-radius: var(--radius-lg) !important;
+  overflow: hidden !important;
+  box-shadow: 0 20px 60px var(--shadow-primary) !important;
+  border: 1px solid var(--border-light) !important;
+}
+
+/* Enhanced Alerts */
+.doctor-alert-info {
+  background: var(--glass-bg) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--radius-md) !important;
+  backdrop-filter: blur(20px) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.doctor-alert-info::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--primary-gradient);
+}
+
+.doctor-alert-success {
+  background: linear-gradient(
+    135deg,
+    rgba(76, 175, 80, 0.1),
+    rgba(129, 199, 132, 0.1)
+  ) !important;
+  border: 1px solid rgba(76, 175, 80, 0.3) !important;
+  border-radius: var(--radius-md) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+/* Enhanced Badge */
+.doctor-badge {
+  background: var(--primary-gradient) !important;
+  box-shadow: 0 2px 8px var(--shadow-light) !important;
+  border-radius: 50% !important;
+}
+
+/* List Enhancements */
+.doctor-list .ant-list-item {
+  border-radius: var(--radius-md) !important;
+  margin-bottom: 12px !important;
+  padding: 16px !important;
+  background: var(--bg-card) !important;
+  box-shadow: 0 2px 8px var(--shadow-soft) !important;
+  border: 1px solid var(--border-light) !important;
+  transition: var(--transition-normal) !important;
+}
+
+.doctor-list .ant-list-item:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 25px var(--shadow-light) !important;
+}
+
+/* Fix cho List Item nếu có conflict */
+.ant-list-item {
+  border: none !important;
+}
+
+.ant-list-item-meta {
+  align-items: flex-start !important;
+}
+
+.ant-list-item-action {
+  margin-top: 0 !important;
+}
+
+/* Animations */
+@keyframes subtle-pulse {
+  0%,
+  100% {
+    transform: rotate(0deg);
+    opacity: 0.5;
+  }
+  50% {
+    transform: rotate(180deg);
+    opacity: 0.8;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Doctor Profile Wrapper - Integrate UserProfile with Doctor Theme */
+.doctor-profile-wrapper {
+  /* Override UserProfile CSS to match doctor theme */
+}
+
+.doctor-profile-wrapper .profile-container {
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+.doctor-profile-wrapper .profile-header {
+  background: var(--primary-gradient) !important;
+  color: var(--text-white) !important;
+  border-radius: var(--radius-lg) !important;
+  padding: 24px !important;
+  margin-bottom: 24px !important;
+  box-shadow: 0 8px 32px var(--shadow-primary) !important;
+}
+
+.doctor-profile-wrapper .profile-header h1 {
+  color: var(--text-white) !important;
+  margin: 0 !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+.doctor-profile-wrapper .profile-header .role-badge {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: var(--text-white) !important;
+  border-radius: var(--radius-md) !important;
+  padding: 4px 12px !important;
+}
+
+.doctor-profile-wrapper .profile-header .email {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.doctor-profile-wrapper .basic-info-section,
+.doctor-profile-wrapper .role-specific-section {
+  background: var(--bg-card) !important;
+  border-radius: var(--radius-lg) !important;
+  padding: 24px !important;
+  margin-bottom: 24px !important;
+  box-shadow: 0 4px 20px var(--shadow-light) !important;
+  border: 1px solid var(--border-light) !important;
+}
+
+.doctor-profile-wrapper .basic-info-section h3,
+.doctor-profile-wrapper .role-specific-section h3 {
+  color: var(--primary-color) !important;
+  margin-bottom: 20px !important;
+  font-weight: 600 !important;
+}
+
+.doctor-profile-wrapper .edit-btn {
+  background: var(--primary-gradient) !important;
+  color: var(--text-white) !important;
+  border: none !important;
+  border-radius: var(--radius-md) !important;
+  padding: 8px 20px !important;
+  font-weight: 500 !important;
+  box-shadow: 0 4px 20px var(--shadow-light) !important;
+  transition: var(--transition-normal) !important;
+}
+
+.doctor-profile-wrapper .edit-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 30px var(--shadow-primary) !important;
+}
+
+.doctor-profile-wrapper .message.success {
+  background: rgba(76, 175, 80, 0.1) !important;
+  border: 1px solid rgba(76, 175, 80, 0.3) !important;
+  color: #2e7d32 !important;
+  border-radius: var(--radius-md) !important;
+  padding: 12px 16px !important;
+}
+
+.doctor-profile-wrapper .message.error {
+  background: rgba(244, 67, 54, 0.1) !important;
+  border: 1px solid rgba(244, 67, 54, 0.3) !important;
+  color: #c62828 !important;
+  border-radius: var(--radius-md) !important;
+  padding: 12px 16px !important;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.doctor-fade-in {
+  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.doctor-slide-in {
+  animation: slideInRight 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.doctor-bounce-in {
+  animation: bounceIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Stagger animations for multiple elements */
+.doctor-fade-in:nth-child(1) {
+  animation-delay: 0.1s;
+}
+.doctor-fade-in:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.doctor-fade-in:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.doctor-fade-in:nth-child(4) {
+  animation-delay: 0.4s;
+}
+.doctor-fade-in:nth-child(5) {
+  animation-delay: 0.5s;
+}
+
+/* Loading States */
+.doctor-loading {
+  background: linear-gradient(
+    90deg,
+    var(--bg-light) 0%,
+    rgba(255, 126, 179, 0.1) 50%,
+    var(--bg-light) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-md);
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .doctor-card {
+    border-radius: var(--radius-md);
+  }
+
+  .doctor-glass-card {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .doctor-card {
+    border-radius: var(--radius-sm);
+    margin: 8px;
+  }
+
+  .doctor-glass-card {
+    padding: 16px;
+    border-radius: var(--radius-md);
+  }
+
+  .doctor-stat-card {
+    padding: 16px;
+  }
+
+  .doctor-btn-primary,
+  .doctor-btn-secondary {
+    padding: 6px 16px !important;
+    font-size: 12px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .doctor-dashboard {
+    background: var(--bg-light);
+  }
+
+  .doctor-card {
+    box-shadow: 0 2px 8px var(--shadow-soft);
+  }
+
+  .doctor-glass-card {
+    background: var(--bg-card);
+    backdrop-filter: none;
+    padding: 12px;
+  }
+}
+
+/* Fixes cho các component có thể bị conflict */
+.doctor-dashboard .ant-card {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+}
+
+.doctor-dashboard .ant-card-head {
+  border-bottom: 1px solid var(--border-light) !important;
+  background: transparent !important;
+}
+
+.doctor-dashboard .ant-card-body {
+  padding: 24px !important;
+}
+
+/* Fix cho Layout */
+.doctor-dashboard .ant-layout {
+  background: transparent !important;
+}
+
+.doctor-dashboard .ant-layout-content {
+  background: transparent !important;
+}
+
+/* Đảm bảo Text components hoạt động đúng */
+.doctor-dashboard .ant-typography {
+  margin-bottom: 0 !important;
+}
+
+/* Fix cho Space component */
+.doctor-dashboard .ant-space {
+  width: 100%;
+}
+
+/* Fix cho Row và Col */
+.doctor-dashboard .ant-row {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.doctor-dashboard .ant-col {
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+}
+
+/* Dark mode support (optional) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-card: #1f2937;
+    --text-dark: #f9fafb;
+    --text-secondary: #d1d5db;
+    --text-muted: #9ca3af;
+    --border-light: rgba(255, 255, 255, 0.1);
+    --bg-light: #111827;
+    --bg-gradient: linear-gradient(
+      135deg,
+      #1f2937 0%,
+      #374151 50%,
+      #4b5563 100%
+    );
+  }
+}

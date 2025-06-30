@@ -15,44 +15,47 @@ import "./App.css";
 const Footer = lazy(() => import("./components/layout/Footer/Footer"));
 const Header = lazy(() => import("./components/layout/Header/Header"));
 const Doctor = lazy(() => import("./components/pages/DoctorTeam/Doctor"));
-const Services = lazy(() =>
-  import("./components/Pages/Services/ServicesList"));
+const Services = lazy(() => import("./components/Pages/Services/ServicesList"));
 
 const ServiceDetail = lazy(() =>
-  import("./components/Pages/Services/ServiceDetail"));
+  import("./components/Pages/Services/ServiceDetail")
+);
 
-const Articles = lazy(() =>
-  import("./components/Pages/News/Articles"));
+const Articles = lazy(() => import("./components/Pages/News/Articles"));
 
 const ArticlesDetail = lazy(() =>
-  import("./components/Pages/News/ArticlesDetail"));
+  import("./components/Pages/News/ArticlesDetail")
+);
 
 const Achievements = lazy(() =>
-  import("./components/Pages/Achievement/Achievements"));
+  import("./components/Pages/Achievement/Achievements")
+);
 
 const Login = lazy(() => import("./components/pages/Login/Login"));
 const Register = lazy(() => import("./components/pages/Register/Register"));
-const RegisterPage = lazy(() => import("./components/pages/Register/Register")); // Nếu RegisterPage khác với Register, điều chỉnh lại
+const RegisterPage = lazy(() => import("./components/pages/Register/Register"));
 const DoctorDetail = lazy(() =>
-  import("./components/pages/DoctorTeam/Card/DoctorDetail/DoctorDetail"),
+  import("./components/pages/DoctorTeam/Card/DoctorDetail/DoctorDetail")
 );
 const HomePage = lazy(() =>
-  import("./components/pages/HomePage/index/HomePage"),
+  import("./components/pages/HomePage/index/HomePage")
 );
 const RegistrationForm = lazy(() =>
-  import("./components/pages/RegistrationServiceForm/index/RegistrationForm"),
+  import("./components/pages/RegistrationServiceForm/index/RegistrationForm")
 );
 const Pie = lazy(() => import("./components/pages/ChartsForm/Pie"));
 const Contact = lazy(() => import("./components/pages/Contact/ContactForm"));
-//const BlogPage = lazy(() => import("./components/pages/Blog/BlogPage"));
-//const BlogPublic = lazy(() => import("./components/Pages/Blog/BlogPublic"));
-//const BlogManager = lazy(() => import("./components/Pages/Blog/BlogManager"));
-//const BlogDetail = lazy(() => import("./components/Pages/Blog/BlogDetail"));
+const BlogPublic = lazy(() => import("./components/pages/Blog/BlogPublic"));
+const BlogManager = lazy(() => import("./components/pages/Blog/BlogManager"));
+const BlogDetail = lazy(() => import("./components/pages/Blog/BlogDetail"));
 const ForgotPassword = lazy(() =>
-  import("./components/pages/Login/ForgotPassword"),
+  import("./components/pages/Login/ForgotPassword")
 );
 const VerifyEmail = lazy(() =>
-  import("./components/pages/VerifyEmail/VerifyEmail"),
+  import("./components/pages/VerifyEmail/VerifyEmail")
+);
+const UserProfile = lazy(() =>
+  import("./components/pages/Profile/UserProfile")
 );
 
 // Lazy load layouts và dashboard
@@ -62,35 +65,34 @@ const DoctorLayout = lazy(() => import("./components/layout/DoctorLayout"));
 const PatientLayout = lazy(() => import("./components/layout/PatientLayout"));
 
 const AdminDashboard = lazy(() =>
-  import("./components/dashboards/AdminDashboard"),
+  import("./components/dashboards/AdminDashboard")
 );
 const ManagerDashboard = lazy(() =>
-  import("./components/dashboards/ManagerDashboard"),
+  import("./components/dashboards/ManagerDashboard")
 );
 const DoctorDashboard = lazy(() =>
-  import("./components/doctor/DoctorDashboard"),
+  import("./components/doctor/DoctorDashboard")
 );
 const PatientDashboard = lazy(() =>
-  import("./components/dashboards/PatientDashboard"),
+  import("./components/dashboards/PatientDashboard")
 );
 
 const UserManagement = lazy(() => import("./components/admin/UserManagement"));
 const DepartmentManagement = lazy(() =>
-  import("./components/admin/DepartmentManagement"),
+  import("./components/admin/DepartmentManagement")
 );
 const SystemReports = lazy(() => import("./components/admin/SystemReports"));
 const SystemSettings = lazy(() => import("./components/admin/SystemSettings"));
 
 const DoctorManagement = lazy(() =>
-  import("./components/manager/DoctorManagement"),
+  import("./components/manager/DoctorManagement")
 );
 const ScheduleManagement = lazy(() =>
-  import("./components/manager/ScheduleManagement"),
+  import("./components/manager/ScheduleManagement")
 );
 const ShiftManagement = lazy(() =>
-  import("./components/manager/ShiftManagement"),
+  import("./components/manager/ShiftManagement")
 );
-
 const MockLogin = lazy(() => import("./components/auth/MockLogin"));
 
 // Import auth routes (hoặc dùng component cũ cũng được)
@@ -103,6 +105,7 @@ import {
   DoctorRoute,
   PatientRoute,
 } from "./components/auth/ProtectedRoute";
+import ScrollToTop from "./components/common/ScrollToTop";
 
 // Loading Spinner
 const LoadingSpinner = () => (
@@ -195,6 +198,7 @@ function AppContent() {
 
   return (
     <Suspense fallback={<LoadingSpinner />}>
+      <ScrollToTop />
       <Routes>
         {/* Public routes */}
         <Route
@@ -213,41 +217,46 @@ function AppContent() {
             </LayoutWrapper>
           }
         />
-         <Route
+        <Route
           path="/articles"
           element={
             <LayoutWrapper>
               <Articles />
             </LayoutWrapper>
-          }/>
-          <Route
+          }
+        />
+        <Route
           path="/services"
           element={
             <LayoutWrapper>
               <Services />
             </LayoutWrapper>
-          }/>
-          <Route
+          }
+        />
+        <Route
           path="/services/:id"
           element={
             <LayoutWrapper>
               <ServiceDetail />
             </LayoutWrapper>
-          }/>
-          <Route
+          }
+        />
+        <Route
           path="/articles/:id"
           element={
             <LayoutWrapper>
-              <ArticlesDetail/>
+              <ArticlesDetail />
             </LayoutWrapper>
-          }/>
-          <Route
+          }
+        />
+        <Route
           path="/achievements"
           element={
             <LayoutWrapper>
               <Achievements />
             </LayoutWrapper>
-          }/>
+          }
+        />
         <Route
           path="/doctor/:id"
           element={
@@ -264,7 +273,7 @@ function AppContent() {
             </LayoutWrapper>
           }
         /> */}
-        {/* <Route
+        <Route
           path="/blog-public"
           element={
             <LayoutWrapper>
@@ -287,7 +296,7 @@ function AppContent() {
               <BlogDetail />
             </LayoutWrapper>
           }
-        /> */}
+        />
         <Route
           path="/verify-email"
           element={
@@ -345,6 +354,28 @@ function AppContent() {
         {/* Mock Login for testing */}
         <Route path="/mock-login" element={<MockLogin />} />
 
+        {/* User Profile - Test Route (No Auth Required for Testing) */}
+        <Route
+          path="/profile-test"
+          element={
+            <LayoutWrapper>
+              <UserProfile />
+            </LayoutWrapper>
+          }
+        />
+
+        {/* User Profile - Protected Route */}
+        <Route
+          path="/profile"
+          element={
+            <AuthRequiredRoute>
+              <LayoutWrapper>
+                <UserProfile />
+              </LayoutWrapper>
+            </AuthRequiredRoute>
+          }
+        />
+
         {/* Dashboard auto redirect */}
         <Route path="/dashboard" element={<DashboardRedirect />} />
 
@@ -371,10 +402,7 @@ function AppContent() {
           />
           <Route path="reports" element={<SystemReports />} />
           <Route path="settings" element={<SystemSettings />} />
-          <Route
-            path="profile"
-            element={<ComingSoon title="Thông tin cá nhân" />}
-          />
+          <Route path="profile" element={<UserProfile />} />
         </Route>
 
         {/* Manager Dashboard + quản lý */}
@@ -396,10 +424,7 @@ function AppContent() {
             element={<ComingSoon title="Duyệt phác đồ điều trị" />}
           />
           <Route path="reports" element={<ComingSoon title="Báo cáo nhóm" />} />
-          <Route
-            path="profile"
-            element={<ComingSoon title="Thông tin cá nhân" />}
-          />
+          <Route path="profile" element={<UserProfile />} />
         </Route>
 
         {/* Doctor Dashboard - tích hợp mới */}
@@ -450,10 +475,7 @@ function AppContent() {
             path="reports"
             element={<ComingSoon title="Báo cáo cá nhân" />}
           />
-          <Route
-            path="profile"
-            element={<ComingSoon title="Thông tin cá nhân" />}
-          />
+          <Route path="profile" element={<UserProfile />} />
         </Route>
 
         {/* Patient Dashboard */}
@@ -481,10 +503,7 @@ function AppContent() {
             path="notifications"
             element={<ComingSoon title="Thông báo" />}
           />
-          <Route
-            path="profile"
-            element={<ComingSoon title="Thông tin cá nhân" />}
-          />
+          <Route path="profile" element={<UserProfile />} />
           <Route path="settings" element={<ComingSoon title="Cài đặt" />} />
         </Route>
 
