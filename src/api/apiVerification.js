@@ -54,12 +54,21 @@ const apiVerification = {
         response.data?.message
       );
 
-      // ✅ Any 200 response with data is considered success
-      if (response.status === 200 && response.data) {
-        console.log(
-          "🎉 [apiVerification] Email verification SUCCESS by status 200!"
-        );
-        return response;
+      // ✅ If we get here, response was 200 but no clear success indicators
+      console.warn(
+        "⚠️ [apiVerification] 200 response but no clear success indicators"
+      );
+      console.warn("📄 Response data:", response.data);
+
+      // Don't consider it success if no clear indicators
+      const shouldReject = true;
+      if (shouldReject) {
+        const ambiguousError = new Error("Response không rõ ràng về success");
+        ambiguousError.response = {
+          status: 200,
+          data: response.data,
+        };
+        throw ambiguousError;
       }
     } catch (error) {
       console.error("❌ [apiVerification] Primary endpoint failed:", error);

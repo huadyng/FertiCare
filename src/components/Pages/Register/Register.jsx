@@ -1,6 +1,6 @@
 //
 import React, { useState, useEffect, useContext } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import "./Register.css";
 import apiRegist from "../../../api/apiRegist";
 import { UserContext } from "../../../context/UserContext";
@@ -27,12 +27,9 @@ const INIT_DATA = {
 export default function Register() {
   const { setUser } = useContext(UserContext);
   const navigate = useNavigate();
+  const location = useLocation();
 
-  useEffect(() => {
-    const storedUser = JSON.parse(localStorage.getItem("user"));
-    if (storedUser) setUser(storedUser);
-  }, [setUser]);
-
+  // ✅ All useState hooks MUST be declared first
   const [formData, setFormData] = useState(INIT_DATA);
   const [errors, setErrors] = useState({});
   const [serverMessage, setServerMessage] = useState("");
@@ -41,6 +38,65 @@ export default function Register() {
   const [submitted, setSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // ✅ States for email verification success
+  const [emailVerificationSuccess, setEmailVerificationSuccess] =
+    useState(false);
+  const [verificationMessage, setVerificationMessage] = useState("");
+  const [redirectCountdown, setRedirectCountdown] = useState(5);
+
+  // ✅ All useEffect hooks come after useState hooks
+  useEffect(() => {
+    const storedUser = JSON.parse(localStorage.getItem("user"));
+    if (storedUser) setUser(storedUser);
+  }, [setUser]);
+
+  // ✅ Handle email verification success from VerifyEmail page
+  useEffect(() => {
+    if (location.state?.emailVerified) {
+      setEmailVerificationSuccess(true);
+      setVerificationMessage(
+        location.state.message || "🎉 Email đã được xác thực thành công!"
+      );
+
+      // Clear the state to avoid showing message on page refresh
+      window.history.replaceState({}, "", location.pathname);
+
+      // Start countdown and redirect to login
+      let countdown = 5;
+      setRedirectCountdown(countdown);
+
+      const timer = setInterval(() => {
+        countdown -= 1;
+        setRedirectCountdown(countdown);
+
+        if (countdown === 0) {
+          clearInterval(timer);
+          navigate("/login", {
+            state: {
+              message: "Bạn có thể đăng nhập với tài khoản đã được xác thực.",
+              email: location.state?.userEmail,
+            },
+          });
+        }
+      }, 1000);
+
+      // Cleanup timer on component unmount
+      return () => clearInterval(timer);
+    }
+  }, [location.state, navigate]);
+
+  // ✅ Auto clear verification success message after redirect
+  useEffect(() => {
+    if (emailVerificationSuccess) {
+      // Reset form to clean state
+      setFormData(INIT_DATA);
+      setTouched({});
+      setSubmitted(false);
+      setErrors({});
+      setServerMessage("");
+    }
+  }, [emailVerificationSuccess]);
 
   function validateField(name, value) {
     switch (name) {
@@ -288,6 +344,97 @@ export default function Register() {
           noValidate
         >
           <h2>ĐĂNG KÝ</h2>
+
+          {/* ✅ Email verification success message */}
+          {emailVerificationSuccess && (
+            <div
+              className="verification-success-banner"
+              style={{
+                background: "linear-gradient(135deg, #28a745, #20c997)",
+                color: "white",
+                padding: "20px",
+                borderRadius: "12px",
+                textAlign: "center",
+                marginBottom: "25px",
+                boxShadow: "0 4px 15px rgba(40, 167, 69, 0.3)",
+                animation: "slideInFromTop 0.5s ease-out",
+              }}
+            >
+              <div style={{ fontSize: "48px", marginBottom: "10px" }}>🎉</div>
+              <h3
+                style={{
+                  margin: "0 0 10px 0",
+                  fontSize: "20px",
+                  fontWeight: "600",
+                }}
+              >
+                Email Xác Thực Thành Công!
+              </h3>
+              <p
+                style={{
+                  margin: "0 0 15px 0",
+                  fontSize: "16px",
+                  lineHeight: "1.4",
+                }}
+              >
+                {verificationMessage}
+              </p>
+              <div
+                style={{
+                  background: "rgba(255, 255, 255, 0.2)",
+                  borderRadius: "8px",
+                  padding: "12px",
+                  fontSize: "16px",
+                  fontWeight: "500",
+                }}
+              >
+                <div style={{ marginBottom: "8px" }}>
+                  🚀 Tự động chuyển đến trang đăng nhập sau:
+                </div>
+                <div
+                  style={{
+                    fontSize: "24px",
+                    fontWeight: "bold",
+                    color: "#FFE066",
+                  }}
+                >
+                  {redirectCountdown} giây
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  navigate("/login", {
+                    state: {
+                      message:
+                        "Bạn có thể đăng nhập với tài khoản đã được xác thực.",
+                      email: location.state?.userEmail,
+                    },
+                  });
+                }}
+                style={{
+                  background: "rgba(255, 255, 255, 0.9)",
+                  color: "#28a745",
+                  border: "none",
+                  padding: "10px 25px",
+                  borderRadius: "6px",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  marginTop: "15px",
+                  transition: "all 0.3s ease",
+                }}
+                onMouseOver={(e) =>
+                  (e.target.style.background = "rgba(255, 255, 255, 1)")
+                }
+                onMouseOut={(e) =>
+                  (e.target.style.background = "rgba(255, 255, 255, 0.9)")
+                }
+              >
+                ⚡ Đăng nhập ngay
+              </button>
+            </div>
+          )}
 
           {submitted && Object.keys(errors).length > 0 && (
             <div className="validation-summary">
@@ -625,6 +772,24 @@ export default function Register() {
           </p>
         </form>
       </div>
+
+      {/* ✅ CSS Animations for verification success */}
+      <style>{`
+        @keyframes slideInFromTop {
+          0% {
+            opacity: 0;
+            transform: translateY(-30px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .verification-success-banner {
+          animation: slideInFromTop 0.5s ease-out;
+        }
+      `}</style>
     </div>
   );
 }

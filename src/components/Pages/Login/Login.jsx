@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from "react";
 import "./Login.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { UserContext } from "../../../context/UserContext";
 import { decodeGoogleToken } from "../../../helpers/decodeGoogleToken";
 import apiLogin from "../../../api/apiLogin";
@@ -21,6 +21,7 @@ export default function Login() {
     "298912881431-a0l5ibtfk8jd44eh51b3f4vre3gr4pu3.apps.googleusercontent.com";
   const { login, getDashboardPath } = useContext(UserContext);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // ✅ Helper function to calculate dashboard path directly (avoiding timing issues)
   const calculateDashboardPath = (userData) => {
@@ -296,6 +297,29 @@ export default function Login() {
     console.log("🔑 Google Client ID:", clientId);
   }, []);
 
+  // ✅ Handle messages from Register page (email verification success)
+  useEffect(() => {
+    if (location.state?.message) {
+      // ✅ Special handling for email verification success
+      if (location.state?.emailVerified) {
+        setMessage("EMAIL_VERIFIED:" + location.state.message);
+      } else {
+        setMessage("✅ " + location.state.message);
+      }
+
+      // Pre-fill email if provided
+      if (location.state.email || location.state.userEmail) {
+        setFormData((prev) => ({
+          ...prev,
+          email: location.state.email || location.state.userEmail,
+        }));
+      }
+
+      // Clear the state to avoid showing message on page refresh
+      window.history.replaceState({}, "", location.pathname);
+    }
+  }, [location.state]);
+
   return (
     <GoogleOAuthProvider clientId={clientId}>
       <div className="login-page">
@@ -306,6 +330,53 @@ export default function Login() {
             noValidate
           >
             <h2>ĐĂNG NHẬP</h2>
+
+            {/* ✅ Email verification success banner */}
+            {message.startsWith("EMAIL_VERIFIED:") && (
+              <div
+                style={{
+                  background: "linear-gradient(135deg, #28a745, #20c997)",
+                  color: "white",
+                  padding: "20px",
+                  borderRadius: "12px",
+                  textAlign: "center",
+                  marginBottom: "25px",
+                  boxShadow: "0 4px 15px rgba(40, 167, 69, 0.3)",
+                  animation: "slideInFromTop 0.5s ease-out",
+                }}
+              >
+                <div style={{ fontSize: "40px", marginBottom: "10px" }}>✅</div>
+                <h3
+                  style={{
+                    margin: "0 0 10px 0",
+                    fontSize: "18px",
+                    fontWeight: "600",
+                  }}
+                >
+                  Email Xác Thực Thành Công!
+                </h3>
+                <p
+                  style={{
+                    margin: "0 0 10px 0",
+                    fontSize: "14px",
+                    lineHeight: "1.4",
+                  }}
+                >
+                  {message.replace("EMAIL_VERIFIED:", "")}
+                </p>
+                <div
+                  style={{
+                    background: "rgba(255, 255, 255, 0.2)",
+                    borderRadius: "6px",
+                    padding: "8px 12px",
+                    fontSize: "13px",
+                    fontWeight: "500",
+                  }}
+                >
+                  💡 Email đã được điền sẵn, chỉ cần nhập mật khẩu để đăng nhập
+                </div>
+              </div>
+            )}
 
             <div className="form-group">
               <input
@@ -367,7 +438,7 @@ export default function Login() {
               {loading ? "Đang đăng nhập..." : "ĐĂNG NHẬP"}
             </button>
 
-            {message && (
+            {message && !message.startsWith("EMAIL_VERIFIED:") && (
               <div
                 className={
                   message.startsWith("✅") ? "server-success" : "server-error"
@@ -426,6 +497,20 @@ export default function Login() {
           </div>
         </div>
       </div>
+
+      {/* ✅ CSS Animations for email verification success banner */}
+      <style>{`
+        @keyframes slideInFromTop {
+          0% {
+            opacity: 0;
+            transform: translateY(-20px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </GoogleOAuthProvider>
   );
 }

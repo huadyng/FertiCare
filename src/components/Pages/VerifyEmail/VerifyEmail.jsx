@@ -8,6 +8,8 @@ function VerifyEmail() {
   const [loading, setLoading] = useState(true);
   const [isSuccess, setIsSuccess] = useState(false);
   const [showTestLogin, setShowTestLogin] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [showResendOption, setShowResendOption] = useState(false);
   const hasRun = useRef(false);
 
   const location = useLocation();
@@ -57,18 +59,87 @@ function VerifyEmail() {
 
         // ✅ Handle successful verification
         if (response?.data) {
-          setIsSuccess(true);
-          setMessage("🎉 Email đã được xác thực thành công!");
+          console.log(
+            "🔍 [VerifyEmail] Checking response data:",
+            response.data
+          );
+
+          // ✅ Only redirect if truly successful
+          const isSuccessful =
+            response.data.success === true ||
+            response.data.verified === true ||
+            (response.data.message &&
+              response.data.message.includes("thành công"));
+
+          if (isSuccessful) {
+            console.log(
+              "🎉 [VerifyEmail] Verification confirmed successful, redirecting..."
+            );
+            // ✅ Set redirecting state and message
+            setIsRedirecting(true);
+            setMessage(
+              "✅ Xác thực thành công! Đang chuyển đến trang đăng nhập..."
+            );
+
+            // ✅ Small delay to show success message before redirect
+            setTimeout(() => {
+              navigate("/login", {
+                state: {
+                  emailVerified: true,
+                  message:
+                    "🎉 Email đã được xác thực thành công! Bạn có thể đăng nhập ngay bây giờ.",
+                  userEmail: userEmail,
+                },
+              });
+            }, 800); // 0.8 second delay
+
+            return; // Exit early to avoid setting success state
+          } else {
+            console.log(
+              "❌ [VerifyEmail] Response data does not indicate success"
+            );
+            throw new Error("Verification response không hợp lệ");
+          }
         } else {
-          throw new Error("Có lỗi xảy ra");
+          throw new Error("Không nhận được response data");
         }
       } catch (err) {
         console.error("❌ [VerifyEmail] Verification failed:", err);
 
-        // ✅ Simple error handling
+        // ✅ Detailed error handling
         if (err.response?.data?.suggestTestLogin) {
           setMessage(
             "⚠️ Không thể xác nhận qua API nhưng email có thể đã được xác thực."
+          );
+          setShowTestLogin(true);
+        } else if (err.response?.status === 400) {
+          const errorData = err.response.data;
+          const errorMessage =
+            typeof errorData === "string"
+              ? errorData
+              : errorData?.message || "";
+
+          if (errorMessage.includes("Token không hợp lệ")) {
+            setMessage(
+              "❌ Link xác thực không hợp lệ hoặc đã hết hạn. Vui lòng kiểm tra email mới nhất hoặc yêu cầu gửi lại email xác thực."
+            );
+            setShowResendOption(true);
+          } else if (
+            errorMessage.includes("đã được xác thực") ||
+            errorMessage.includes("already verified")
+          ) {
+            setMessage(
+              "✅ Email này đã được xác thực trước đó. Bạn có thể đăng nhập ngay."
+            );
+            setShowTestLogin(true);
+          } else {
+            setMessage(
+              `❌ Lỗi xác thực: ${errorMessage || "Token không hợp lệ"}`
+            );
+          }
+        } else if (err.response?.status === 410) {
+          setMessage(
+            "✅ Link xác thực đã được sử dụng trước đó. Email của bạn đã được xác thực thành công."
           );
           setShowTestLogin(true);
         } else {
@@ -93,6 +164,96 @@ function VerifyEmail() {
       },
     });
   };
+
+  // ✅ Handle resend verification email
+  const handleResendVerification = async () => {
+    if (!userEmail) {
+      alert("Không tìm thấy email. Vui lòng đăng ký lại.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setMessage("Đang gửi lại email xác thực...");
+
+      await apiVerification.resendVerificationEmail(userEmail);
+
+      setMessage(
+        "✅ Email xác thực mới đã được gửi! Vui lòng kiểm tra hộp thư và spam folder."
+      );
+      setShowResendOption(false);
+    } catch (error) {
+      console.error("❌ [VerifyEmail] Resend failed:", error);
+      setMessage(
+        "❌ Không thể gửi lại email xác thực. Vui lòng thử lại sau hoặc liên hệ hỗ trợ."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ If redirecting, show minimal UI
+  if (isRedirecting) {
+    return (
+      <div className="form-container">
+        <div
+          className="form-wrapper"
+          style={{ maxWidth: "500px", margin: "0 auto" }}
+        >
+          <div
+            className="form-content"
+            style={{ textAlign: "center", padding: "40px 30px" }}
+          >
+            <div
+              style={{
+                fontSize: "60px",
+                marginBottom: "20px",
+                animation: "pulse 2s infinite",
+              }}
+            >
+              ✅
+            </div>
+            <h1
+              style={{
+                fontSize: "24px",
+                color: "#28a745",
+                marginBottom: "20px",
+                fontWeight: "600",
+              }}
+            >
+              Xác Thực Thành Công!
+            </h1>
+            <p style={{ fontSize: "16px", color: "#666", margin: "0" }}>
+              {message}
+            </p>
+            <div style={{ marginTop: "20px" }}>
+              <div
+                style={{
+                  width: "40px",
+                  height: "40px",
+                  border: "4px solid #f3f3f3",
+                  borderTop: "4px solid #28a745",
+                  borderRadius: "50%",
+                  animation: "spin 1s linear infinite",
+                  margin: "0 auto",
+                }}
+              ></div>
+            </div>
+          </div>
+        </div>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   return (
     <div className="form-container">
@@ -256,6 +417,30 @@ function VerifyEmail() {
                   >
                     🧪 Kiểm Tra Đăng Nhập
                   </button>
+                ) : showResendOption ? (
+                  <button
+                    onClick={handleResendVerification}
+                    style={{
+                      backgroundColor: "#28a745",
+                      color: "white",
+                      border: "none",
+                      padding: "15px 40px",
+                      borderRadius: "8px",
+                      fontSize: "18px",
+                      fontWeight: "500",
+                      cursor: "pointer",
+                      minWidth: "200px",
+                      transition: "background-color 0.3s",
+                    }}
+                    onMouseOver={(e) =>
+                      (e.target.style.backgroundColor = "#218838")
+                    }
+                    onMouseOut={(e) =>
+                      (e.target.style.backgroundColor = "#28a745")
+                    }
+                  >
+                    📧 Gửi Lại Email Xác Thực
+                  </button>
                 ) : (
                   <Link
                     to="/register"
@@ -284,6 +469,23 @@ function VerifyEmail() {
                 )}
 
                 {/* Secondary Action */}
+                {showResendOption && (
+                  <Link
+                    to="/register"
+                    style={{
+                      color: "#6c757d",
+                      textDecoration: "none",
+                      fontSize: "16px",
+                      padding: "10px",
+                      transition: "color 0.3s",
+                    }}
+                    onMouseOver={(e) => (e.target.style.color = "#495057")}
+                    onMouseOut={(e) => (e.target.style.color = "#6c757d")}
+                  >
+                    📝 Đăng Ký Lại
+                  </Link>
+                )}
+
                 <Link
                   to="/"
                   style={{
