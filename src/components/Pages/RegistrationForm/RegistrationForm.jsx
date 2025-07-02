@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from "react";
-import CustomDatePicker from "../components/CustomDatePicker";
-import axiosClient from "../../../../api/axiosClient";
+import { useNavigate } from "react-router-dom";
+import CustomDatePicker from "./components/CustomDatePicker/CustomDatePicker";
+import axiosClient from "../../../api/axiosClient";
 import "./RegistrationForm.css";
 
 const RegistrationForm = () => {
+  const navigate = useNavigate();
+  const [showBackToTop, setShowBackToTop] = useState(false);
+
   const [formData, setFormData] = useState({
     serviceId: "",
     doctorOption: "auto",
@@ -32,23 +36,16 @@ const RegistrationForm = () => {
     slots: false,
   });
 
-  // Kiểm tra kết nối API khi component mount
+  // Handle scroll for back to top button
   useEffect(() => {
-    const checkAPIConnection = async () => {
-      try {
-        setLoadingStates((prev) => ({ ...prev, services: true }));
-        await axiosClient.get("/api/services");
-        setConnectionError(false);
-      } catch (error) {
-        setConnectionError(true);
-      } finally {
-        setLoadingStates((prev) => ({ ...prev, services: false }));
-      }
+    const handleScroll = () => {
+      setShowBackToTop(window.pageYOffset > 300);
     };
-    checkAPIConnection();
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Lấy danh sách dịch vụ
+  // Lấy danh sách dịch vụ và kiểm tra kết nối API
   useEffect(() => {
     const fetchServices = async () => {
       try {
@@ -266,6 +263,15 @@ const RegistrationForm = () => {
     const dateStr = date.toISOString().split("T")[0];
     const isAvailable = availableDates.some((d) => d.date === dateStr);
     return isAvailable;
+  };
+
+  // Navigation handlers
+  const handleBackToHome = () => {
+    navigate("/");
+  };
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleSubmit = async (e) => {
@@ -522,6 +528,19 @@ const RegistrationForm = () => {
 
   return (
     <main className="registration-form-container">
+      {/* Back to Home Button */}
+      <button className="back-to-home-btn" onClick={handleBackToHome}>
+        <span className="back-icon">←</span>
+        <span className="back-text">Trang chủ</span>
+      </button>
+
+      {/* Back to Top Button */}
+      {showBackToTop && (
+        <button className="back-to-top-btn" onClick={scrollToTop}>
+          <span>⬆️</span>
+        </button>
+      )}
+
       {connectionError && (
         <div className="error-banner">
           <strong>⚠️ Lỗi kết nối:</strong> Không thể kết nối tới server. Vui
@@ -863,67 +882,65 @@ const RegistrationForm = () => {
         >
           <div className="success-modal" onClick={(e) => e.stopPropagation()}>
             <div className="success-header">
-              <h2>🎉 Đăng Ký Thành Công!</h2>
-              <p>Thông tin lịch hẹn của bạn đã được xác nhận</p>
+              <h2>✅ Đăng Ký Thành Công!</h2>
+              <p>Lịch đăng ký khám của bạn đã được xác nhận</p>
             </div>
+
             <div className="success-content">
-              <div className="info-item">
-                <span className="info-label">📋 Mã đơn hẹn:</span>
-                <span className="info-value">#{registerInfo.id}</span>
-              </div>
-              <div className="info-item">
-                <span className="info-label">📅 Thời gian hẹn:</span>
-                <span className="info-value">{getDisplayDateTime()}</span>
-              </div>
-              <div className="info-item">
-                <span className="info-label">🏥 Dịch vụ:</span>
-                <span className="info-value">
-                  {registerInfo.service?.name ||
-                    submittedFormData?.serviceName ||
-                    "Đang cập nhật thông tin"}
-                </span>
-              </div>
-              <div className="info-item">
-                <span className="info-label">👨‍⚕️ Bác sĩ:</span>
-                <span className="info-value">
-                  {registerInfo.doctor?.fullName ||
-                    registerInfo.doctor?.name ||
-                    submittedFormData?.doctorName ||
-                    "Sẽ được thông báo sau"}
-                </span>
-              </div>
-              {(registerInfo.note || submittedFormData?.notes) && (
-                <div className="info-item">
-                  <span className="info-label">📝 Ghi chú:</span>
-                  <span className="info-value">
-                    {registerInfo.note || submittedFormData?.notes}
+              <div className="info-list">
+                <div className="info-row">
+                  <span className="label">Mã đơn hẹn:</span>
+                  <span className="value">#{registerInfo.id}</span>
+                </div>
+
+                <div className="info-row">
+                  <span className="label">Thời gian hẹn:</span>
+                  <span className="value">{getDisplayDateTime()}</span>
+                </div>
+
+                <div className="info-row">
+                  <span className="label">Dịch vụ:</span>
+                  <span className="value">
+                    {registerInfo.service?.name ||
+                      submittedFormData?.serviceName ||
+                      "Đang cập nhật"}
                   </span>
                 </div>
-              )}
-              <div
-                style={{
-                  marginTop: "20px",
-                  padding: "16px",
-                  backgroundColor: "#f0f9ff",
-                  borderRadius: "8px",
-                  textAlign: "center",
-                }}
-              >
-                <p style={{ margin: 0, color: "#0369a1", fontWeight: "500" }}>
-                  📧 Thông tin lịch hẹn đã được gửi qua email. Vui lòng kiểm tra
-                  hộp thư đến của bạn.
-                </p>
+
+                <div className="info-row">
+                  <span className="label">Bác sĩ:</span>
+                  <span className="value">
+                    {registerInfo.doctor?.fullName ||
+                      registerInfo.doctor?.name ||
+                      submittedFormData?.doctorName ||
+                      "Sẽ được thông báo"}
+                  </span>
+                </div>
+
+                {(registerInfo.note || submittedFormData?.notes) && (
+                  <div className="info-row notes">
+                    <span className="label">Ghi chú:</span>
+                    <span className="value">
+                      {registerInfo.note || submittedFormData?.notes}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="notice">
+                📧 Thông tin lịch hẹn đã được gửi qua email
               </div>
             </div>
+
             <button
-              className="success-close-btn"
+              className="close-btn"
               onClick={() => {
                 setShowSuccess(false);
                 setSubmittedFormData(null);
                 localStorage.removeItem("lastSubmittedData");
               }}
             >
-              ✅ Đóng
+              Đóng
             </button>
           </div>
         </div>

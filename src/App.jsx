@@ -41,7 +41,7 @@ const HomePage = lazy(() =>
   import("./components/pages/HomePage/index/HomePage")
 );
 const RegistrationForm = lazy(() =>
-  import("./components/pages/RegistrationServiceForm/index/RegistrationForm")
+  import("./components/pages/RegistrationForm/RegistrationForm")
 );
 const Pie = lazy(() => import("./components/pages/ChartsForm/Pie"));
 const Contact = lazy(() => import("./components/pages/Contact/ContactForm"));
