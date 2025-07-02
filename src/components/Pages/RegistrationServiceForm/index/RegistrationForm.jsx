@@ -20,6 +20,7 @@ const RegistrationForm = () => {
   const [availableSlots, setAvailableSlots] = useState([]);
   const [showSuccess, setShowSuccess] = useState(false);
   const [registerInfo, setRegisterInfo] = useState(null);
+  const [submittedFormData, setSubmittedFormData] = useState(null);
   const [connectionError, setConnectionError] = useState(false);
   const [formErrors, setFormErrors] = useState({});
   const [selectedDate, setSelectedDate] = useState(null);
@@ -170,20 +171,29 @@ const RegistrationForm = () => {
 
   // Xử lý khi chọn ngày từ DatePicker
   const handleDatePickerChange = async (date) => {
+    console.log("=== DEBUG handleDatePickerChange ===");
+    console.log("Selected date:", date);
+
     setSelectedDate(date);
 
     if (!date) {
+      console.log("No date selected");
       return;
     }
 
     // Format date to YYYY-MM-DD
     const formattedDate = date.toISOString().split("T")[0];
+    console.log("Formatted date:", formattedDate);
 
-    setFormData((prev) => ({
-      ...prev,
-      appointmentDate: formattedDate,
-      appointmentTime: "",
-    }));
+    setFormData((prev) => {
+      const newFormData = {
+        ...prev,
+        appointmentDate: formattedDate,
+        appointmentTime: "",
+      };
+      console.log("Updated formData:", newFormData);
+      return newFormData;
+    });
 
     // Determine doctorId based on selection mode
     let doctorIdToUse = formData.doctorId;
@@ -214,11 +224,17 @@ const RegistrationForm = () => {
 
   const handleSlotChange = (e) => {
     const selectedTime = e.target.value;
+    console.log("=== DEBUG handleSlotChange ===");
+    console.log("Selected time:", selectedTime);
 
-    setFormData((prev) => ({
-      ...prev,
-      appointmentTime: selectedTime,
-    }));
+    setFormData((prev) => {
+      const newFormData = {
+        ...prev,
+        appointmentTime: selectedTime,
+      };
+      console.log("Updated formData after time selection:", newFormData);
+      return newFormData;
+    });
   };
 
   const handleChange = (e) => {
@@ -285,8 +301,39 @@ const RegistrationForm = () => {
 
     try {
       setIsLoading(true);
+
+      // Lưu trữ thông tin form trước khi reset
+      console.log("=== DEBUG: Saving form data ===");
+      console.log("formData before submit:", formData);
+      console.log("selectedDate:", selectedDate);
+
+      const submittedData = {
+        serviceId: formData.serviceId,
+        serviceName:
+          services.find((s) => s.id === formData.serviceId)?.name || "",
+        doctorOption: formData.doctorOption,
+        doctorId: formData.doctorId,
+        doctorName:
+          formData.doctorOption === "manual"
+            ? doctors.find((d) => d.id === formData.doctorId)?.name || ""
+            : "Hệ thống tự động chọn",
+        appointmentDate: formData.appointmentDate,
+        appointmentTime: formData.appointmentTime,
+        notes: formData.notes,
+        appointmentDateTime: `${formData.appointmentDate}T${formData.appointmentTime}:00`,
+      };
+
+      console.log("submittedData created:", submittedData);
+
+      // Backup vào localStorage để đảm bảo không mất
+      localStorage.setItem("lastSubmittedData", JSON.stringify(submittedData));
+
       const res = await axiosClient.post("/api/service-request", dataToSubmit);
+      console.log("Registration response:", res.data); // Debug log
+      console.log("Submitted form data:", submittedData); // Debug log
+
       setRegisterInfo(res.data);
+      setSubmittedFormData(submittedData);
       setShowSuccess(true);
 
       // Reset form
@@ -312,15 +359,165 @@ const RegistrationForm = () => {
   };
 
   const formatDateTime = (dateTime) => {
-    if (!dateTime) return "";
-    const date = new Date(dateTime);
-    return date.toLocaleString("vi-VN", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    if (!dateTime) return "Chưa có thông tin";
+
+    try {
+      const date = new Date(dateTime);
+
+      // Kiểm tra xem date có hợp lệ không
+      if (isNaN(date.getTime())) {
+        return "Thời gian không hợp lệ";
+      }
+
+      return date.toLocaleString("vi-VN", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Asia/Ho_Chi_Minh",
+      });
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "Lỗi định dạng thời gian";
+    }
+  };
+
+  const formatFormDateTime = (date, time) => {
+    console.log("=== DEBUG formatFormDateTime ===");
+    console.log("Input date:", date, "type:", typeof date);
+    console.log("Input time:", time, "type:", typeof time);
+
+    try {
+      if (!date || !time) {
+        console.log("Missing date or time");
+        return "Chưa có thông tin";
+      }
+
+      const dateObj = new Date(date);
+      console.log("Date object:", dateObj);
+      console.log("Date.getTime():", dateObj.getTime());
+
+      if (isNaN(dateObj.getTime())) {
+        console.log("Invalid date object");
+        return "Ngày không hợp lệ";
+      }
+
+      const formattedDate = dateObj.toLocaleDateString("vi-VN", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
+      console.log("Formatted date:", formattedDate);
+      const result = `${formattedDate} lúc ${time}`;
+      console.log("Final result:", result);
+      return result;
+    } catch (error) {
+      console.error("Error formatting form date time:", error);
+      return "Lỗi định dạng";
+    }
+  };
+
+  const getDisplayDateTime = () => {
+    console.log("=== DEBUG getDisplayDateTime ===");
+    console.log(
+      "registerInfo?.appointmentTime:",
+      registerInfo?.appointmentTime
+    );
+    console.log("submittedFormData:", submittedFormData);
+
+    // Ưu tiên hiển thị từ API response
+    if (registerInfo?.appointmentTime) {
+      console.log("Using API response time");
+
+      // Kiểm tra xem appointmentTime có phải là full datetime hay chỉ là time
+      const timeValue = registerInfo.appointmentTime;
+      console.log("API time value:", timeValue);
+
+      // Nếu chỉ là time format (HH:mm:ss), kết hợp với ngày từ submitted data
+      if (timeValue.match(/^\d{2}:\d{2}:\d{2}$/)) {
+        console.log(
+          "API time is time-only format, combining with submitted date"
+        );
+        if (submittedFormData?.appointmentDate) {
+          try {
+            const date = new Date(submittedFormData.appointmentDate);
+            const vietnamDate = date.toLocaleDateString("vi-VN", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            });
+            const timeOnly = timeValue.substring(0, 5); // Remove seconds, get HH:mm
+            const result = `${vietnamDate} - ${timeOnly}`;
+            console.log("Combined datetime result:", result);
+            return result;
+          } catch (error) {
+            console.error("Error combining date and time:", error);
+          }
+        } else {
+          // Nếu không có ngày từ submitted data, chỉ hiển thị time
+          console.log("No submitted date available, showing time only");
+          const timeOnly = timeValue.substring(0, 5);
+          return `Hôm nay lúc ${timeOnly}`;
+        }
+      } else {
+        // Nếu là full datetime, format bình thường
+        console.log("API time is full datetime format");
+        const result = formatDateTime(timeValue);
+        console.log("Formatted API time:", result);
+        return result;
+      }
+    }
+
+    // Nếu không có từ API, sử dụng dữ liệu đã submit
+    if (
+      submittedFormData?.appointmentDate &&
+      submittedFormData?.appointmentTime
+    ) {
+      console.log("Using submitted form data");
+      console.log("appointmentDate:", submittedFormData.appointmentDate);
+      console.log("appointmentTime:", submittedFormData.appointmentTime);
+
+      // Thử cách đơn giản hơn
+      try {
+        const date = new Date(submittedFormData.appointmentDate);
+        const vietnamDate = date.toLocaleDateString("vi-VN", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        });
+        const result = `${vietnamDate} lúc ${submittedFormData.appointmentTime}`;
+        console.log("Simple formatted result:", result);
+        return result;
+      } catch (error) {
+        console.error("Error in simple format:", error);
+        return `${submittedFormData.appointmentDate} lúc ${submittedFormData.appointmentTime}`;
+      }
+    }
+
+    // Fallback từ localStorage
+    try {
+      const backupData = localStorage.getItem("lastSubmittedData");
+      if (backupData) {
+        const parsedData = JSON.parse(backupData);
+        if (parsedData?.appointmentDate && parsedData?.appointmentTime) {
+          console.log("Using localStorage backup:", parsedData);
+          const date = new Date(parsedData.appointmentDate);
+          const vietnamDate = date.toLocaleDateString("vi-VN", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          });
+          return `${vietnamDate} lúc ${parsedData.appointmentTime}`;
+        }
+      }
+    } catch (error) {
+      console.error("Error reading localStorage backup:", error);
+    }
+
+    // Fallback cuối cùng
+    console.log("Using fallback");
+    return "Đang cập nhật thông tin";
   };
 
   return (
@@ -658,7 +855,11 @@ const RegistrationForm = () => {
       {showSuccess && registerInfo && (
         <div
           className="success-modal-overlay"
-          onClick={() => setShowSuccess(false)}
+          onClick={() => {
+            setShowSuccess(false);
+            setSubmittedFormData(null);
+            localStorage.removeItem("lastSubmittedData");
+          }}
         >
           <div className="success-modal" onClick={(e) => e.stopPropagation()}>
             <div className="success-header">
@@ -672,24 +873,31 @@ const RegistrationForm = () => {
               </div>
               <div className="info-item">
                 <span className="info-label">📅 Thời gian hẹn:</span>
-                <span className="info-value">
-                  {formatDateTime(registerInfo.appointmentTime)}
-                </span>
+                <span className="info-value">{getDisplayDateTime()}</span>
               </div>
               <div className="info-item">
                 <span className="info-label">🏥 Dịch vụ:</span>
-                <span className="info-value">{registerInfo.service?.name}</span>
+                <span className="info-value">
+                  {registerInfo.service?.name ||
+                    submittedFormData?.serviceName ||
+                    "Đang cập nhật thông tin"}
+                </span>
               </div>
               <div className="info-item">
                 <span className="info-label">👨‍⚕️ Bác sĩ:</span>
                 <span className="info-value">
-                  {registerInfo.doctor?.fullName || "Sẽ được thông báo sau"}
+                  {registerInfo.doctor?.fullName ||
+                    registerInfo.doctor?.name ||
+                    submittedFormData?.doctorName ||
+                    "Sẽ được thông báo sau"}
                 </span>
               </div>
-              {registerInfo.note && (
+              {(registerInfo.note || submittedFormData?.notes) && (
                 <div className="info-item">
                   <span className="info-label">📝 Ghi chú:</span>
-                  <span className="info-value">{registerInfo.note}</span>
+                  <span className="info-value">
+                    {registerInfo.note || submittedFormData?.notes}
+                  </span>
                 </div>
               )}
               <div
@@ -702,14 +910,18 @@ const RegistrationForm = () => {
                 }}
               >
                 <p style={{ margin: 0, color: "#0369a1", fontWeight: "500" }}>
-                  📱 Phòng khám sẽ liên hệ với bạn để xác nhận lịch hẹn trong
-                  vòng 24 giờ
+                  📧 Thông tin lịch hẹn đã được gửi qua email. Vui lòng kiểm tra
+                  hộp thư đến của bạn.
                 </p>
               </div>
             </div>
             <button
               className="success-close-btn"
-              onClick={() => setShowSuccess(false)}
+              onClick={() => {
+                setShowSuccess(false);
+                setSubmittedFormData(null);
+                localStorage.removeItem("lastSubmittedData");
+              }}
             >
               ✅ Đóng
             </button>
