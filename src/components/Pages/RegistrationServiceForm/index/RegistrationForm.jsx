@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
+import CustomDatePicker from "../components/CustomDatePicker";
 import axiosClient from "../../../../api/axiosClient";
 import "./RegistrationForm.css";
 
@@ -40,7 +39,6 @@ const RegistrationForm = () => {
         await axiosClient.get("/api/services");
         setConnectionError(false);
       } catch (error) {
-        console.error("❌ [RegistrationForm] API Connection failed:", error);
         setConnectionError(true);
       } finally {
         setLoadingStates((prev) => ({ ...prev, services: false }));
@@ -58,7 +56,6 @@ const RegistrationForm = () => {
         setServices(res.data);
         setConnectionError(false);
       } catch (error) {
-        console.error("❌ [RegistrationForm] Failed to load services:", error);
         setConnectionError(true);
       } finally {
         setLoadingStates((prev) => ({ ...prev, services: false }));
@@ -79,7 +76,7 @@ const RegistrationForm = () => {
         );
         setDoctors(res.data);
       } catch (error) {
-        console.error("❌ Failed to load doctors:", error);
+        // Silent error handling
       } finally {
         setLoadingStates((prev) => ({ ...prev, doctors: false }));
       }
@@ -108,10 +105,12 @@ const RegistrationForm = () => {
         !formData.appointmentDate
       ) {
         const autoDoctorId = doctors[0].id;
+
         setFormData((prev) => ({ ...prev, doctorId: autoDoctorId }));
 
         try {
           setLoadingStates((prev) => ({ ...prev, dates: true }));
+
           const res = await axiosClient.get(
             `/api/service-request/available-dates/${autoDoctorId}`
           );
@@ -119,10 +118,11 @@ const RegistrationForm = () => {
             date: dateStr,
             slots: [],
           }));
+
           setAvailableDates(dateList);
           setAvailableSlots([]);
         } catch (err) {
-          console.error("❌ Lỗi lấy lịch bác sĩ auto:", err);
+          setAvailableDates([]);
         } finally {
           setLoadingStates((prev) => ({ ...prev, dates: false }));
         }
@@ -134,6 +134,7 @@ const RegistrationForm = () => {
   // Khi chọn bác sĩ thủ công
   const handleDoctorChange = async (e) => {
     const doctorId = e.target.value;
+
     setFormData((prev) => ({
       ...prev,
       doctorId,
@@ -143,10 +144,14 @@ const RegistrationForm = () => {
     setSelectedDate(null);
     setAvailableSlots([]);
 
-    if (!doctorId) return;
+    if (!doctorId) {
+      setAvailableDates([]);
+      return;
+    }
 
     try {
       setLoadingStates((prev) => ({ ...prev, dates: true }));
+
       const res = await axiosClient.get(
         `/api/service-request/available-dates/${doctorId}`
       );
@@ -154,9 +159,9 @@ const RegistrationForm = () => {
         date: dateStr,
         slots: [],
       }));
+
       setAvailableDates(dateList);
     } catch (err) {
-      console.error("❌ Lỗi lấy danh sách ngày:", err);
       setAvailableDates([]);
     } finally {
       setLoadingStates((prev) => ({ ...prev, dates: false }));
@@ -167,7 +172,9 @@ const RegistrationForm = () => {
   const handleDatePickerChange = async (date) => {
     setSelectedDate(date);
 
-    if (!date || !formData.doctorId) return;
+    if (!date) {
+      return;
+    }
 
     // Format date to YYYY-MM-DD
     const formattedDate = date.toISOString().split("T")[0];
@@ -178,15 +185,27 @@ const RegistrationForm = () => {
       appointmentTime: "",
     }));
 
+    // Determine doctorId based on selection mode
+    let doctorIdToUse = formData.doctorId;
+
+    if (formData.doctorOption === "auto" && doctors.length > 0) {
+      doctorIdToUse = doctors[0].id;
+    }
+
+    if (!doctorIdToUse) {
+      return;
+    }
+
     try {
       setLoadingStates((prev) => ({ ...prev, slots: true }));
+
       const res = await axiosClient.get(
-        `/api/service-request/doctor-available-times/${formData.doctorId}?date=${formattedDate}`
+        `/api/service-request/doctor-available-times/${doctorIdToUse}?date=${formattedDate}`
       );
+
       const slots = res.data.map((item) => item.time);
       setAvailableSlots(slots);
     } catch (err) {
-      console.error("❌ Lỗi lấy slots cho ngày:", err);
       setAvailableSlots([]);
     } finally {
       setLoadingStates((prev) => ({ ...prev, slots: false }));
@@ -194,9 +213,11 @@ const RegistrationForm = () => {
   };
 
   const handleSlotChange = (e) => {
+    const selectedTime = e.target.value;
+
     setFormData((prev) => ({
       ...prev,
-      appointmentTime: e.target.value,
+      appointmentTime: selectedTime,
     }));
   };
 
@@ -219,14 +240,16 @@ const RegistrationForm = () => {
   // Tạo danh sách các ngày có thể chọn
   const getAvailableDatesArray = () => {
     if (!Array.isArray(availableDates)) return [];
-    return availableDates.map((d) => new Date(d.date));
+    const dateArray = availableDates.map((d) => new Date(d.date));
+    return dateArray;
   };
 
   // Kiểm tra ngày có available không
   const isDateAvailable = (date) => {
     if (!Array.isArray(availableDates)) return false;
     const dateStr = date.toISOString().split("T")[0];
-    return availableDates.some((d) => d.date === dateStr);
+    const isAvailable = availableDates.some((d) => d.date === dateStr);
+    return isAvailable;
   };
 
   const handleSubmit = async (e) => {
@@ -301,183 +324,198 @@ const RegistrationForm = () => {
   };
 
   return (
-    <>
-      <div id="date-picker-portal"></div>
-      <main className="registration-form-container">
-        {connectionError && (
-          <div className="error-banner">
-            <strong>⚠️ Lỗi kết nối:</strong> Không thể kết nối tới server. Vui
-            lòng kiểm tra:
-            <ul style={{ margin: "8px 0", paddingLeft: "20px" }}>
-              <li>Backend có đang chạy trên port 8080 không</li>
-              <li>
-                Chạy lệnh: <code>npm run backend</code>
-              </li>
-              <li>
-                Hoặc chạy: <code>npm start</code> để khởi động cả frontend và
-                backend
-              </li>
-            </ul>
-          </div>
-        )}
+    <main className="registration-form-container">
+      {connectionError && (
+        <div className="error-banner">
+          <strong>⚠️ Lỗi kết nối:</strong> Không thể kết nối tới server. Vui
+          lòng kiểm tra:
+          <ul style={{ margin: "8px 0", paddingLeft: "20px" }}>
+            <li>Backend có đang chạy trên port 8080 không</li>
+            <li>
+              Chạy lệnh: <code>npm run backend</code>
+            </li>
+            <li>
+              Hoặc chạy: <code>npm start</code> để khởi động cả frontend và
+              backend
+            </li>
+          </ul>
+        </div>
+      )}
 
-        <form onSubmit={handleSubmit} className="registration-form">
-          <h1>🏥 ĐĂNG KÝ DỊCH VỤ ĐIỀU TRỊ</h1>
+      <form onSubmit={handleSubmit} className="registration-form">
+        <h1>ĐĂNG KÝ DỊCH VỤ ĐIỀU TRỊ</h1>
 
-          {/* Dịch vụ */}
+        {/* Dịch vụ */}
+        <section className="section">
+          <h2 className="section-title">Chọn Dịch Vụ Điều Trị</h2>
+          {loadingStates.services ? (
+            <div style={{ textAlign: "center", padding: "20px" }}>
+              <div>⏳ Đang tải danh sách dịch vụ...</div>
+            </div>
+          ) : (
+            <div className="radio-group">
+              {services.map((service) => (
+                <label key={service.id}>
+                  <input
+                    type="radio"
+                    name="serviceId"
+                    value={service.id}
+                    checked={formData.serviceId === service.id}
+                    onChange={handleChange}
+                    disabled={isLoading}
+                  />
+                  <span>{service.name}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Bác sĩ */}
+        {formData.serviceId && (
           <section className="section">
-            <h2 className="section-title">1. Chọn Dịch Vụ Điều Trị</h2>
-            {loadingStates.services ? (
-              <div style={{ textAlign: "center", padding: "20px" }}>
-                <div>⏳ Đang tải danh sách dịch vụ...</div>
-              </div>
-            ) : (
-              <div className="radio-group">
-                {services.map((service) => (
-                  <label key={service.id}>
-                    <input
-                      type="radio"
-                      name="serviceId"
-                      value={service.id}
-                      checked={formData.serviceId === service.id}
-                      onChange={handleChange}
+            <h2 className="section-title">Chọn Bác Sĩ</h2>
+
+            <div className="doctor-option-group">
+              <label className="doctor-option-label">
+                <input
+                  type="radio"
+                  name="doctorOption"
+                  value="auto"
+                  checked={formData.doctorOption === "auto"}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                />
+                <span className="option-text">
+                  🤖 Hệ thống tự động chọn bác sĩ phù hợp
+                </span>
+              </label>
+              <label className="doctor-option-label">
+                <input
+                  type="radio"
+                  name="doctorOption"
+                  value="manual"
+                  checked={formData.doctorOption === "manual"}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                />
+                <span className="option-text">👩‍⚕️ Tôi muốn tự chọn bác sĩ</span>
+              </label>
+            </div>
+
+            {formData.doctorOption === "manual" && (
+              <div className="doctor-selection-container">
+                <div className="input-group">
+                  <label className="input-label">Chọn bác sĩ:</label>
+                  {loadingStates.doctors ? (
+                    <div style={{ textAlign: "center", padding: "20px" }}>
+                      <div>⏳ Đang tải danh sách bác sĩ...</div>
+                    </div>
+                  ) : (
+                    <select
+                      name="doctorId"
+                      value={formData.doctorId}
+                      onChange={handleDoctorChange}
+                      className="input-field"
+                      required
                       disabled={isLoading}
-                    />
-                    <span>{service.name}</span>
-                  </label>
-                ))}
+                    >
+                      <option value="">-- Vui lòng chọn bác sĩ --</option>
+                      {doctors.map((doc) => (
+                        <option key={doc.id} value={doc.id}>
+                          👨‍⚕️ {doc.name} -{" "}
+                          {doc.specialization || "Bác sĩ chuyên khoa"}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
               </div>
             )}
-          </section>
 
-          {/* Bác sĩ */}
-          {formData.serviceId && (
-            <section className="section">
-              <h2 className="section-title">2. Chọn Bác Sĩ</h2>
-
-              <div className="doctor-option-group">
-                <label className="doctor-option-label">
-                  <input
-                    type="radio"
-                    name="doctorOption"
-                    value="auto"
-                    checked={formData.doctorOption === "auto"}
-                    onChange={handleChange}
-                    disabled={isLoading}
-                  />
-                  <span className="option-text">
-                    🤖 Hệ thống tự động chọn bác sĩ phù hợp
-                  </span>
-                </label>
-                <label className="doctor-option-label">
-                  <input
-                    type="radio"
-                    name="doctorOption"
-                    value="manual"
-                    checked={formData.doctorOption === "manual"}
-                    onChange={handleChange}
-                    disabled={isLoading}
-                  />
-                  <span className="option-text">
-                    👩‍⚕️ Tôi muốn tự chọn bác sĩ
-                  </span>
-                </label>
-              </div>
-
-              {formData.doctorOption === "manual" && (
-                <div className="doctor-selection-container">
-                  <div className="input-group">
-                    <label className="input-label">Chọn bác sĩ:</label>
-                    {loadingStates.doctors ? (
-                      <div style={{ textAlign: "center", padding: "20px" }}>
-                        <div>⏳ Đang tải danh sách bác sĩ...</div>
-                      </div>
-                    ) : (
-                      <select
-                        name="doctorId"
-                        value={formData.doctorId}
-                        onChange={handleDoctorChange}
-                        className="input-field"
-                        required
-                        disabled={isLoading}
-                      >
-                        <option value="">-- Vui lòng chọn bác sĩ --</option>
-                        {doctors.map((doc) => (
-                          <option key={doc.id} value={doc.id}>
-                            👨‍⚕️ {doc.name} -{" "}
-                            {doc.specialization || "Bác sĩ chuyên khoa"}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
+            {((formData.doctorOption === "manual" && formData.doctorId) ||
+              formData.doctorOption === "auto") && (
+              <div className="appointment-scheduling">
+                <div className="scheduling-header">
+                  <h3 className="scheduling-title">📅 Đặt Lịch Hẹn</h3>
+                  <p className="scheduling-subtitle">
+                    Chọn ngày và giờ phù hợp với lịch trình của bạn
+                  </p>
                 </div>
-              )}
 
-              {((formData.doctorOption === "manual" && formData.doctorId) ||
-                formData.doctorOption === "auto") && (
-                <div className="appointment-scheduling">
-                  <div className="scheduling-header">
-                    <h3 className="scheduling-title">📅 Đặt Lịch Hẹn</h3>
-                    <p className="scheduling-subtitle">
-                      Chọn ngày và giờ phù hợp với lịch trình của bạn
-                    </p>
+                {loadingStates.dates ? (
+                  <div style={{ textAlign: "center", padding: "30px" }}>
+                    <div>⏳ Đang tải lịch khám...</div>
                   </div>
-
-                  {loadingStates.dates ? (
-                    <div style={{ textAlign: "center", padding: "30px" }}>
-                      <div>⏳ Đang tải lịch khám...</div>
-                    </div>
-                  ) : availableDates.length > 0 ? (
-                    <div className="datetime-container">
-                      <div className="date-picker-container">
-                        <label className="input-label">📅 Chọn ngày hẹn:</label>
-                        <DatePicker
+                ) : availableDates.length > 0 ? (
+                  <div className="datetime-container">
+                    <div className="date-picker-container">
+                      <label className="input-label date-label">
+                        <span className="label-icon">📅</span>
+                        <span className="label-text">Chọn ngày hẹn</span>
+                        <span className="label-required">*</span>
+                      </label>
+                      <div className="date-picker-wrapper">
+                        <CustomDatePicker
                           id="appointmentDate"
                           selected={selectedDate}
                           onChange={handleDatePickerChange}
                           includeDates={getAvailableDatesArray()}
-                          dateFormat="dd/MM/yyyy"
-                          placeholderText="🗓️ Nhấn để chọn ngày hẹn..."
+                          placeholder="🗓️ Nhấn để chọn ngày hẹn..."
                           className="input-field date-picker-input"
-                          calendarClassName="custom-calendar"
-                          dayClassName={(date) =>
-                            isDateAvailable(date)
-                              ? "available-date"
-                              : "unavailable-date"
-                          }
                           minDate={new Date()}
-                          showPopperArrow={false}
+                          maxDate={
+                            new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+                          } // 3 months from now
                           required
-                          autoComplete="off"
-                          withPortal={true}
-                          shouldCloseOnSelect={true}
-                          isClearable={false}
-                          showYearDropdown={false}
-                          showMonthDropdown={false}
                           disabled={isLoading}
                           onBlur={() => handleFieldBlur("appointmentDate")}
-                          aria-describedby={
-                            formErrors.appointmentDate
-                              ? "appointmentDate-error"
-                              : undefined
-                          }
-                          portalId="date-picker-portal"
+                          isDateAvailable={isDateAvailable}
                         />
                       </div>
+                      {formErrors.appointmentDate && (
+                        <div
+                          className="error-message"
+                          id="appointmentDate-error"
+                        >
+                          ⚠️ {formErrors.appointmentDate}
+                        </div>
+                      )}
+                    </div>
 
-                      {selectedDate && (
-                        <div className="time-picker-container">
-                          <label className="input-label">
-                            🕐 Chọn giờ hẹn:
-                          </label>
-                          {loadingStates.slots ? (
-                            <div
-                              style={{ textAlign: "center", padding: "20px" }}
-                            >
-                              <div>⏳ Đang tải khung giờ...</div>
+                    {selectedDate && (
+                      <div className="time-picker-container">
+                        <label className="input-label time-label">
+                          <span className="label-icon">🕐</span>
+                          <span className="label-text">Chọn giờ hẹn</span>
+                          <span className="label-required">*</span>
+                        </label>
+
+                        {loadingStates.slots ? (
+                          <div className="loading-container">
+                            <div className="loading-spinner">
+                              <div className="spinner-ring"></div>
                             </div>
-                          ) : availableSlots.length > 0 ? (
+                            <div className="loading-text">
+                              <span className="loading-emoji">⏳</span>
+                              Đang tải khung giờ có sẵn...
+                            </div>
+                            <div className="loading-dots">
+                              <span></span>
+                              <span></span>
+                              <span></span>
+                            </div>
+                          </div>
+                        ) : availableSlots.length > 0 ? (
+                          <div className="time-slots-wrapper">
+                            <div className="time-slots-header">
+                              <span className="slots-count">
+                                {availableSlots.length} khung giờ có sẵn
+                              </span>
+                              <span className="selected-date-display">
+                                📅 {selectedDate.toLocaleDateString("vi-VN")}
+                              </span>
+                            </div>
                             <div className="time-slots-grid">
                               {availableSlots.map((slot, i) => (
                                 <label
@@ -497,144 +535,188 @@ const RegistrationForm = () => {
                                     required
                                     disabled={isLoading}
                                   />
-                                  <span className="time-slot-text">
-                                    🕐 {slot}
-                                  </span>
+                                  <div className="time-slot-content">
+                                    <span className="time-slot-icon">🕐</span>
+                                    <span className="time-slot-text">
+                                      {slot}
+                                    </span>
+                                    <div className="time-slot-indicator"></div>
+                                  </div>
                                 </label>
                               ))}
                             </div>
-                          ) : (
-                            <div className="no-dates-available">
-                              <p>
-                                😔 Không có khung giờ trống cho ngày này. Vui
-                                lòng chọn ngày khác.
-                              </p>
+                          </div>
+                        ) : (
+                          <div className="no-slots-available">
+                            <div className="no-slots-icon">
+                              <svg
+                                width="48"
+                                height="48"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                              >
+                                <path
+                                  d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zM12 7c.553 0 1 .447 1 1v4c0 .553-.447 1-1 1s-1-.447-1-1V8c0-.553.447-1 1-1zm0 8c-.553 0-1 .447-1 1s.447 1 1 1 1-.447 1-1-.447-1-1-1z"
+                                  fill="currentColor"
+                                />
+                              </svg>
                             </div>
-                          )}
-                        </div>
-                      )}
+                            <div className="no-slots-content">
+                              <h4>Không có khung giờ trống</h4>
+                              <p>
+                                Ngày bạn chọn hiện không có khung giờ nào có
+                                sẵn.
+                              </p>
+                              <p>Vui lòng chọn ngày khác hoặc thử lại sau.</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="no-dates-available">
+                    <div className="no-dates-icon">
+                      <svg
+                        width="48"
+                        height="48"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M8 2V5M16 2V5M3.5 9.5H20.5M4 18V7C4 5.89543 4.89543 5 6 5H18C19.1046 5 20 5.89543 20 7V18C20 19.1046 19.1046 20 18 20H6C4.89543 20 4 19.1046 4 18Z"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M15 13L9 13"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
+                      </svg>
                     </div>
-                  ) : (
-                    <div className="no-dates-available">
-                      <p>
-                        😔 Hiện tại bác sĩ chưa có lịch trống. Vui lòng thử lại
-                        sau hoặc chọn bác sĩ khác.
-                      </p>
+                    <div className="no-dates-content">
+                      <h4>Chưa có lịch hẹn</h4>
+                      <p>Bác sĩ hiện tại chưa có lịch trống nào.</p>
+                      <p>Vui lòng thử lại sau hoặc chọn bác sĩ khác.</p>
                     </div>
-                  )}
-                </div>
-              )}
-            </section>
-          )}
-
-          {/* Ghi chú + Chính sách */}
-          <section className="section">
-            <h2 className="section-title">3. Thông Tin Bổ Sung</h2>
-            <div className="notes-container">
-              <label className="input-label">📝 Ghi chú (tùy chọn):</label>
-              <textarea
-                name="notes"
-                value={formData.notes}
-                onChange={handleChange}
-                placeholder="Ví dụ: Triệu chứng cụ thể, tiền sử bệnh, yêu cầu đặc biệt, thời gian thuận tiện..."
-                className="textarea-field"
-                rows="4"
-                disabled={isLoading}
-              />
-            </div>
-
-            <label className="policy-confirmation">
-              <input
-                type="checkbox"
-                name="agreePolicy"
-                checked={formData.agreePolicy}
-                onChange={handleChange}
-                required
-                disabled={isLoading}
-              />
-              <span className="policy-text">
-                🔒 Tôi xác nhận đã đọc và đồng ý với{" "}
-                <strong>chính sách bảo mật thông tin</strong> và{" "}
-                <strong>điều khoản sử dụng dịch vụ</strong> của phòng khám
-              </span>
-            </label>
-          </section>
-
-          <button
-            type="submit"
-            className="submit-button"
-            disabled={!formData.agreePolicy || isLoading}
-          >
-            {isLoading ? "⏳ Đang xử lý..." : "🚀 Hoàn Tất Đăng Ký"}
-          </button>
-        </form>
-
-        {/* Success Modal */}
-        {showSuccess && registerInfo && (
-          <div
-            className="success-modal-overlay"
-            onClick={() => setShowSuccess(false)}
-          >
-            <div className="success-modal" onClick={(e) => e.stopPropagation()}>
-              <div className="success-header">
-                <h2>🎉 Đăng Ký Thành Công!</h2>
-                <p>Thông tin lịch hẹn của bạn đã được xác nhận</p>
-              </div>
-              <div className="success-content">
-                <div className="info-item">
-                  <span className="info-label">📋 Mã đơn hẹn:</span>
-                  <span className="info-value">#{registerInfo.id}</span>
-                </div>
-                <div className="info-item">
-                  <span className="info-label">📅 Thời gian hẹn:</span>
-                  <span className="info-value">
-                    {formatDateTime(registerInfo.appointmentTime)}
-                  </span>
-                </div>
-                <div className="info-item">
-                  <span className="info-label">🏥 Dịch vụ:</span>
-                  <span className="info-value">
-                    {registerInfo.service?.name}
-                  </span>
-                </div>
-                <div className="info-item">
-                  <span className="info-label">👨‍⚕️ Bác sĩ:</span>
-                  <span className="info-value">
-                    {registerInfo.doctor?.fullName || "Sẽ được thông báo sau"}
-                  </span>
-                </div>
-                {registerInfo.note && (
-                  <div className="info-item">
-                    <span className="info-label">📝 Ghi chú:</span>
-                    <span className="info-value">{registerInfo.note}</span>
                   </div>
                 )}
-                <div
-                  style={{
-                    marginTop: "20px",
-                    padding: "16px",
-                    backgroundColor: "#f0f9ff",
-                    borderRadius: "8px",
-                    textAlign: "center",
-                  }}
-                >
-                  <p style={{ margin: 0, color: "#0369a1", fontWeight: "500" }}>
-                    📱 Phòng khám sẽ liên hệ với bạn để xác nhận lịch hẹn trong
-                    vòng 24 giờ
-                  </p>
-                </div>
               </div>
-              <button
-                className="success-close-btn"
-                onClick={() => setShowSuccess(false)}
-              >
-                ✅ Đóng
-              </button>
-            </div>
-          </div>
+            )}
+          </section>
         )}
-      </main>
-    </>
+
+        {/* Ghi chú + Chính sách */}
+        <section className="section">
+          <h2 className="section-title">Thông Tin Bổ Sung</h2>
+          <div className="notes-container">
+            <label className="input-label">📝 Ghi chú (tùy chọn):</label>
+            <textarea
+              name="notes"
+              value={formData.notes}
+              onChange={handleChange}
+              placeholder="Ví dụ: Triệu chứng cụ thể, tiền sử bệnh, yêu cầu đặc biệt, thời gian thuận tiện..."
+              className="textarea-field"
+              rows="4"
+              disabled={isLoading}
+            />
+          </div>
+
+          <label className="policy-confirmation">
+            <input
+              type="checkbox"
+              name="agreePolicy"
+              checked={formData.agreePolicy}
+              onChange={handleChange}
+              required
+              disabled={isLoading}
+            />
+            <span className="policy-text">
+              🔒 Tôi xác nhận đã đọc và đồng ý với{" "}
+              <strong>chính sách bảo mật thông tin</strong> và{" "}
+              <strong>điều khoản sử dụng dịch vụ</strong> của phòng khám
+            </span>
+          </label>
+        </section>
+
+        <button
+          type="submit"
+          className="submit-button"
+          disabled={!formData.agreePolicy || isLoading}
+        >
+          {isLoading ? "⏳ Đang xử lý..." : "🚀 Hoàn Tất Đăng Ký"}
+        </button>
+      </form>
+
+      {/* Success Modal */}
+      {showSuccess && registerInfo && (
+        <div
+          className="success-modal-overlay"
+          onClick={() => setShowSuccess(false)}
+        >
+          <div className="success-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="success-header">
+              <h2>🎉 Đăng Ký Thành Công!</h2>
+              <p>Thông tin lịch hẹn của bạn đã được xác nhận</p>
+            </div>
+            <div className="success-content">
+              <div className="info-item">
+                <span className="info-label">📋 Mã đơn hẹn:</span>
+                <span className="info-value">#{registerInfo.id}</span>
+              </div>
+              <div className="info-item">
+                <span className="info-label">📅 Thời gian hẹn:</span>
+                <span className="info-value">
+                  {formatDateTime(registerInfo.appointmentTime)}
+                </span>
+              </div>
+              <div className="info-item">
+                <span className="info-label">🏥 Dịch vụ:</span>
+                <span className="info-value">{registerInfo.service?.name}</span>
+              </div>
+              <div className="info-item">
+                <span className="info-label">👨‍⚕️ Bác sĩ:</span>
+                <span className="info-value">
+                  {registerInfo.doctor?.fullName || "Sẽ được thông báo sau"}
+                </span>
+              </div>
+              {registerInfo.note && (
+                <div className="info-item">
+                  <span className="info-label">📝 Ghi chú:</span>
+                  <span className="info-value">{registerInfo.note}</span>
+                </div>
+              )}
+              <div
+                style={{
+                  marginTop: "20px",
+                  padding: "16px",
+                  backgroundColor: "#f0f9ff",
+                  borderRadius: "8px",
+                  textAlign: "center",
+                }}
+              >
+                <p style={{ margin: 0, color: "#0369a1", fontWeight: "500" }}>
+                  📱 Phòng khám sẽ liên hệ với bạn để xác nhận lịch hẹn trong
+                  vòng 24 giờ
+                </p>
+              </div>
+            </div>
+            <button
+              className="success-close-btn"
+              onClick={() => setShowSuccess(false)}
+            >
+              ✅ Đóng
+            </button>
+          </div>
+        </div>
+      )}
+    </main>
   );
 };
 
