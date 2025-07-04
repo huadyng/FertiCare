@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import axios from "axios";
+import { getBlogById } from "../../../api/apiBlog";
 import sampleBlogs from "../../../data/sampleBlogs.json";
 import "./BlogDetail.css";
 
@@ -14,28 +14,21 @@ export default function BlogDetail() {
     const fetchBlog = async () => {
       setLoading(true);
       window.scrollTo(0, 0);
-
-      // Nếu là blog mẫu (id bắt đầu bằng "sample-")
-    if (id.startsWith("sample-")) {
-      const staticBlog = sampleBlogs.find((b) => b.id === id);
-      setBlog(staticBlog || null);
-      setLoading(false);
-      return;
-    }
-
-
-      // Nếu là blog từ API
+      if (id.startsWith("sample-")) {
+        const staticBlog = sampleBlogs.find((b) => b.id === id);
+        setBlog(staticBlog || null);
+        setLoading(false);
+        return;
+      }
       try {
-        const res = await axios.get(`/api/blog/${id}`);
-        setBlog(res.data);
+        const res = await getBlogById(id);
+        setBlog(res);
       } catch (err) {
-        console.error("Lỗi khi lấy blog từ API:", err);
         setBlog(null);
       } finally {
         setLoading(false);
       }
     };
-
     fetchBlog();
   }, [id]);
 

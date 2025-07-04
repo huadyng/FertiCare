@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import {
   getAllBlogsForManager,
@@ -5,12 +6,12 @@ import {
   archiveBlog,
   deleteBlog,
 } from "../../../api/apiBlog";
-
 import sampleBlogs from "../../../data/sampleBlogs.json";
 import "./BlogManager.css";
 
 export default function BlogManager() {
   const [blogs, setBlogs] = useState([]);
+  const [message, setMessage] = useState("");
 
   const fetchAll = async () => {
     try {
@@ -23,7 +24,7 @@ export default function BlogManager() {
       }));
       setBlogs([...apiBlogs, ...staticBlogs]);
     } catch (err) {
-      console.error("Lỗi khi tải blog:", err);
+      setMessage("❌ Lỗi khi tải blog. Vui lòng thử lại.");
       setBlogs([]);
     }
   };
@@ -33,24 +34,28 @@ export default function BlogManager() {
   }, []);
 
   const handleAction = async (id, action, isStatic) => {
+    setMessage("");
     if (isStatic) {
-      alert("Không thể thao tác với blog mẫu.");
+      setMessage("Không thể thao tác với blog mẫu.");
       return;
     }
-
     try {
       if (action === "approve") await approveBlog(id);
       if (action === "archive") await archiveBlog(id);
       if (action === "delete") await deleteBlog(id);
+      setMessage("✅ Thao tác thành công!");
       fetchAll();
     } catch (err) {
-      alert("Thao tác thất bại");
+      setMessage("❌ Thao tác thất bại. Vui lòng thử lại.");
     }
   };
 
   return (
     <div className="blog-manager">
       <h4>Quản lý bài viết</h4>
+      {message && (
+        <div style={{ margin: "12px 0", color: message.startsWith("✅") ? "#2e7d32" : "#d32f2f", fontWeight: 600, textAlign: "center" }}>{message}</div>
+      )}
       {blogs.map((blog) => (
         <div key={blog._id} className="blog-card manager-card">
           {blog.imageUrl && (

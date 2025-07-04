@@ -49,7 +49,10 @@ const BlogPublic = lazy(() => import("./components/pages/Blog/BlogPublic"));
 const BlogManager = lazy(() => import("./components/pages/Blog/BlogManager"));
 const BlogDetail = lazy(() => import("./components/pages/Blog/BlogDetail"));
 const ForgotPassword = lazy(() =>
-  import("./components/pages/Login/ForgotPassword")
+  import("./components/Pages/ForgotPassword/ForgotPassword")
+);
+const ResetPassword = lazy(() =>
+  import("./components/Pages/ForgotPassword/ResetPassword")
 );
 const VerifyEmail = lazy(() =>
   import("./components/pages/VerifyEmail/VerifyEmail")
@@ -332,6 +335,7 @@ function AppContent() {
           }
         />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route
           path="/register"
           element={
