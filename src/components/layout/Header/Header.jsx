@@ -112,6 +112,12 @@ export default function Header() {
               </Link>
             </li>
           )}
+          <li>
+            <Link to="/blog-public">
+              <span className="navbar-icon">📝</span>
+              <span>Blog</span>
+            </Link>
+          </li>
         </ul>
       </div>
 
