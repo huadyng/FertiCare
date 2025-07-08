@@ -51,47 +51,6 @@ const apiLogin = {
     }
   },
 
-  // Quên mật khẩu
-  forgotPassword: async (email) => {
-    try {
-      console.log("📧 [apiLogin] Gửi email reset password:", email);
-
-      const response = await axiosClient.post("/api/auth/forgot-password", {
-        email,
-      });
-
-      console.log("✅ [apiLogin] Email reset password đã gửi:", response.data);
-      return response.data;
-    } catch (error) {
-      console.error(
-        "❌ [apiLogin] Lỗi gửi email reset:",
-        error.response?.data || error.message
-      );
-      throw error;
-    }
-  },
-
-  // Reset mật khẩu
-  resetPassword: async (token, newPassword) => {
-    try {
-      console.log("🔑 [apiLogin] Reset password với token:", token);
-
-      const response = await axiosClient.post("/api/auth/reset-password", {
-        token,
-        newPassword,
-      });
-
-      console.log("✅ [apiLogin] Reset password thành công:", response.data);
-      return response.data;
-    } catch (error) {
-      console.error(
-        "❌ [apiLogin] Lỗi reset password:",
-        error.response?.data || error.message
-      );
-      throw error;
-    }
-  },
-
   // Đăng xuất (nếu cần gọi API)
   logout: async () => {
     try {
