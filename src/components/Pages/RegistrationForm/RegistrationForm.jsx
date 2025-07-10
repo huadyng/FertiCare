@@ -132,6 +132,7 @@ const RegistrationForm = () => {
   // Khi chọn bác sĩ thủ công
   const handleDoctorChange = async (e) => {
     const doctorId = e.target.value;
+    console.log("[DEBUG] Chọn bác sĩ thủ công, doctorId:", doctorId);
 
     setFormData((prev) => ({
       ...prev,
@@ -144,12 +145,12 @@ const RegistrationForm = () => {
 
     if (!doctorId) {
       setAvailableDates([]);
+      console.log("[DEBUG] Không có doctorId, reset availableDates");
       return;
     }
 
     try {
       setLoadingStates((prev) => ({ ...prev, dates: true }));
-
       const res = await axiosClient.get(
         `/api/service-request/available-dates/${doctorId}`
       );
@@ -157,10 +158,11 @@ const RegistrationForm = () => {
         date: dateStr,
         slots: [],
       }));
-
+      console.log("[DEBUG] API trả về availableDates:", dateList);
       setAvailableDates(dateList);
     } catch (err) {
       setAvailableDates([]);
+      console.log("[DEBUG] Lỗi khi lấy availableDates:", err);
     } finally {
       setLoadingStates((prev) => ({ ...prev, dates: false }));
     }
@@ -168,19 +170,17 @@ const RegistrationForm = () => {
 
   // Xử lý khi chọn ngày từ DatePicker
   const handleDatePickerChange = async (date) => {
-    console.log("=== DEBUG handleDatePickerChange ===");
-    console.log("Selected date:", date);
-
+    console.log("[DEBUG] Chọn ngày:", date);
     setSelectedDate(date);
 
     if (!date) {
-      console.log("No date selected");
+      console.log("[DEBUG] Không có ngày được chọn");
       return;
     }
 
     // Format date to YYYY-MM-DD
     const formattedDate = date.toISOString().split("T")[0];
-    console.log("Formatted date:", formattedDate);
+    console.log("[DEBUG] Ngày đã format:", formattedDate);
 
     setFormData((prev) => {
       const newFormData = {
@@ -188,32 +188,33 @@ const RegistrationForm = () => {
         appointmentDate: formattedDate,
         appointmentTime: "",
       };
-      console.log("Updated formData:", newFormData);
+      console.log("[DEBUG] formData sau khi chọn ngày:", newFormData);
       return newFormData;
     });
 
     // Determine doctorId based on selection mode
     let doctorIdToUse = formData.doctorId;
-
     if (formData.doctorOption === "auto" && doctors.length > 0) {
       doctorIdToUse = doctors[0].id;
     }
+    console.log("[DEBUG] doctorId sử dụng để lấy giờ:", doctorIdToUse);
 
     if (!doctorIdToUse) {
+      console.log("[DEBUG] Không có doctorId để lấy giờ");
       return;
     }
 
     try {
       setLoadingStates((prev) => ({ ...prev, slots: true }));
-
       const res = await axiosClient.get(
         `/api/service-request/doctor-available-times/${doctorIdToUse}?date=${formattedDate}`
       );
-
+      console.log("[DEBUG] API trả về availableSlots:", res.data);
       const slots = res.data.map((item) => item.time);
       setAvailableSlots(slots);
     } catch (err) {
       setAvailableSlots([]);
+      console.log("[DEBUG] Lỗi khi lấy availableSlots:", err);
     } finally {
       setLoadingStates((prev) => ({ ...prev, slots: false }));
     }
@@ -221,17 +222,16 @@ const RegistrationForm = () => {
 
   const handleSlotChange = (e) => {
     const selectedTime = e.target.value;
-    console.log("=== DEBUG handleSlotChange ===");
-    console.log("Selected time:", selectedTime);
-
+    console.log("[DEBUG] Chọn giờ:", selectedTime);
     setFormData((prev) => {
       const newFormData = {
         ...prev,
         appointmentTime: selectedTime,
       };
-      console.log("Updated formData after time selection:", newFormData);
+      console.log("[DEBUG] formData sau khi chọn giờ:", newFormData);
       return newFormData;
     });
+    console.log("[DEBUG] availableSlots hiện tại:", availableSlots);
   };
 
   const handleChange = (e) => {
@@ -253,7 +253,7 @@ const RegistrationForm = () => {
   // Tạo danh sách các ngày có thể chọn
   const getAvailableDatesArray = () => {
     if (!Array.isArray(availableDates)) return [];
-    const dateArray = availableDates.map((d) => new Date(d.date));
+    const dateArray = availableDates.map((d) => new Date(d.date.date));
     return dateArray;
   };
 
@@ -261,7 +261,7 @@ const RegistrationForm = () => {
   const isDateAvailable = (date) => {
     if (!Array.isArray(availableDates)) return false;
     const dateStr = date.toISOString().split("T")[0];
-    const isAvailable = availableDates.some((d) => d.date === dateStr);
+    const isAvailable = availableDates.some((d) => d.date.date === dateStr);
     return isAvailable;
   };
 
