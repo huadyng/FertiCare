@@ -157,19 +157,16 @@ export default function Login() {
       console.log("✅ Đăng nhập thành công:", userData);
       console.log("👤 Role từ backend:", userData.role);
 
-      await login(userData);
-
       // ✅ Calculate dashboard path directly to avoid timing issues with UserContext
       const dashboardPath = calculateDashboardPath(userData);
 
       console.log("🎯 Calculated dashboard path:", dashboardPath);
-      console.log(
-        "👤 User context sau login:",
-        JSON.parse(localStorage.getItem("user"))
-      );
 
-      // ✅ Redirect theo role
-      navigate(dashboardPath);
+      // ✅ Redirect ngay lập tức trước khi gọi login để tránh delay
+      navigate(dashboardPath, { replace: true });
+
+      // ✅ Sau đó mới gọi login để cập nhật context
+      await login(userData);
     } catch (error) {
       console.error("❌ Lỗi đăng nhập:", error);
 
@@ -235,15 +232,16 @@ export default function Login() {
 
       console.log("✅ Google login thành công:", userData);
 
-      await login(userData);
-
       // ✅ Calculate dashboard path directly to avoid timing issues with UserContext
       const dashboardPath = calculateDashboardPath(userData);
 
       console.log("🎯 Google login dashboard path:", dashboardPath);
 
-      // ✅ Redirect theo role
-      navigate(dashboardPath);
+      // ✅ Redirect ngay lập tức trước khi gọi login để tránh delay
+      navigate(dashboardPath, { replace: true });
+
+      // ✅ Sau đó mới gọi login để cập nhật context
+      await login(userData);
     } catch (error) {
       console.error("❌ Lỗi Google login:", error);
 

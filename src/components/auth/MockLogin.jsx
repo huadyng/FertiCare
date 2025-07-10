@@ -55,31 +55,32 @@ const MockLogin = () => {
   ];
 
   const handleMockLogin = async (user) => {
+    // Navigate to appropriate dashboard with replace to avoid back navigation
+    switch (user.role) {
+      case USER_ROLES.ADMIN:
+        navigate("/admin/dashboard", { replace: true });
+        break;
+      case USER_ROLES.MANAGER:
+        navigate("/manager/dashboard", { replace: true });
+        break;
+      case USER_ROLES.DOCTOR:
+        navigate("/doctor-dashboard", { replace: true });
+        break;
+      case USER_ROLES.PATIENT:
+        navigate("/patient/dashboard", { replace: true });
+        break;
+      case USER_ROLES.CUSTOMER:
+        navigate("/", { replace: true }); // Customer stays on homepage to register for service
+        break;
+      default:
+        navigate("/", { replace: true });
+    }
+
+    // Sau đó mới gọi login để cập nhật context
     await login(user);
     message.success(
       `Đăng nhập thành công với vai trò ${getRoleDisplayName(user.role)}!`
     );
-
-    // Navigate to appropriate dashboard
-    switch (user.role) {
-      case USER_ROLES.ADMIN:
-        navigate("/admin/dashboard");
-        break;
-      case USER_ROLES.MANAGER:
-        navigate("/manager/dashboard");
-        break;
-      case USER_ROLES.DOCTOR:
-        navigate("/doctor-dashboard");
-        break;
-      case USER_ROLES.PATIENT:
-        navigate("/patient/dashboard");
-        break;
-      case USER_ROLES.CUSTOMER:
-        navigate("/"); // Customer stays on homepage to register for service
-        break;
-      default:
-        navigate("/");
-    }
   };
 
   const getRoleDisplayName = (role) => {

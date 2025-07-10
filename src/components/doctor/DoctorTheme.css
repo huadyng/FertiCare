@@ -142,9 +142,9 @@
 }
 
 .doctor-card:hover {
-  transform: translateY(-6px) scale(1.02);
-  box-shadow: 0 20px 40px var(--shadow-primary), 0 8px 16px var(--shadow-light);
-  border-color: rgba(255, 126, 179, 0.2);
+  transform: none;
+  box-shadow: 0 4px 20px var(--shadow-light), 0 1px 3px var(--shadow-soft);
+  border-color: var(--border-light);
 }
 
 .doctor-card:hover::before {
@@ -195,13 +195,13 @@
 }
 
 .doctor-btn-primary:hover {
-  transform: translateY(-2px) scale(1.05) !important;
-  box-shadow: 0 8px 30px var(--shadow-primary),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+  transform: none !important;
+  box-shadow: 0 4px 20px var(--shadow-light),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
 }
 
 .doctor-btn-primary:active {
-  transform: translateY(0) scale(1.02) !important;
+  transform: none !important;
 }
 
 /* Secondary Button Styles */
@@ -233,8 +233,8 @@
 .doctor-btn-secondary:hover {
   background: var(--glass-bg-strong) !important;
   border-color: var(--primary-color) !important;
-  transform: translateY(-2px) !important;
-  box-shadow: 0 8px 25px var(--shadow-light) !important;
+  transform: none !important;
+  box-shadow: 0 4px 20px var(--shadow-light) !important;
 }
 
 .doctor-btn-secondary:hover::before {
@@ -272,8 +272,8 @@
 
 .doctor-glass-card:hover {
   background: var(--glass-bg-strong);
-  transform: translateY(-4px);
-  box-shadow: 0 20px 50px var(--shadow-primary), var(--glass-shadow);
+  transform: none;
+  box-shadow: var(--glass-shadow);
 }
 
 /* Header Styles */
@@ -351,8 +351,8 @@
 }
 
 .doctor-stat-card:hover {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 20px 40px var(--shadow-primary), 0 8px 16px var(--shadow-light);
+  transform: none;
+  box-shadow: 0 4px 20px var(--shadow-light), 0 1px 3px var(--shadow-soft);
 }
 
 .doctor-stat-card:hover::before {
@@ -459,6 +459,7 @@
   border-right: 1px solid var(--border-light) !important;
   box-shadow: 4px 0 20px var(--shadow-light) !important;
   backdrop-filter: blur(20px) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .doctor-sidebar .ant-layout-sider-children {
@@ -505,7 +506,7 @@
 .doctor-sidebar .ant-menu-item:hover {
   background: rgba(255, 126, 179, 0.08) !important;
   color: var(--primary-color) !important;
-  transform: translateX(4px) !important;
+  transform: none !important;
 }
 
 /* Header Layout */
@@ -527,8 +528,8 @@
 }
 
 .doctor-avatar:hover {
-  transform: scale(1.1) !important;
-  box-shadow: 0 6px 20px var(--shadow-primary) !important;
+  transform: none !important;
+  box-shadow: 0 4px 12px var(--shadow-light) !important;
 }
 
 /* Enhanced Form Controls */
@@ -565,7 +566,7 @@
 
 .doctor-table .ant-table-tbody > tr:hover > td {
   background: rgba(255, 126, 179, 0.05) !important;
-  transform: scale(1.01) !important;
+  transform: none !important;
 }
 
 /* Enhanced Modal */
@@ -641,18 +642,47 @@
 
 /* List Enhancements */
 .doctor-list .ant-list-item {
-  border-radius: var(--radius-md) !important;
-  margin-bottom: 12px !important;
-  padding: 16px !important;
-  background: var(--bg-card) !important;
-  box-shadow: 0 2px 8px var(--shadow-soft) !important;
-  border: 1px solid var(--border-light) !important;
-  transition: var(--transition-normal) !important;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
 }
 
-.doctor-list .ant-list-item:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: 0 8px 25px var(--shadow-light) !important;
+.doctor-list .ant-list-item-meta {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.doctor-list .ant-list-item-meta-title {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+  min-width: 0;
+  max-width: 100%;
+  display: block;
+  word-break: break-word;
+}
+
+.doctor-list .ant-list-item-action {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 120px;
+}
+
+@media (max-width: 600px) {
+  .doctor-list .ant-list-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .doctor-list .ant-list-item-action {
+    justify-content: flex-start;
+    margin-top: 8px;
+  }
 }
 
 /* Fix cho List Item nếu có conflict */
@@ -666,6 +696,23 @@
 
 .ant-list-item-action {
   margin-top: 0 !important;
+}
+
+.doctor-list .ant-list-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.doctor-list .ant-list-item-meta-title {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+  min-width: 0;
+  max-width: 100%;
+  display: block;
+  word-break: break-word;
 }
 
 /* Animations */
@@ -764,8 +811,8 @@
 }
 
 .doctor-profile-wrapper .edit-btn:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: 0 8px 30px var(--shadow-primary) !important;
+  transform: none !important;
+  box-shadow: 0 4px 20px var(--shadow-light) !important;
 }
 
 .doctor-profile-wrapper .message.success {
@@ -825,32 +872,32 @@
 }
 
 .doctor-fade-in {
-  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: none;
 }
 
 .doctor-slide-in {
-  animation: slideInRight 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: none;
 }
 
 .doctor-bounce-in {
-  animation: bounceIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  animation: none;
 }
 
 /* Stagger animations for multiple elements */
 .doctor-fade-in:nth-child(1) {
-  animation-delay: 0.1s;
+  animation-delay: 0s;
 }
 .doctor-fade-in:nth-child(2) {
-  animation-delay: 0.2s;
+  animation-delay: 0s;
 }
 .doctor-fade-in:nth-child(3) {
-  animation-delay: 0.3s;
+  animation-delay: 0s;
 }
 .doctor-fade-in:nth-child(4) {
-  animation-delay: 0.4s;
+  animation-delay: 0s;
 }
 .doctor-fade-in:nth-child(5) {
-  animation-delay: 0.5s;
+  animation-delay: 0s;
 }
 
 /* Loading States */
@@ -875,6 +922,10 @@
   .doctor-glass-card {
     padding: 20px;
   }
+
+  .doctor-dashboard .ant-layout-content {
+    margin: 16px !important;
+  }
 }
 
 @media (max-width: 768px) {
@@ -897,6 +948,15 @@
     padding: 6px 16px !important;
     font-size: 12px !important;
   }
+
+  .doctor-dashboard .ant-layout-content {
+    margin: 12px !important;
+  }
+
+  .doctor-dashboard .ant-col {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
 }
 
 @media (max-width: 480px) {
@@ -918,6 +978,8 @@
 /* Fixes cho các component có thể bị conflict */
 .doctor-dashboard .ant-card {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+  width: 100% !important;
+  max-width: 100% !important;
 }
 
 .doctor-dashboard .ant-card-head {
@@ -936,6 +998,8 @@
 
 .doctor-dashboard .ant-layout-content {
   background: transparent !important;
+  min-width: 0 !important;
+  overflow-x: hidden !important;
 }
 
 /* Đảm bảo Text components hoạt động đúng */
@@ -952,11 +1016,13 @@
 .doctor-dashboard .ant-row {
   margin-left: 0 !important;
   margin-right: 0 !important;
+  width: 100% !important;
 }
 
 .doctor-dashboard .ant-col {
   padding-left: 12px !important;
   padding-right: 12px !important;
+  min-width: 0 !important;
 }
 
 /* Dark mode support (optional) */

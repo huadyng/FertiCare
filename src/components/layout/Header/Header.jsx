@@ -86,12 +86,12 @@ export default function Header() {
               <span>Chuyên gia - bác sĩ</span>
             </Link>
           </li>
-          <li>
+          {/* <li>
             <Link to="/achievements">
               <span className="navbar-icon">🏆</span>
               <span>Thành tựu</span>
             </Link>
-          </li>
+          </li> */}
           <li>
             <Link to="/articles">
               <span className="navbar-icon">📰</span>

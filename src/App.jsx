@@ -6,7 +6,7 @@ import {
   useNavigate,
   Navigate,
 } from "react-router-dom";
-import { useContext, Suspense, lazy } from "react";
+import { useContext, Suspense, lazy, useEffect } from "react";
 import { Button, Result, Spin } from "antd";
 import { UserProvider, UserContext } from "./context/UserContext";
 import "./App.css";
@@ -31,14 +31,14 @@ const Achievements = lazy(() =>
   import("./components/Pages/Achievement/Achievements")
 );
 
-const Login = lazy(() => import("./components/pages/Login/Login"));
-const Register = lazy(() => import("./components/pages/Register/Register"));
+const Login = lazy(() => import("./components/Pages/Login/Login"));
+const Register = lazy(() => import("./components/Pages/Register/Register"));
 const RegisterPage = lazy(() => import("./components/pages/Register/Register"));
 const DoctorDetail = lazy(() =>
   import("./components/pages/DoctorTeam/Card/DoctorDetail/DoctorDetail")
 );
 const HomePage = lazy(() =>
-  import("./components/pages/HomePage/index/HomePage")
+  import("./components/Pages/HomePage/index/HomePage")
 );
 const RegistrationForm = lazy(() =>
   import("./components/pages/RegistrationForm/RegistrationForm")
@@ -135,9 +135,21 @@ const HIDE_HEADER_FOOTER_PATHS = [
 // Wrapper để ẩn/hiện Header/Footer
 function LayoutWrapper({ children }) {
   const location = useLocation();
+  const { user, USER_ROLES, isUserLoading } = useContext(UserContext);
+
+  // Ẩn Header/Footer cho các route auth
   const shouldHideHeaderFooter = HIDE_HEADER_FOOTER_PATHS.includes(
     location.pathname
   );
+
+  // Ẩn Header/Footer khi user đã đăng nhập và không phải CUSTOMER (để tránh chớp tắt)
+  const shouldHideForLoggedInUser =
+    !isUserLoading && user && user.role && user.role !== USER_ROLES.CUSTOMER;
+
+  // Nếu user đã đăng nhập và không phải CUSTOMER, chỉ render children mà không có Header/Footer
+  if (shouldHideForLoggedInUser) {
+    return <>{children}</>;
+  }
 
   return (
     <>
@@ -179,6 +191,47 @@ function DashboardRedirect() {
   return <Navigate to={getDashboardPath()} replace />;
 }
 
+// HomePage wrapper để xử lý redirect cho user đã đăng nhập
+function HomePageWrapper() {
+  const { user, getDashboardPath, USER_ROLES, isUserLoading } =
+    useContext(UserContext);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Redirect ngay lập tức nếu user đã đăng nhập và không phải CUSTOMER
+    if (
+      !isUserLoading &&
+      user &&
+      user.role &&
+      user.role !== USER_ROLES.CUSTOMER
+    ) {
+      const dashboardPath = getDashboardPath();
+      console.log(
+        "🔄 [HomePageWrapper] Redirecting to dashboard:",
+        dashboardPath
+      );
+      navigate(dashboardPath, { replace: true });
+    }
+  }, [user, getDashboardPath, USER_ROLES, navigate, isUserLoading]);
+
+  // Hiển thị loading khi đang load user
+  if (isUserLoading) {
+    return (
+      <div style={{ textAlign: "center", padding: 40 }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  // Nếu user đã đăng nhập và không phải CUSTOMER, không render gì
+  if (user && user.role && user.role !== USER_ROLES.CUSTOMER) {
+    return <div style={{ display: "none" }} />;
+  }
+
+  // Chỉ render HomePage cho CUSTOMER hoặc guest
+  return <HomePage />;
+}
+
 // Coming Soon
 const ComingSoon = ({ title }) => (
   <div
@@ -208,7 +261,7 @@ function AppContent() {
           path="/"
           element={
             <LayoutWrapper>
-              <HomePage />
+              <HomePageWrapper />
             </LayoutWrapper>
           }
         />

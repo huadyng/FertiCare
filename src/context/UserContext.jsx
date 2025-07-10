@@ -81,6 +81,7 @@ export const UserContext = createContext();
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isUserLoading, setIsUserLoading] = useState(true);
 
   // Khi load lại trang, lấy user từ localStorage (có xử lý lỗi)
   useEffect(() => {
@@ -88,6 +89,10 @@ export const UserProvider = ({ children }) => {
     try {
       if (storedUser) {
         const userData = JSON.parse(storedUser);
+        console.log(
+          "🔄 [UserContext] Loading user from localStorage:",
+          userData
+        );
         setUser(userData);
         setIsLoggedIn(true);
       }
@@ -95,6 +100,7 @@ export const UserProvider = ({ children }) => {
       console.error("❌ Lỗi parse user từ localStorage:", error);
       localStorage.removeItem("user");
     }
+    setIsUserLoading(false); // Đã xác định xong user
   }, []);
 
   // Đăng nhập (có role & trạng thái dịch vụ mặc định)
@@ -364,6 +370,7 @@ export const UserProvider = ({ children }) => {
         user,
         setUser,
         isLoggedIn,
+        isUserLoading,
         login,
         loginWithGoogle,
         logout,
