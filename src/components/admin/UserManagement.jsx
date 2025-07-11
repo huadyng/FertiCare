@@ -521,7 +521,7 @@ const UserManagement = () => {
               {getRoleDisplay(selectedUser.role)}
             </div>
 
-            <Descriptions column={1} bordered size="small">
+            <Descriptions column={1} variant="bordered" size="small">
               <Descriptions.Item label="Email">
                 {selectedUser.email}
               </Descriptions.Item>

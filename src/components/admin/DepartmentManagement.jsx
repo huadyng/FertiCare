@@ -419,7 +419,7 @@ const DepartmentManagement = () => {
               </Tag>
             </div>
 
-            <Descriptions column={1} bordered size="small">
+            <Descriptions column={1} variant="bordered" size="small">
               <Descriptions.Item label="Tên phòng ban">
                 {selectedDepartment.name}
               </Descriptions.Item>

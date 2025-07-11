@@ -366,7 +366,7 @@ const ThemeDemo = () => {
             >
               📝 Thông tin chi tiết bệnh nhân
             </Title>
-            <Descriptions bordered column={3} size="small">
+            <Descriptions variant="bordered" column={3} size="small">
               <Descriptions.Item label="Họ tên">
                 Nguyễn Thị Mai
               </Descriptions.Item>

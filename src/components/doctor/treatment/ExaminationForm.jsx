@@ -28,19 +28,23 @@ import {
   DeleteOutlined,
   EditOutlined,
   CheckCircleOutlined,
-  PrinterOutlined,
   UserOutlined,
   HeartOutlined,
   FileTextOutlined,
   MedicineBoxOutlined,
   ExperimentOutlined,
   EyeOutlined,
-  SaveOutlined,
   ReloadOutlined,
+  CalendarOutlined,
+  PhoneOutlined,
+  MailOutlined,
+  EnvironmentOutlined,
+  ClockCircleOutlined,
 } from "@ant-design/icons";
-import { examinationAPI } from "../../../services/treatmentAPI";
+import { clinicalResultsAPI } from "../../../api/apiClinicalResults";
 import { UserContext } from "../../../context/UserContext";
 import { treatmentStateManager } from "../../../utils/treatmentStateManager";
+import { debugUtils } from "../../../utils/debugUtils";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -61,77 +65,260 @@ const ExaminationForm = ({
   const [attachments, setAttachments] = useState([]);
   const [isCompleted, setIsCompleted] = useState(false);
   const [submittedData, setSubmittedData] = useState(null);
+  const [originalData, setOriginalData] = useState(null);
+
+  // Debug localStorage on mount in development
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        "🔍 [DEBUG] ExaminationForm mounted for patientId:",
+        patientId
+      );
+      debugLocalStorage();
+    }
+  }, [patientId]);
 
   // Load existing data or draft when component initializes
   useEffect(() => {
-    // Priority: completed result > existing data (when editing) > draft
-
-    // 1. Check for saved completed examination result
-    const completedKey = `examination_completed_${patientId}`;
-    const savedCompleted = localStorage.getItem(completedKey);
-    if (savedCompleted) {
+    const loadExaminationData = async () => {
       try {
-        const completedData = JSON.parse(savedCompleted);
-        // Restore completed state
-        setIsCompleted(true);
-        setSubmittedData(completedData);
+        console.log("🔄 Loading examination data for patient:", patientId);
 
-        // Also populate form for potential editing
-        form.setFieldsValue({
-          diagnosis: completedData.diagnosis,
-          recommendations: completedData.recommendations,
-          bloodPressure: completedData.clinicalSigns?.bloodPressure,
-          temperature: completedData.clinicalSigns?.temperature,
-          heartRate: completedData.clinicalSigns?.heartRate,
-          weight: completedData.clinicalSigns?.weight,
-          height: completedData.clinicalSigns?.height,
-          ultrasound: completedData.labResults?.ultrasound,
-          notes: completedData.notes,
-        });
-        setSymptoms(completedData.symptoms || []);
-        setLabResults(completedData.labResults || {});
+        // 1. Thử lấy từ localStorage trước (nhanh hơn)
+        const completedKey = `examination_completed_${patientId}`;
+        const savedCompleted = localStorage.getItem(completedKey);
 
-        // message.success("📋 Đã khôi phục kết quả khám đã hoàn thành");
-        return;
+        if (savedCompleted) {
+          try {
+            const completedData = JSON.parse(savedCompleted);
+            console.log("✅ Found data in localStorage:", completedData);
+
+            // Kiểm tra xem dữ liệu có rỗng không
+            if (isDataEmpty(completedData)) {
+              console.log("⚠️ Found empty data in localStorage, cleaning...");
+              localStorage.removeItem(completedKey);
+              console.log("🧹 Cleaned empty data");
+            } else {
+              setIsCompleted(true);
+              setSubmittedData(completedData);
+              setOriginalData(completedData);
+              populateFormWithData(completedData);
+            }
+
+            // Vẫn tiếp tục gọi API để đồng bộ dữ liệu mới nhất
+            try {
+              const apiResults = await clinicalResultsAPI.getExaminationResults(
+                patientId
+              );
+              if (apiResults && apiResults.length > 0) {
+                const latestResult = apiResults[apiResults.length - 1];
+                console.log("✅ Found newer data from API:", latestResult);
+                setIsCompleted(true);
+                setSubmittedData(latestResult);
+                setOriginalData(latestResult);
+                populateFormWithData(latestResult);
+                // Cập nhật localStorage với dữ liệu mới nhất từ backend
+                localStorage.setItem(
+                  completedKey,
+                  JSON.stringify(latestResult)
+                );
+              }
+            } catch (apiError) {
+              console.warn(
+                "⚠️ API call failed, keeping localStorage data:",
+                apiError
+              );
+            }
+            return;
+          } catch (error) {
+            console.error("❌ Error parsing localStorage data:", error);
+            localStorage.removeItem(completedKey); // Xóa dữ liệu lỗi
+          }
+        }
+
+        // 2. Nếu localStorage không có, thử gọi API
+        try {
+          const apiResults = await clinicalResultsAPI.getExaminationResults(
+            patientId
+          );
+          if (apiResults && apiResults.length > 0) {
+            const latestResult = apiResults[apiResults.length - 1];
+            console.log("✅ Found data from API:", latestResult);
+            setIsCompleted(true);
+            setSubmittedData(latestResult);
+            setOriginalData(latestResult);
+            populateFormWithData(latestResult);
+            // Lưu vào localStorage để lần sau load nhanh hơn
+            localStorage.setItem(completedKey, JSON.stringify(latestResult));
+            return;
+          }
+        } catch (apiError) {
+          console.warn("⚠️ Could not load from API:", apiError);
+        }
+
+        // 3. Nếu cả hai đều không có, kiểm tra treatmentStateManager
+        const stateManagerData = treatmentStateManager.getStepData(0);
+        if (stateManagerData && stateManagerData.examination) {
+          console.log(
+            "✅ Found data in treatmentStateManager:",
+            stateManagerData.examination
+          );
+          setIsCompleted(true);
+          setSubmittedData(stateManagerData.examination);
+          setOriginalData(stateManagerData.examination);
+          populateFormWithData(stateManagerData.examination);
+          // Lưu vào localStorage
+          localStorage.setItem(
+            completedKey,
+            JSON.stringify(stateManagerData.examination)
+          );
+          return;
+        }
+
+        console.log("ℹ️ No existing examination data found");
       } catch (error) {
-        console.error("Error loading completed examination:", error);
+        console.error("❌ Critical error loading examination data:", error);
       }
-    }
+    };
 
-    // 2. Fall back to editing existing data
-    if (existingData && isEditing) {
-      form.setFieldsValue({
-        diagnosis: existingData.diagnosis,
-        recommendations: existingData.recommendations,
-        bloodPressure: existingData.clinicalSigns?.bloodPressure,
-        temperature: existingData.clinicalSigns?.temperature,
-        heartRate: existingData.clinicalSigns?.heartRate,
-        weight: existingData.clinicalSigns?.weight,
-        height: existingData.clinicalSigns?.height,
-        ultrasound: existingData.labResults?.ultrasound,
-        notes: existingData.notes,
-      });
-      setSymptoms(existingData.symptoms || []);
-      setLabResults(existingData.labResults || {});
-      // message.info("📝 Đang chỉnh sửa kết quả khám hiện có");
-      return;
-    }
-
-    // 3. Fall back to draft
-    const draftKey = `examination_draft_${patientId}`;
-    const savedDraft = localStorage.getItem(draftKey);
-    if (savedDraft) {
-      try {
-        const draft = JSON.parse(savedDraft);
-        form.setFieldsValue(draft);
-        setSymptoms(draft.symptoms || []);
-        setLabResults(draft.labResults || {});
-        // message.info(`Đã tải bản nháp lưu lúc: ${draft.savedAt}`);
-      } catch (error) {
-        console.error("Error loading draft:", error);
-      }
-    }
+    loadExaminationData();
   }, [patientId, form, existingData, isEditing]);
+
+  // Helper function to populate form with data
+  const populateFormWithData = (data) => {
+    console.log("📝 Populating form with data:", data);
+    console.log("📝 Data diagnosis:", data.diagnosis);
+    console.log("📝 Data recommendations:", data.recommendations);
+    console.log("📝 Data clinicalSigns:", data.clinicalSigns);
+    console.log("📝 Data labResults:", data.labResults);
+
+    try {
+      // Chỉ populate form nếu có dữ liệu thực sự
+      const hasRealData =
+        data.diagnosis ||
+        data.recommendations ||
+        data.clinicalSigns?.bloodPressure ||
+        data.clinicalSigns?.temperature ||
+        data.clinicalSigns?.heartRate ||
+        data.clinicalSigns?.weight ||
+        data.clinicalSigns?.height ||
+        data.labResults?.ultrasound ||
+        data.notes ||
+        (data.symptoms && data.symptoms.length > 0) ||
+        (data.labResults?.bloodTest &&
+          Object.values(data.labResults.bloodTest).some(
+            (val) => val !== null && val !== ""
+          ));
+
+      if (!hasRealData) {
+        console.log("⚠️ No real data to populate, skipping form population");
+        return;
+      }
+
+      form.setFieldsValue({
+        diagnosis: data.diagnosis || "",
+        recommendations: data.recommendations || "",
+        bloodPressure: data.clinicalSigns?.bloodPressure || "",
+        temperature: data.clinicalSigns?.temperature || "",
+        heartRate: data.clinicalSigns?.heartRate || "",
+        weight: data.clinicalSigns?.weight || "",
+        height: data.clinicalSigns?.height || "",
+        ultrasound: data.labResults?.ultrasound || "",
+        notes: data.notes || "",
+      });
+      setSymptoms(data.symptoms || []);
+      setLabResults(data.labResults || {});
+      console.log("✅ Form populated successfully with real data");
+    } catch (error) {
+      console.error("❌ Error populating form:", error);
+    }
+  };
+
+  // Debug function to check localStorage data
+  const debugLocalStorage = () => {
+    const completedKey = `examination_completed_${patientId}`;
+    const savedData = localStorage.getItem(completedKey);
+    console.log("🔍 Debug localStorage for key:", completedKey);
+    console.log("🔍 Raw localStorage data:", savedData);
+    if (savedData) {
+      try {
+        const parsedData = JSON.parse(savedData);
+        console.log("🔍 Parsed localStorage data:", parsedData);
+      } catch (error) {
+        console.error("❌ Error parsing localStorage data:", error);
+      }
+    }
+  };
+
+  // Backup function to save data before clearing
+  const backupData = () => {
+    const completedKey = `examination_completed_${patientId}`;
+    const backupKey = `examination_backup_${patientId}`;
+    const savedData = localStorage.getItem(completedKey);
+    if (savedData) {
+      localStorage.setItem(backupKey, savedData);
+      console.log("💾 Data backed up to:", backupKey);
+    }
+  };
+
+  // Restore function to recover data from backup
+  const restoreData = () => {
+    const completedKey = `examination_completed_${patientId}`;
+    const backupKey = `examination_backup_${patientId}`;
+    const backupData = localStorage.getItem(backupKey);
+    if (backupData) {
+      localStorage.setItem(completedKey, backupData);
+      console.log("🔄 Data restored from backup");
+      window.location.reload(); // Reload to apply restored data
+    } else {
+      console.log("⚠️ No backup data found");
+    }
+  };
+
+  // Function to check if data is empty/null
+  const isDataEmpty = (data) => {
+    if (!data) return true;
+
+    const hasRealData =
+      data.diagnosis ||
+      data.recommendations ||
+      data.clinicalSigns?.bloodPressure ||
+      data.clinicalSigns?.temperature ||
+      data.clinicalSigns?.heartRate ||
+      data.clinicalSigns?.weight ||
+      data.clinicalSigns?.height ||
+      data.labResults?.ultrasound ||
+      data.notes ||
+      (data.symptoms && data.symptoms.length > 0) ||
+      (data.labResults?.bloodTest &&
+        Object.values(data.labResults.bloodTest).some(
+          (val) => val !== null && val !== ""
+        ));
+
+    return !hasRealData;
+  };
+
+  // Function to clean empty data from localStorage
+  const cleanEmptyData = () => {
+    const completedKey = `examination_completed_${patientId}`;
+    const savedData = localStorage.getItem(completedKey);
+
+    if (savedData) {
+      try {
+        const parsedData = JSON.parse(savedData);
+        if (isDataEmpty(parsedData)) {
+          localStorage.removeItem(completedKey);
+          console.log("🧹 Cleaned empty data from localStorage");
+          return true;
+        }
+      } catch (error) {
+        console.error("❌ Error parsing data for cleaning:", error);
+        localStorage.removeItem(completedKey);
+        return true;
+      }
+    }
+    return false;
+  };
 
   // Danh sách triệu chứng thường gặp
   const commonSymptoms = [
@@ -187,7 +374,7 @@ const ExaminationForm = ({
 
       // Validate required fields
       if (!values.diagnosis || !values.recommendations) {
-        // message.error("Vui lòng nhập đầy đủ chẩn đoán và khuyến nghị");
+        message.error("Vui lòng nhập đầy đủ chẩn đoán và khuyến nghị");
         return;
       }
 
@@ -228,40 +415,73 @@ const ExaminationForm = ({
       // Always set completed and show results regardless of API status
       setIsCompleted(true);
       setSubmittedData(examinationData);
+      setOriginalData(examinationData);
 
       let savedResult = null;
 
       // Try to save to API, but don't block UI if it fails
       try {
-        savedResult = await examinationAPI.createExaminationResult(
-          examinationData
+        // Kiểm tra xem có clinical result nào đã tồn tại cho bệnh nhân này không
+        const existingResults = await clinicalResultsAPI.getExaminationResults(
+          patientId
         );
+        let savedResult;
 
-        // Clear draft after successful save (only if not editing)
-        // But keep the completed examination state for persistence
-        if (!isEditing) {
-          localStorage.removeItem(`examination_draft_${patientId}`);
+        if (existingResults && existingResults.length > 0) {
+          // Nếu có kết quả đã tồn tại, cập nhật kết quả đầu tiên
+          const existingResult = existingResults[0];
+          savedResult = await clinicalResultsAPI.updateExaminationResult(
+            existingResult.id,
+            examinationData
+          );
+        } else {
+          // Nếu không có kết quả nào, tạo mới (nhưng backend không có POST endpoint)
+          // Vì vậy sẽ chỉ lưu local và hiển thị thông báo
+          console.warn(
+            "Không có clinical result nào tồn tại để cập nhật. Chỉ lưu local."
+          );
+          savedResult = examinationData;
         }
+        // Lưu vào localStorage để giữ lại khi reload
+        const dataToStore = {
+          ...savedResult,
+          completedAt: new Date().toISOString(),
+          fromStandalonePage: true,
+          apiSaved: true,
+        };
+        localStorage.setItem(
+          `examination_completed_${patientId}`,
+          JSON.stringify(dataToStore)
+        );
+        console.log("💾 Saved examination data to localStorage:", dataToStore);
 
-        const actionText = isEditing ? "Cập nhật" : "Lưu";
-        // message.success(
-        //   `🎉 ${actionText} kết quả khám thành công! ${
-        //     isEditing ? "" : "Hiển thị kết quả bên dưới."
-        //   }`
-        // );
+        const actionText =
+          existingResults && existingResults.length > 0 ? "Cập nhật" : "Lưu";
+        message.success(
+          `🎉 ${actionText} kết quả khám thành công! ${
+            existingResults && existingResults.length > 0
+              ? ""
+              : "Hiển thị kết quả bên dưới."
+          }`
+        );
 
         // Update with saved result if API succeeded
         setSubmittedData(savedResult || examinationData);
 
         // Store completed examination for TreatmentProcess sync
+        const syncDataToStore = {
+          ...(savedResult || examinationData),
+          completedAt: new Date().toISOString(),
+          fromStandalonePage: true,
+          apiSaved: true,
+        };
         localStorage.setItem(
           `examination_completed_${patientId}`,
-          JSON.stringify({
-            ...(savedResult || examinationData),
-            completedAt: new Date().toISOString(),
-            fromStandalonePage: true,
-            apiSaved: true,
-          })
+          JSON.stringify(syncDataToStore)
+        );
+        console.log(
+          "💾 Synced examination data to localStorage:",
+          syncDataToStore
         );
 
         // Dispatch custom event to notify TreatmentProcess
@@ -272,49 +492,74 @@ const ExaminationForm = ({
           },
         });
         window.dispatchEvent(syncEvent);
+        console.log(
+          "🔔 Dispatched examinationCompleted event:",
+          syncEvent.detail
+        );
 
         // Update treatment state manager
         treatmentStateManager.updateExamination(
           patientId,
           savedResult || examinationData
         );
+        console.log("💾 Updated treatment state manager");
+
+        // Dispatch additional event for auto progress
+        const progressEvent = new CustomEvent("stepCompleted", {
+          detail: {
+            patientId,
+            stepIndex: 0,
+            stepName: "Khám lâm sàng",
+            data: savedResult || examinationData,
+            autoAdvance: true,
+          },
+        });
+        window.dispatchEvent(progressEvent);
+        console.log("🔔 Dispatched stepCompleted event:", progressEvent.detail);
       } catch (apiError) {
-        console.warn("API save failed, but showing results locally:", apiError);
-        // message.warning(
-        //   "⚠️ Không thể kết nối server nhưng kết quả đã được hiển thị. Dữ liệu sẽ được lưu tạm thời."
-        // );
-
-        // Store in localStorage as backup
-        localStorage.setItem(
-          `examination_backup_${patientId}`,
-          JSON.stringify({
-            ...examinationData,
-            savedAt: new Date().toISOString(),
-            status: "offline_backup",
-          })
+        console.error("API save failed:", apiError);
+        message.error(
+          "❌ Không thể lưu kết quả khám. Vui lòng kiểm tra kết nối và thử lại."
         );
 
-        // Also store as completed examination for TreatmentProcess sync
-        localStorage.setItem(
-          `examination_completed_${patientId}`,
-          JSON.stringify({
-            ...examinationData,
-            completedAt: new Date().toISOString(),
-            fromStandalonePage: true,
-          })
-        );
+        // Still dispatch events even if API fails
+        console.log("🔄 Dispatching events despite API failure...");
 
         // Dispatch custom event to notify TreatmentProcess
         const syncEvent = new CustomEvent("examinationCompleted", {
           detail: {
             patientId,
-            examinationData: examinationData,
+            examinationData: examinationData, // Use local data
           },
         });
         window.dispatchEvent(syncEvent);
+        console.log(
+          "🔔 Dispatched examinationCompleted event (API failed):",
+          syncEvent.detail
+        );
 
-        // Update treatment state manager (even if API failed)
-        treatmentStateManager.updateExamination(patientId, examinationData);
+        // Update treatment state manager
+        treatmentStateManager.updateExamination(
+          patientId,
+          examinationData // Use local data
+        );
+        console.log("💾 Updated treatment state manager (API failed)");
+
+        // Dispatch additional event for auto progress
+        const progressEvent = new CustomEvent("stepCompleted", {
+          detail: {
+            patientId,
+            stepIndex: 0,
+            stepName: "Khám lâm sàng",
+            data: examinationData, // Use local data
+            autoAdvance: true,
+          },
+        });
+        window.dispatchEvent(progressEvent);
+        console.log(
+          "🔔 Dispatched stepCompleted event (API failed):",
+          progressEvent.detail
+        );
       }
 
       // Automatically notify TreatmentProcess that examination is completed
@@ -376,48 +621,6 @@ const ExaminationForm = ({
           </div>
 
           <div className="examination-body">
-            {/* Thông tin bệnh nhân */}
-            <Card className="patient-info-section">
-              <div className="section-title">
-                <UserOutlined className="section-icon" />
-                <span>Thông tin bệnh nhân</span>
-              </div>
-              <Row gutter={16} className="patient-info-grid">
-                <Col span={6}>
-                  <div className="info-item">
-                    <Text type="secondary">Họ tên</Text>
-                    <div className="info-value">
-                      {patientInfo?.name || "N/A"}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={6}>
-                  <div className="info-item">
-                    <Text type="secondary">Giới tính</Text>
-                    <div className="info-value">
-                      {patientInfo?.gender === "male" ? "Nam" : "Nữ"}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={6}>
-                  <div className="info-item">
-                    <Text type="secondary">Tuổi</Text>
-                    <div className="info-value">
-                      {patientInfo?.age || "N/A"}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={6}>
-                  <div className="info-item">
-                    <Text type="secondary">Liên hệ</Text>
-                    <div className="info-value">
-                      {patientInfo?.contact || "N/A"}
-                    </div>
-                  </div>
-                </Col>
-              </Row>
-            </Card>
-
             {/* Chỉ hiển thị form khi chưa hoàn thành */}
             {!isCompleted && (
               <Form
@@ -629,16 +832,24 @@ const ExaminationForm = ({
                 </Row>
 
                 {/* Upload file đính kèm */}
-                <Form.Item label="📎 File đính kèm (ảnh siêu âm, kết quả xét nghiệm...)">
+                <Form.Item label="📎 File đính kèm">
                   <Upload
                     {...uploadProps}
                     multiple
                     className="examination-upload"
+                    showUploadList={false}
                   >
-                    <Button icon={<UploadOutlined />} className="upload-btn">
+                    <Button icon={<UploadOutlined />} size="small">
                       Chọn file
                     </Button>
                   </Upload>
+                  {attachments.length > 0 && (
+                    <div
+                      style={{ marginTop: 8, fontSize: "12px", color: "#666" }}
+                    >
+                      Đã chọn {attachments.length} file
+                    </div>
+                  )}
                 </Form.Item>
 
                 {/* Ghi chú */}
@@ -678,25 +889,18 @@ const ExaminationForm = ({
 
                 <div className="form-actions">
                   <Space size="large">
-                    <Button
-                      className="action-btn draft-btn"
-                      icon={<SaveOutlined />}
-                      onClick={() => {
-                        const draftData = form.getFieldsValue();
-                        localStorage.setItem(
-                          `examination_draft_${patientId}`,
-                          JSON.stringify({
-                            ...draftData,
-                            symptoms,
-                            labResults,
-                            savedAt: new Date().toLocaleString(),
-                          })
-                        );
-                        // message.success("Đã lưu bản nháp");
-                      }}
-                    >
-                      Lưu nháp
-                    </Button>
+                    {originalData && (
+                      <Button
+                        icon={<ReloadOutlined />}
+                        className="action-btn back-btn"
+                        onClick={() => {
+                          setIsCompleted(true);
+                          setSubmittedData(originalData);
+                        }}
+                      >
+                        Quay lại
+                      </Button>
+                    )}
 
                     <Button
                       type="dashed"
@@ -748,245 +952,250 @@ const ExaminationForm = ({
 
             {/* Results Section */}
             {isCompleted && submittedData && (
-              <div className="examination-results">
-                <Alert
-                  message="✅ Kết quả khám đã được lưu thành công"
-                  description="Thông tin đã được cập nhật và sẵn sàng cho bước tiếp theo. Bạn có thể xem lại hoặc chỉnh sửa thông tin bên dưới."
-                  type="success"
-                  showIcon
-                  className="success-alert"
-                />
-
-                {/* Thông tin khám đã hoàn thành */}
-                <Card
-                  className="results-card"
-                  title={
-                    <Space>
-                      <CheckCircleOutlined className="results-icon" />
-                      <span>Kết Quả Khám Lâm Sàng</span>
-                      <Badge status="success" text="Đã hoàn thành" />
-                    </Space>
-                  }
-                  extra={
-                    <Space>
-                      <Button
-                        icon={<EditOutlined />}
-                        className="action-btn edit-btn"
-                        onClick={() => {
-                          setIsCompleted(false);
-                          setSubmittedData(null);
-                          localStorage.removeItem(
-                            `examination_completed_${patientId}`
-                          );
-                        }}
-                      >
-                        Chỉnh sửa
-                      </Button>
-                      <Button
-                        icon={<PrinterOutlined />}
-                        className="action-btn print-btn"
-                        onClick={() => {
-                          window.print();
-                          if (submittedData) {
-                            const syncEvent = new CustomEvent(
-                              "examinationPrinted",
-                              {
-                                detail: {
-                                  patientId,
-                                  examinationData: submittedData,
-                                  action: "printed",
-                                },
-                              }
+              <>
+                <div className="examination-results">
+                  {/* Thông tin khám đã hoàn thành */}
+                  <Card
+                    className="results-card"
+                    title={
+                      <Space>
+                        <CheckCircleOutlined className="results-icon" />
+                        <span>Kết Quả Khám Lâm Sàng</span>
+                        <Badge status="success" text="Đã hoàn thành" />
+                      </Space>
+                    }
+                    extra={
+                      <Space>
+                        <Button
+                          icon={<EditOutlined />}
+                          className="action-btn print-btn"
+                          onClick={() => {
+                            setIsCompleted(false);
+                            localStorage.removeItem(
+                              `examination_completed_${patientId}`
                             );
-                            window.dispatchEvent(syncEvent);
-                          }
-                        }}
-                      >
-                        In kết quả
-                      </Button>
-
-                      <Button
-                        danger
-                        className="action-btn reset-btn"
-                        onClick={() => {
-                          setIsCompleted(false);
-                          setSubmittedData(null);
-                          localStorage.removeItem(
-                            `examination_completed_${patientId}`
-                          );
-                          localStorage.removeItem(
-                            `examination_draft_${patientId}`
-                          );
-                          localStorage.removeItem(
-                            `examination_backup_${patientId}`
-                          );
-
-                          form.resetFields();
-                          setSymptoms([]);
-                          setLabResults({});
-                          setAttachments([]);
-                        }}
-                      >
-                        Bắt đầu lại
-                      </Button>
-                    </Space>
-                  }
-                >
-                  <Row gutter={24}>
-                    <Col span={12}>
-                      <Descriptions
-                        title="ℹ️ Thông tin cơ bản"
-                        bordered
-                        column={1}
-                        size="small"
-                        className="results-descriptions"
-                      >
-                        <Descriptions.Item label="Bệnh nhân">
-                          {patientInfo?.name}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Ngày khám">
-                          {submittedData.examinationDate}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Bác sĩ khám">
-                          {submittedData.doctorName}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Trạng thái">
-                          <Badge status="success" text="Hoàn thành" />
-                        </Descriptions.Item>
-                      </Descriptions>
-                    </Col>
-
-                    <Col span={12}>
-                      <Descriptions
-                        title="🩺 Dấu hiệu lâm sàng"
-                        bordered
-                        column={1}
-                        size="small"
-                        className="results-descriptions"
-                      >
-                        <Descriptions.Item label="Huyết áp">
-                          {submittedData.clinicalSigns?.bloodPressure ||
-                            "Chưa đo"}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Nhiệt độ">
-                          {submittedData.clinicalSigns?.temperature
-                            ? `${submittedData.clinicalSigns.temperature}°C`
-                            : "Chưa đo"}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Nhịp tim">
-                          {submittedData.clinicalSigns?.heartRate
-                            ? `${submittedData.clinicalSigns.heartRate} lần/phút`
-                            : "Chưa đo"}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Cân nặng">
-                          {submittedData.clinicalSigns?.weight
-                            ? `${submittedData.clinicalSigns.weight} kg`
-                            : "Chưa đo"}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Chiều cao">
-                          {submittedData.clinicalSigns?.height
-                            ? `${submittedData.clinicalSigns.height} cm`
-                            : "Chưa đo"}
-                        </Descriptions.Item>
-                      </Descriptions>
-                    </Col>
-                  </Row>
-
-                  <Divider />
-
-                  <Row gutter={24}>
-                    <Col span={24}>
-                      <Descriptions
-                        title="🔬 Triệu chứng và xét nghiệm"
-                        bordered
-                        column={2}
-                        size="small"
-                        className="results-descriptions"
-                      >
-                        <Descriptions.Item label="Triệu chứng" span={2}>
-                          {submittedData.symptoms?.length > 0 ? (
-                            <Space wrap>
-                              {submittedData.symptoms.map((symptom, index) => (
-                                <Tag key={index} className="result-symptom-tag">
-                                  {symptom}
-                                </Tag>
-                              ))}
-                            </Space>
-                          ) : (
-                            "Không có triệu chứng ghi nhận"
-                          )}
-                        </Descriptions.Item>
-                        <Descriptions.Item
-                          label="Kết quả xét nghiệm máu"
-                          span={2}
+                          }}
                         >
-                          {submittedData.labResults?.bloodTest ? (
-                            <div>
-                              {Object.entries(
-                                submittedData.labResults.bloodTest
-                              ).map(([test, value]) => (
-                                <div key={test} className="lab-result-item">
-                                  <Text strong>{test}:</Text> {value || "N/A"}
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            "Chưa có kết quả xét nghiệm"
-                          )}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Kết quả siêu âm" span={2}>
-                          {submittedData.labResults?.ultrasound ||
-                            "Chưa có kết quả siêu âm"}
-                        </Descriptions.Item>
-                      </Descriptions>
-                    </Col>
-                  </Row>
-
-                  <Divider />
-
-                  <Row gutter={24}>
-                    <Col span={24}>
-                      <Descriptions
-                        title="📋 Kết luận và khuyến nghị"
-                        bordered
-                        column={1}
-                        size="small"
-                        className="results-descriptions"
-                      >
-                        <Descriptions.Item label="Chẩn đoán lâm sàng">
-                          <Text strong className="diagnosis-text">
-                            {submittedData.diagnosis}
-                          </Text>
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Khuyến nghị điều trị">
-                          <Text className="recommendation-text">
-                            {submittedData.recommendations}
-                          </Text>
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Dịch vụ được khuyến nghị">
-                          <Tag className="service-tag">
-                            {submittedData.recommendedService}
-                          </Tag>
-                        </Descriptions.Item>
-                        {submittedData.notes && (
-                          <Descriptions.Item label="Ghi chú">
-                            {submittedData.notes}
+                          Chỉnh sửa
+                        </Button>
+                        <Button
+                          icon={<ReloadOutlined />}
+                          className="action-btn reset-btn"
+                          onClick={() => {
+                            backupData();
+                            setIsCompleted(false);
+                            setSubmittedData(null);
+                            setOriginalData(null);
+                            localStorage.removeItem(
+                              `examination_completed_${patientId}`
+                            );
+                            localStorage.removeItem(
+                              `examination_draft_${patientId}`
+                            );
+                            form.resetFields();
+                            setSymptoms([]);
+                            setLabResults({});
+                            setAttachments([]);
+                          }}
+                        >
+                          Đặt lại
+                        </Button>
+                      </Space>
+                    }
+                  >
+                    <Row gutter={24}>
+                      {/* <Col span={12}>
+                        <Descriptions
+                          title="ℹ️ Thông tin cơ bản"
+                          variant="bordered"
+                          column={1}
+                          size="small"
+                          className="results-descriptions"
+                        >
+                          <Descriptions.Item label="Bệnh nhân">
+                            {patientInfo?.name}
                           </Descriptions.Item>
-                        )}
-                      </Descriptions>
-                    </Col>
-                  </Row>
+                          <Descriptions.Item label="Ngày khám">
+                            {submittedData.examinationDate}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="Bác sĩ khám">
+                            {submittedData.doctorName}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="Trạng thái">
+                            <Badge status="success" text="Hoàn thành" />
+                          </Descriptions.Item>
+                        </Descriptions>
+                      </Col> */}
 
-                  <div className="completion-message">
-                    <Space>
-                      <Text className="completion-text">
-                        ✅ Khám lâm sàng đã hoàn thành! Tự động chuyển sang bước
-                        lập phác đồ...
-                      </Text>
-                    </Space>
-                  </div>
-                </Card>
-              </div>
+                      <Col span={12}>
+                        <Descriptions
+                          title="🩺 Dấu hiệu lâm sàng"
+                          variant="bordered"
+                          column={1}
+                          size="small"
+                          className="results-descriptions"
+                        >
+                          <Descriptions.Item label="Huyết áp">
+                            {submittedData.clinicalSigns?.bloodPressure ? (
+                              <Tag className="result-clinical-tag">
+                                {submittedData.clinicalSigns.bloodPressure}
+                              </Tag>
+                            ) : (
+                              "Chưa đo"
+                            )}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="Nhiệt độ">
+                            {submittedData.clinicalSigns?.temperature ? (
+                              <Tag className="result-clinical-tag">
+                                {submittedData.clinicalSigns.temperature}°C
+                              </Tag>
+                            ) : (
+                              "Chưa đo"
+                            )}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="Nhịp tim">
+                            {submittedData.clinicalSigns?.heartRate ? (
+                              <Tag className="result-clinical-tag">
+                                {submittedData.clinicalSigns.heartRate} lần/phút
+                              </Tag>
+                            ) : (
+                              "Chưa đo"
+                            )}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="Cân nặng">
+                            {submittedData.clinicalSigns?.weight ? (
+                              <Tag className="result-clinical-tag">
+                                {submittedData.clinicalSigns.weight} kg
+                              </Tag>
+                            ) : (
+                              "Chưa đo"
+                            )}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="Chiều cao">
+                            {submittedData.clinicalSigns?.height ? (
+                              <Tag className="result-clinical-tag">
+                                {submittedData.clinicalSigns.height} cm
+                              </Tag>
+                            ) : (
+                              "Chưa đo"
+                            )}
+                          </Descriptions.Item>
+                        </Descriptions>
+                      </Col>
+                    </Row>
+
+                    <Divider />
+
+                    <Row gutter={24}>
+                      <Col span={24}>
+                        <Descriptions
+                          title="🔬 Triệu chứng và xét nghiệm"
+                          variant="bordered"
+                          column={2}
+                          size="small"
+                          className="results-descriptions"
+                        >
+                          <Descriptions.Item label="Triệu chứng" span={2}>
+                            {submittedData.symptoms?.length > 0 ? (
+                              <Space wrap>
+                                {submittedData.symptoms.map(
+                                  (symptom, index) => (
+                                    <Tag
+                                      key={index}
+                                      className="result-symptom-tag"
+                                    >
+                                      {symptom}
+                                    </Tag>
+                                  )
+                                )}
+                              </Space>
+                            ) : (
+                              "Không có triệu chứng ghi nhận"
+                            )}
+                          </Descriptions.Item>
+                          <Descriptions.Item
+                            label="Kết quả xét nghiệm máu"
+                            span={2}
+                          >
+                            {submittedData.labResults?.bloodTest ? (
+                              <Space wrap>
+                                {Object.entries(
+                                  submittedData.labResults.bloodTest
+                                ).map(([test, value], idx) => (
+                                  <Tag
+                                    key={test}
+                                    className="result-bloodtest-tag"
+                                  >
+                                    <Text strong>{test}:</Text> {value || "N/A"}
+                                  </Tag>
+                                ))}
+                              </Space>
+                            ) : (
+                              "Chưa có kết quả xét nghiệm"
+                            )}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="Kết quả siêu âm" span={2}>
+                            {submittedData.labResults?.ultrasound ? (
+                              <Tag className="result-ultrasound-tag">
+                                {submittedData.labResults.ultrasound}
+                              </Tag>
+                            ) : (
+                              "Chưa có kết quả siêu âm"
+                            )}
+                          </Descriptions.Item>
+                        </Descriptions>
+                      </Col>
+                    </Row>
+
+                    <Divider />
+
+                    <Row gutter={24}>
+                      <Col span={24}>
+                        <Descriptions
+                          title="📋 Kết luận và khuyến nghị"
+                          variant="bordered"
+                          column={1}
+                          size="small"
+                          className="results-descriptions"
+                        >
+                          <Descriptions.Item label="Chẩn đoán lâm sàng">
+                            {submittedData.diagnosis ? (
+                              <Tag className="result-conclusion-tag">
+                                {submittedData.diagnosis}
+                              </Tag>
+                            ) : (
+                              "Chưa có"
+                            )}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="Khuyến nghị điều trị">
+                            {submittedData.recommendations ? (
+                              <Tag className="result-conclusion-tag">
+                                {submittedData.recommendations}
+                              </Tag>
+                            ) : (
+                              "Chưa có"
+                            )}
+                          </Descriptions.Item>
+                        </Descriptions>
+                      </Col>
+                    </Row>
+
+                    {/* Đã xóa dòng thông báo hoàn thành khám lâm sàng */}
+                  </Card>
+                </div>
+                {/* Nút chuyển bước nằm cuối form */}
+                <div style={{ textAlign: "right", marginTop: 32 }}>
+                  <Button
+                    type="primary"
+                    icon={<CheckCircleOutlined />}
+                    className="action-btn next-btn"
+                    size="large"
+                    onClick={() => onNext(submittedData)}
+                  >
+                    Chuyển sang bước tiếp theo
+                  </Button>
+                </div>
+              </>
             )}
           </div>
         </Card>

@@ -113,6 +113,34 @@ const DoctorDashboard = () => {
     loadDashboardData();
   }, []);
 
+  // Sync examination data from TreatmentProcess when selectedPatient changes
+  useEffect(() => {
+    if (selectedPatient?.id) {
+      const completedKey = `examination_completed_${selectedPatient.id}`;
+      const savedCompleted = localStorage.getItem(completedKey);
+      if (savedCompleted) {
+        try {
+          const completedData = JSON.parse(savedCompleted);
+          console.log(
+            "🔍 [DoctorDashboard] Auto-syncing examination data:",
+            completedData
+          );
+          setTreatmentFlow((prev) => ({
+            ...prev,
+            examinationData: completedData,
+            currentPatient: selectedPatient,
+          }));
+          console.log("✅ [DoctorDashboard] Auto-synced examination data");
+        } catch (error) {
+          console.error(
+            "❌ [DoctorDashboard] Error auto-syncing examination data:",
+            error
+          );
+        }
+      }
+    }
+  }, [selectedPatient]);
+
   // Load saved treatment flow from localStorage
   useEffect(() => {
     const savedFlow = localStorage.getItem("treatmentFlow");
@@ -357,6 +385,43 @@ const DoctorDashboard = () => {
       ];
       setSelectedSection(stepSections[stepIndex]);
     }
+  };
+
+  // Handler để chuyển đến trang điều trị của bệnh nhân
+  const handleViewTreatment = (patient) => {
+    console.log(
+      "🏥 [DoctorDashboard] Chuyển đến trang điều trị cho bệnh nhân:",
+      patient
+    );
+    setSelectedPatient(patient);
+
+    // Sync examination data từ TreatmentProcess nếu có
+    const completedKey = `examination_completed_${patient.id}`;
+    const savedCompleted = localStorage.getItem(completedKey);
+    if (savedCompleted) {
+      try {
+        const completedData = JSON.parse(savedCompleted);
+        console.log(
+          "🔍 [DoctorDashboard] Found examination data in localStorage:",
+          completedData
+        );
+        setTreatmentFlow((prev) => ({
+          ...prev,
+          examinationData: completedData,
+          currentPatient: patient,
+        }));
+        console.log(
+          "✅ [DoctorDashboard] Synced examination data from TreatmentProcess"
+        );
+      } catch (error) {
+        console.error(
+          "❌ [DoctorDashboard] Error parsing localStorage data:",
+          error
+        );
+      }
+    }
+
+    setSelectedSection("full-process");
   };
 
   const userMenu = (
@@ -779,20 +844,6 @@ const DoctorDashboard = () => {
                           transition: "var(--transition-normal)",
                         }}
                         className="doctor-fade-in"
-                        actions={[
-                          ,
-                          <Button
-                            size="small"
-                            className="doctor-btn-secondary"
-                            onClick={() => {
-                              setSelectedPatient(patient);
-                              setSelectedSection("patient-view");
-                            }}
-                            icon={<FileTextOutlined />}
-                          >
-                            Xem hồ sơ
-                          </Button>,
-                        ]}
                       >
                         <List.Item.Meta
                           avatar={
@@ -878,6 +929,35 @@ const DoctorDashboard = () => {
                             </Space>
                           }
                         />
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 8,
+                            marginTop: 8,
+                          }}
+                        >
+                          <Button
+                            size="small"
+                            className="doctor-btn-secondary"
+                            onClick={() => {
+                              setSelectedPatient(patient);
+                              setSelectedSection("patient-view");
+                            }}
+                            icon={<FileTextOutlined />}
+                          >
+                            Xem hồ sơ
+                          </Button>
+                          <Button
+                            size="small"
+                            type="primary"
+                            className="doctor-btn-primary"
+                            onClick={() => handleViewTreatment(patient)}
+                            icon={<MedicineBoxOutlined />}
+                          >
+                            Điều trị
+                          </Button>
+                        </div>
                       </List.Item>
                     )}
                   />
@@ -894,6 +974,7 @@ const DoctorDashboard = () => {
         <TreatmentProcess
           patientId={selectedPatient?.id || "1"}
           mode="doctor"
+          patientInfo={selectedPatient}
         />
       ),
     },
@@ -1054,6 +1135,7 @@ const DoctorDashboard = () => {
         />
       ),
     },
+
     profile: {
       title: "Hồ sơ cá nhân",
       component: (
@@ -1107,6 +1189,7 @@ const DoctorDashboard = () => {
       icon: <UserOutlined />,
       label: "Theo dõi BN",
     },
+
     {
       type: "divider",
     },
@@ -1316,109 +1399,6 @@ const DoctorDashboard = () => {
                 </Card>
               </div>
             )}
-
-            {/* Enhanced Treatment Flow Progress */}
-            {treatmentFlow.currentPatient &&
-              (selectedSection === "examination" ||
-                selectedSection === "treatment-plan" ||
-                selectedSection === "schedule" ||
-                selectedSection === "patient-view") && (
-                <Card style={{ marginBottom: 24, background: "#f8f9fa" }}>
-                  <Row align="middle" gutter={16}>
-                    <Col span={6}>
-                      <div>
-                        <Text strong style={{ fontSize: "16px" }}>
-                          🏥 Điều trị cho: {treatmentFlow.currentPatient.name}
-                        </Text>
-                        <br />
-                        <Text type="secondary">
-                          {treatmentFlow.currentPatient.age} tuổi | ID:{" "}
-                          {treatmentFlow.currentPatient.id}
-                        </Text>
-                        <br />
-                        <Text type="secondary">
-                          Gói dịch vụ:{" "}
-                          {treatmentFlow.currentPatient.servicePackage}
-                        </Text>
-                      </div>
-                    </Col>
-                    <Col span={16}>
-                      <Steps
-                        current={treatmentFlow.step}
-                        size="small"
-                        className="doctor-steps"
-                        onChange={handleJumpToStep}
-                        items={[
-                          {
-                            title: "Khám lâm sàng",
-                            description: "Nhập kết quả khám",
-                            icon: treatmentFlow.completedSteps.includes(0) ? (
-                              <CheckCircleOutlined />
-                            ) : (
-                              <FileTextOutlined />
-                            ),
-                            status: treatmentFlow.completedSteps.includes(0)
-                              ? "finish"
-                              : undefined,
-                          },
-                          {
-                            title: "Lập phác đồ",
-                            description: "Tùy chỉnh điều trị",
-                            icon: treatmentFlow.completedSteps.includes(1) ? (
-                              <CheckCircleOutlined />
-                            ) : (
-                              <MedicineBoxOutlined />
-                            ),
-                            status: treatmentFlow.completedSteps.includes(1)
-                              ? "finish"
-                              : undefined,
-                          },
-                          {
-                            title: "Lập lịch",
-                            description: "Sắp xếp thời gian",
-                            icon: treatmentFlow.completedSteps.includes(2) ? (
-                              <CheckCircleOutlined />
-                            ) : (
-                              <CalendarOutlined />
-                            ),
-                            status: treatmentFlow.completedSteps.includes(2)
-                              ? "finish"
-                              : undefined,
-                          },
-                          {
-                            title: "Theo dõi",
-                            description: "Quản lý tiến trình",
-                            icon: treatmentFlow.completedSteps.includes(3) ? (
-                              <CheckCircleOutlined />
-                            ) : (
-                              <PlayCircleOutlined />
-                            ),
-                            status: treatmentFlow.completedSteps.includes(3)
-                              ? "finish"
-                              : undefined,
-                          },
-                        ]}
-                      />
-                    </Col>
-                    <Col span={2}>
-                      <Space direction="vertical">
-                        <Button
-                          size="small"
-                          icon={<EditOutlined />}
-                          onClick={() =>
-                            setTreatmentFlow((prev) => ({
-                              ...prev,
-                              isEditing: !prev.isEditing,
-                            }))
-                          }
-                        >
-                          {treatmentFlow.isEditing ? "Hoàn tất" : "Chỉnh sửa"}
-                        </Button>
-                      </Space>
-                    </Col>
-                  </Row>
-                </Card>
-              )}
 
             <Card
               className="doctor-card"

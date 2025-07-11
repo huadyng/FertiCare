@@ -1,0 +1,78 @@
+.patient-treatment-view {
+  padding: 24px;
+  background: var(--bg-light);
+  min-height: 100vh;
+}
+
+.patient-treatment-view .doctor-card {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px var(--shadow-soft);
+  border: 1px solid var(--border-light);
+  transition: var(--transition-normal);
+}
+
+.patient-treatment-view .doctor-card:hover {
+  box-shadow: 0 4px 16px var(--shadow-medium);
+  transform: translateY(-2px);
+}
+
+.patient-treatment-view .ant-steps-item-title {
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.patient-treatment-view .ant-steps-item-description {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.patient-treatment-view .ant-timeline-item-content {
+  color: var(--text-dark);
+}
+
+.patient-treatment-view .ant-statistic-title {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.patient-treatment-view .ant-statistic-content {
+  color: var(--text-dark);
+  font-weight: 600;
+}
+
+.patient-treatment-view .ant-tag {
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.patient-treatment-view .ant-progress-text {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.patient-treatment-view .ant-empty-description {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+/* Animation for loading state */
+.patient-treatment-view .ant-spin-dot {
+  color: var(--primary-color);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .patient-treatment-view {
+    padding: 16px;
+  }
+
+  .patient-treatment-view .ant-steps {
+    font-size: 12px;
+  }
+
+  .patient-treatment-view .ant-card-head-title {
+    font-size: 14px;
+  }
+}
