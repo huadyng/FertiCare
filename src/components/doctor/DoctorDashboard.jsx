@@ -50,6 +50,7 @@ import TreatmentProcess from "./treatment/TreatmentProcess";
 import ExaminationForm from "./treatment/ExaminationForm";
 import TreatmentPlanEditor from "./treatment/TreatmentPlanEditor";
 import TreatmentScheduleForm from "./treatment/TreatmentScheduleForm";
+// Xóa import TreatmentPlansList
 
 import PatientScheduleView from "./treatment/PatientScheduleView";
 import DoctorProfile from "./DoctorProfile";
@@ -59,6 +60,7 @@ import { useNavigate } from "react-router-dom";
 
 // Import API services for real data
 import apiDoctor from "../../api/apiDoctor";
+import apiTreatmentManagement from "../../api/apiTreatmentManagement";
 import UserProfile from "../pages/Profile/UserProfile";
 import { getScheduleSubSteps } from "./constants/treatmentSubSteps";
 
@@ -262,14 +264,37 @@ const DoctorDashboard = () => {
       data: treatmentPlan,
     };
 
-    // Ensure we have complete treatment plan data
-    const completePlan = {
-      ...treatmentPlan,
-      template:
-        treatmentPlan.finalPlan ||
-        treatmentPlan.originalTemplate ||
-        treatmentPlan.template,
-    };
+    // Đảm bảo luôn có finalPlan hoặc template với phases
+    let completePlan = { ...treatmentPlan };
+    // Nếu có finalPlan hoặc template với phases thì giữ nguyên
+    if (
+      (treatmentPlan.finalPlan &&
+        treatmentPlan.finalPlan.phases &&
+        treatmentPlan.finalPlan.phases.length > 0) ||
+      (treatmentPlan.template &&
+        treatmentPlan.template.phases &&
+        treatmentPlan.template.phases.length > 0)
+    ) {
+      // OK
+    } else if (treatmentPlan.phases && treatmentPlan.phases.length > 0) {
+      // Nếu chỉ có phases, wrap lại thành finalPlan
+      completePlan.finalPlan = { phases: treatmentPlan.phases };
+    } else if (
+      treatmentPlan.treatmentSteps &&
+      treatmentPlan.treatmentSteps.length > 0
+    ) {
+      // Nếu có treatmentSteps, convert sang phases
+      completePlan.finalPlan = { phases: treatmentPlan.treatmentSteps };
+    }
+    // Nếu có template nhưng thiếu phases, thử wrap lại
+    if (!completePlan.template && completePlan.finalPlan) {
+      completePlan.template = completePlan.finalPlan;
+    }
+    // Debug log
+    console.log(
+      "🟢 [DoctorDashboard] treatmentPlan truyền vào ScheduleForm:",
+      completePlan
+    );
 
     // Set up schedule sub-steps based on service package
     const patient = treatmentFlow.currentPatient || selectedPatient;
@@ -896,8 +921,7 @@ const DoctorDashboard = () => {
                                 type="secondary"
                                 style={{ fontSize: "13px" }}
                               >
-                                👤 {patient.age} tuổi • 🏥{" "}
-                                {patient.treatmentType}
+                                👤 {patient.age} tuổi
                               </Text>
                               <div>
                                 <Text
@@ -1144,6 +1168,8 @@ const DoctorDashboard = () => {
         </div>
       ),
     },
+    // Xóa mục treatment-plans-list trong treatmentSections
+    // Xóa mục menuItems liên quan đến treatment-plans-list
     "theme-demo": {
       title: "Demo Giao Diện Mới",
       component: <ThemeDemo />,
@@ -1179,6 +1205,7 @@ const DoctorDashboard = () => {
       icon: <MedicineBoxOutlined />,
       label: "Lập phác đồ",
     },
+    // Xóa mục treatment-plans-list trong menuItems
     {
       key: "schedule",
       icon: <CalendarOutlined />,

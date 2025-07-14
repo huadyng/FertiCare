@@ -469,30 +469,50 @@ export const getTemplateByType = (type) => {
 // Hàm tính toán lịch trình dựa trên phác đồ
 export const generateScheduleFromTemplate = (template, startDate) => {
   const schedule = [];
-  let currentDate = new Date(startDate);
+  let currentDate;
+  try {
+    currentDate = new Date(startDate);
+    if (isNaN(currentDate.getTime())) throw new Error("Invalid startDate");
+  } catch {
+    currentDate = new Date(); // fallback to today
+  }
 
   template.phases.forEach((phase, phaseIndex) => {
-    phase.activities.forEach((activity) => {
-      const activityDate = new Date(currentDate);
-      activityDate.setDate(activityDate.getDate() + activity.day - 1);
-
-      schedule.push({
-        id: `${phase.id}_${activity.day}`,
-        phaseId: phase.id,
-        phaseName: phase.name,
-        date: activityDate.toISOString().split("T")[0],
-        activity: activity.name,
-        type: activity.type,
-        duration: activity.duration,
-        room: activity.room,
-        required: activity.required,
-        completed: false,
-        order: phaseIndex + 1,
-      });
-    });
-
+    (Array.isArray(phase.activities) ? phase.activities : []).forEach(
+      (activity) => {
+        let activityDate = new Date(currentDate);
+        // Nếu activity.day không hợp lệ thì bỏ qua hoặc lấy mặc định là 1
+        let dayOffset = 0;
+        if (typeof activity.day === "number" && !isNaN(activity.day)) {
+          dayOffset = activity.day - 1;
+        }
+        activityDate.setDate(activityDate.getDate() + dayOffset);
+        let dateStr = "";
+        try {
+          dateStr = activityDate.toISOString().split("T")[0];
+        } catch {
+          dateStr = "";
+        }
+        schedule.push({
+          id: `${phase.id}_${activity.day}`,
+          phaseId: phase.id,
+          phaseName: phase.name,
+          date: dateStr,
+          activity: activity.name,
+          type: activity.type,
+          duration: activity.duration,
+          room: activity.room,
+          required: activity.required,
+          completed: false,
+          order: phaseIndex + 1,
+        });
+      }
+    );
     // Chuyển sang phase tiếp theo
-    const phaseDuration = Math.max(...phase.activities.map((a) => a.day));
+    const phaseDays = (
+      Array.isArray(phase.activities) ? phase.activities : []
+    ).map((a) => (typeof a.day === "number" && !isNaN(a.day) ? a.day : 1));
+    const phaseDuration = Math.max(...phaseDays, 1);
     currentDate.setDate(currentDate.getDate() + phaseDuration);
   });
 

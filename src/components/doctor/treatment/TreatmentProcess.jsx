@@ -13,6 +13,7 @@ import {
   Progress,
   Alert,
   Modal,
+  message,
 } from "antd";
 import {
   UserOutlined,
@@ -31,6 +32,9 @@ import {
   KeyOutlined,
   DeleteOutlined,
   ArrowRightOutlined,
+  ReloadOutlined,
+  ExclamationCircleOutlined,
+  SettingOutlined,
 } from "@ant-design/icons";
 import "../DoctorTheme.css";
 import "./TreatmentProcess.css";
@@ -43,6 +47,8 @@ import { treatmentStateManager } from "../../../utils/treatmentStateManager";
 import { UserContext } from "../../../context/UserContext";
 import { clinicalResultsAPI } from "../../../api/apiClinicalResults";
 import apiDoctor from "../../../api/apiDoctor";
+import { treatmentPlanAPI } from "../../../api/treatmentPlanAPI";
+import { debugUtils } from "../../../utils/debugUtils";
 
 const { Title, Text, Paragraph } = Typography;
 const { Step } = Steps;
@@ -236,7 +242,7 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
 
   // Cải thiện sync với state manager - thêm auto progress
   const syncWithStateManager = () => {
-    const state = treatmentStateManager.getCurrentState();
+    const state = treatmentStateManager.getCurrentState(patientId);
     if (state.patientId === patientId) {
       console.log("🔄 Syncing TreatmentProcess with state manager:", state);
 
@@ -273,6 +279,181 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
         console.log(`✅ Synced ${state.completedSteps.length} completed steps`);
       }
     }
+  };
+
+  // Thêm useEffect để theo dõi thay đổi trong localStorage và cập nhật real-time
+  useEffect(() => {
+    const checkLocalStorageUpdates = () => {
+      // Kiểm tra examination data
+      const examinationKey = `examination_completed_${patientId}`;
+      const examinationData = localStorage.getItem(examinationKey);
+
+      if (examinationData) {
+        try {
+          const parsedData = JSON.parse(examinationData);
+          if (parsedData && !isDataEmpty(parsedData)) {
+            console.log(
+              "🔄 [TreatmentProcess] Found examination data in localStorage:",
+              parsedData
+            );
+
+            // Cập nhật process data
+            setProcessData((prev) => ({
+              ...prev,
+              examination: parsedData,
+            }));
+
+            // Cập nhật state manager nếu chưa có
+            const currentState = treatmentStateManager.getCurrentState();
+            if (!currentState.completedSteps.includes(0)) {
+              treatmentStateManager.updateExamination(patientId, parsedData);
+              console.log(
+                "✅ [TreatmentProcess] Updated state manager with examination data"
+              );
+            }
+
+            // Auto advance nếu đang ở step 0
+            if (autoProgress && currentStep === 0) {
+              console.log(
+                "🚀 Auto advancing to treatment plan after localStorage sync"
+              );
+              setCurrentStep(1);
+              setProgressAnimation(true);
+              setTimeout(() => setProgressAnimation(false), 2000);
+            }
+          }
+        } catch (error) {
+          console.error(
+            "❌ [TreatmentProcess] Error parsing examination data:",
+            error
+          );
+        }
+      }
+
+      // Kiểm tra treatment plan data
+      const treatmentPlanKey = `treatment_plan_completed_${patientId}`;
+      const treatmentPlanData = localStorage.getItem(treatmentPlanKey);
+
+      if (treatmentPlanData) {
+        try {
+          const parsedData = JSON.parse(treatmentPlanData);
+          if (parsedData) {
+            console.log(
+              "🔄 [TreatmentProcess] Found treatment plan data in localStorage:",
+              parsedData
+            );
+
+            setProcessData((prev) => ({
+              ...prev,
+              treatmentPlan: parsedData,
+            }));
+
+            const currentState = treatmentStateManager.getCurrentState();
+            if (!currentState.completedSteps.includes(1)) {
+              treatmentStateManager.updateTreatmentPlan(patientId, parsedData);
+              console.log(
+                "✅ [TreatmentProcess] Updated state manager with treatment plan data"
+              );
+            }
+
+            if (autoProgress && currentStep === 1) {
+              console.log(
+                "🚀 Auto advancing to schedule after localStorage sync"
+              );
+              setCurrentStep(2);
+              setProgressAnimation(true);
+              setTimeout(() => setProgressAnimation(false), 2000);
+            }
+          }
+        } catch (error) {
+          console.error(
+            "❌ [TreatmentProcess] Error parsing treatment plan data:",
+            error
+          );
+        }
+      }
+
+      // Kiểm tra schedule data
+      const scheduleKey = `schedule_completed_${patientId}`;
+      const scheduleData = localStorage.getItem(scheduleKey);
+
+      if (scheduleData) {
+        try {
+          const parsedData = JSON.parse(scheduleData);
+          if (parsedData) {
+            console.log(
+              "🔄 [TreatmentProcess] Found schedule data in localStorage:",
+              parsedData
+            );
+
+            setProcessData((prev) => ({
+              ...prev,
+              schedule: parsedData,
+            }));
+
+            const currentState = treatmentStateManager.getCurrentState();
+            if (!currentState.completedSteps.includes(2)) {
+              treatmentStateManager.updateSchedule(patientId, parsedData);
+              console.log(
+                "✅ [TreatmentProcess] Updated state manager with schedule data"
+              );
+            }
+
+            if (autoProgress && currentStep === 2) {
+              console.log(
+                "🚀 Auto advancing to progress tracking after localStorage sync"
+              );
+              setCurrentStep(3);
+              setProgressAnimation(true);
+              setTimeout(() => setProgressAnimation(false), 2000);
+            }
+          }
+        } catch (error) {
+          console.error(
+            "❌ [TreatmentProcess] Error parsing schedule data:",
+            error
+          );
+        }
+      }
+    };
+
+    // Kiểm tra ngay khi component mount
+    checkLocalStorageUpdates();
+
+    // Thiết lập interval để kiểm tra định kỳ (mỗi 2 giây)
+    const intervalId = setInterval(checkLocalStorageUpdates, 2000);
+
+    // Cleanup interval khi component unmount
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [patientId, currentStep, autoProgress]);
+
+  // Helper function để kiểm tra dữ liệu rỗng
+  const isDataEmpty = (data) => {
+    if (!data) return true;
+
+    const hasRealData =
+      data.diagnosis ||
+      data.clinicalSigns?.bloodPressure ||
+      data.clinicalSigns?.temperature ||
+      data.clinicalSigns?.heartRate ||
+      data.clinicalSigns?.weight ||
+      data.clinicalSigns?.height ||
+      data.labResults?.ultrasound ||
+      data.notes ||
+      (data.symptoms && data.symptoms.length > 0) ||
+      (data.labResults?.bloodTest &&
+        Object.values(data.labResults.bloodTest).some(
+          (val) => val !== null && val !== ""
+        )) ||
+      data.template ||
+      data.finalPlan ||
+      data.phases ||
+      data.sessions ||
+      data.startDate;
+
+    return !hasRealData;
   };
 
   // Cải thiện event listeners - thêm real-time progress updates
@@ -596,6 +777,79 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
     }
   };
 
+  // Load treatment plan from API and sync with state manager
+  const loadTreatmentPlanFromAPI = async () => {
+    try {
+      console.log(
+        "🔍 [TreatmentProcess] Loading treatment plan from API for patient:",
+        patientId
+      );
+
+      // Import API module
+      const { default: apiTreatmentManagement } = await import(
+        "../../../api/apiTreatmentManagement"
+      );
+
+      const response = await apiTreatmentManagement.getActiveTreatmentPlan(
+        patientId
+      );
+
+      if (response.success && response.data) {
+        console.log(
+          "✅ [TreatmentProcess] Found active treatment plan:",
+          response.data
+        );
+
+        // Transform API data to frontend format
+        const frontendPlan = {
+          id: response.data.planId,
+          patientId: response.data.patientId,
+          treatmentType: response.data.treatmentType,
+          planName: response.data.planName,
+          status: response.data.status,
+          startDate: response.data.startDate,
+          endDate: response.data.endDate,
+          notes: response.data.notes,
+          // Add other fields as needed
+        };
+
+        // Update process data
+        setProcessData((prev) => ({
+          ...prev,
+          treatmentPlan: frontendPlan,
+        }));
+
+        // Update state manager if not already completed
+        const currentState = treatmentStateManager.getCurrentState(patientId);
+        if (!currentState.completedSteps.includes(1)) {
+          treatmentStateManager.updateTreatmentPlan(patientId, frontendPlan);
+          console.log(
+            "✅ [TreatmentProcess] Updated state manager with API treatment plan"
+          );
+
+          // Auto advance if currently on step 1
+          if (autoProgress && currentStep === 1) {
+            console.log(
+              "🚀 Auto advancing to schedule after API treatment plan sync"
+            );
+            setCurrentStep(2);
+            setProgressAnimation(true);
+            setTimeout(() => setProgressAnimation(false), 2000);
+          }
+        }
+      } else {
+        console.log(
+          "ℹ️ [TreatmentProcess] No active treatment plan found in API"
+        );
+      }
+    } catch (error) {
+      console.warn(
+        "⚠️ [TreatmentProcess] Could not load treatment plan from API:",
+        error
+      );
+    }
+  };
+
   // Clear old test data from localStorage
   useEffect(() => {
     // Clear any old test data
@@ -767,6 +1021,26 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
   useEffect(() => {
     loadTreatmentProgress();
     loadExaminationData();
+    loadTreatmentPlanFromAPI(); // Also load treatment plan from API
+  }, [patientId]);
+
+  // Thêm useEffect để force refresh state manager định kỳ
+  useEffect(() => {
+    const forceRefreshState = () => {
+      console.log("🔄 [TreatmentProcess] Force refreshing state manager...");
+      treatmentStateManager.forceRefresh(patientId);
+      syncWithStateManager();
+    };
+
+    // Force refresh ngay khi component mount
+    forceRefreshState();
+
+    // Thiết lập interval để force refresh mỗi 5 giây
+    const refreshInterval = setInterval(forceRefreshState, 5000);
+
+    return () => {
+      clearInterval(refreshInterval);
+    };
   }, [patientId]);
 
   // Auto-save examination data to localStorage when it changes
@@ -851,6 +1125,77 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
     setTimeout(() => setProgressAnimation(false), 2000);
   };
 
+  // Function để xóa phác đồ điều trị
+  const handleDeleteTreatmentPlan = async () => {
+    console.log("🎯 [DEBUG] handleDeleteTreatmentPlan called!");
+    try {
+      console.log("🎯 [DEBUG] Showing confirmation dialog...");
+
+      // Hiển thị confirm dialog bằng message.confirm
+      const confirmed = window.confirm(
+        "Bạn có chắc chắn muốn xóa phác đồ điều trị hiện tại?\n\nHành động này không thể hoàn tác!"
+      );
+
+      if (confirmed) {
+        console.log("🎯 [DEBUG] User confirmed deletion");
+        try {
+          // Xóa từ backend nếu có planId
+          const currentState = treatmentStateManager.getCurrentState(patientId);
+          console.log("🎯 [DEBUG] Current state:", currentState);
+          console.log(
+            "🎯 [DEBUG] Treatment plan in state:",
+            currentState.data.treatmentPlan
+          );
+
+          if (currentState.data.treatmentPlan?.planId) {
+            console.log(
+              "🎯 [DEBUG] Deleting from backend with planId:",
+              currentState.data.treatmentPlan.planId
+            );
+            const result = await treatmentPlanAPI.deleteTreatmentPlan(
+              currentState.data.treatmentPlan.planId
+            );
+            if (!result.success) {
+              throw new Error(
+                result.message || "Lỗi khi xóa phác đồ từ server"
+              );
+            }
+            console.log("🎯 [DEBUG] Backend deletion successful");
+          } else {
+            console.log(
+              "🎯 [DEBUG] No planId found, skipping backend deletion"
+            );
+          }
+
+          // Xóa từ state manager và localStorage
+          console.log("🎯 [DEBUG] Deleting from state manager...");
+          treatmentStateManager.deleteTreatmentPlan(patientId);
+
+          // Cập nhật UI
+          setProcessData((prev) => ({
+            ...prev,
+            treatmentPlan: null,
+          }));
+
+          // Reset về step 1
+          setCurrentStep(1);
+
+          message.success("Đã xóa phác đồ điều trị thành công");
+          console.log("✅ Treatment plan deleted successfully");
+        } catch (error) {
+          console.error("❌ Error deleting treatment plan:", error);
+          message.error(
+            error.message || "Có lỗi xảy ra khi xóa phác đồ điều trị"
+          );
+        }
+      } else {
+        console.log("🎯 [DEBUG] User cancelled deletion");
+      }
+    } catch (error) {
+      console.error("❌ Error in delete confirmation:", error);
+    }
+  };
+
   return (
     <div className="treatment-process-container">
       <div className="treatment-process-content">
@@ -859,7 +1204,7 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
             <Title level={2} className="main-title">
               <Space>
                 <HeartOutlined className="title-icon" />
-                Quy Trình Điều Trị IVF
+                Quy Trình Điều Trị
               </Space>
             </Title>
 
@@ -1101,6 +1446,16 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
                       Chuyển sang lập phác đồ
                     </Button>
                   )}
+                  {currentStep === 1 && processData.treatmentPlan && (
+                    <Button
+                      type="primary"
+                      size="small"
+                      icon={<ArrowRightOutlined />}
+                      onClick={() => handleManualStepAdvance(2)}
+                    >
+                      Chuyển sang lập lịch điều trị
+                    </Button>
+                  )}
                 </Space>
               }
             />
@@ -1114,7 +1469,10 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
           >
             <Steps current={currentStep} className="treatment-steps">
               {steps.map((step, index) => {
-                const stepData = treatmentStateManager.getStepData(index);
+                const stepData = treatmentStateManager.getStepData(
+                  index,
+                  patientId
+                );
                 let stepStatus = stepData.status;
                 let stepDescription = step.description;
 
@@ -1160,10 +1518,23 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
             }`}
           >
             {(() => {
-              const progress = treatmentStateManager.getOverallProgress();
+              // Lấy progress từ state manager và cập nhật real-time
+              const progress =
+                treatmentStateManager.getOverallProgress(patientId);
+
+              // Tính toán thêm thông tin chi tiết
+              const completedSteps = progress.state.completedSteps || [];
+              const stepNames = [
+                "Khám tổng quát",
+                "Lập phác đồ",
+                "Lập lịch điều trị",
+                "Theo dõi tiến trình",
+                "Hoàn thành",
+              ];
+
               return (
                 <Row gutter={16} align="middle">
-                  <Col span={14}>
+                  <Col span={12}>
                     <div className="progress-info">
                       <Text strong>Tiến độ tổng thể: </Text>
                       <Tag className="progress-tag">
@@ -1179,22 +1550,28 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
                         trailColor="rgba(255, 126, 179, 0.1)"
                         className="overall-progress"
                         status={
-                          progress.current >= progress.total
+                          progress.completed >= progress.total
                             ? "success"
                             : "active"
                         }
                       />
                     </div>
-                  </Col>
-                  <Col span={10} style={{ textAlign: "right" }}>
-                    {progress.state.lastUpdated && (
-                      <Text type="secondary" className="last-updated">
-                        Cập nhật cuối:{" "}
-                        {new Date(progress.state.lastUpdated).toLocaleString(
-                          "vi-VN"
-                        )}
-                      </Text>
+                    {/* Hiển thị các bước đã hoàn thành */}
+                    {completedSteps.length > 0 && (
+                      <div style={{ marginTop: 8 }}>
+                        <Text type="secondary" style={{ fontSize: "12px" }}>
+                          Đã hoàn thành:{" "}
+                          {completedSteps
+                            .map((stepIndex) => stepNames[stepIndex])
+                            .join(", ")}
+                        </Text>
+                      </div>
                     )}
+                  </Col>
+                  <Col span={12} style={{ textAlign: "right" }}>
+                    <Text type="secondary" className="last-updated">
+                      Cập nhật cuối: {new Date().toLocaleString("vi-VN")}
+                    </Text>
                     {autoProgress && (
                       <div style={{ marginTop: 8 }}>
                         <Tag color="green" icon={<CheckCircleOutlined />}>
@@ -1202,6 +1579,56 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
                         </Tag>
                       </div>
                     )}
+                    {/* Control buttons */}
+                    <div
+                      style={{
+                        marginTop: 8,
+                        display: "flex",
+                        gap: 8,
+                        justifyContent: "flex-end",
+                      }}
+                    >
+                      <Button
+                        size="small"
+                        icon={<ReloadOutlined />}
+                        onClick={() => {
+                          console.log("🔄 Manual refresh triggered");
+                          syncWithStateManager();
+                          loadTreatmentPlanFromAPI(); // Also check API for treatment plan
+                          setProgressAnimation(true);
+                          setTimeout(() => setProgressAnimation(false), 1000);
+                        }}
+                      >
+                        Cập nhật
+                      </Button>
+
+                      {/* Nút xóa phác đồ - chỉ hiển thị khi có treatment plan */}
+                      {(() => {
+                        console.log(
+                          "🎯 [DEBUG] Checking treatment plan in progress state:",
+                          progress.state.data.treatmentPlan
+                        );
+                        console.log(
+                          "🎯 [DEBUG] Full progress state:",
+                          progress.state
+                        );
+                        return progress.state.data.treatmentPlan ? (
+                          <Button
+                            size="small"
+                            danger
+                            icon={<DeleteOutlined />}
+                            onClick={handleDeleteTreatmentPlan}
+                            title="Xóa phác đồ điều trị"
+                          >
+                            Xóa phác đồ
+                          </Button>
+                        ) : (
+                          <Text type="secondary" style={{ fontSize: "12px" }}>
+                            (Không có phác đồ để xóa)
+                          </Text>
+                        );
+                      })()}
+                    </div>
                   </Col>
                 </Row>
               );
@@ -1215,7 +1642,6 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
                 <Space>
                   <Text strong>Cài đặt:</Text>
                   <Button
-                    className="treatment-btn"
                     type={autoProgress ? "primary" : "default"}
                     size="small"
                     icon={
@@ -1236,18 +1662,13 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
                 <Space>
                   <Text strong>Thao tác:</Text>
                   <Button
-                    className="treatment-btn"
                     size="small"
                     icon={<DeleteOutlined />}
                     onClick={() => {
-                      if (window.debugUtils) {
-                        const result =
-                          window.debugUtils.cleanPatientExaminationData(
-                            patientId
-                          );
-                        console.log("🧹 Clean result:", result);
-                        setTimeout(() => loadExaminationData(), 1000);
-                      }
+                      const result =
+                        debugUtils.cleanPatientExaminationData(patientId);
+                      console.log("🧹 Clean result:", result);
+                      setTimeout(() => loadExaminationData(), 1000);
                     }}
                     title="Dọn dẹp dữ liệu trống"
                   >
@@ -1255,12 +1676,30 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
                   </Button>
 
                   <Button
-                    className="treatment-btn"
+                    size="small"
+                    icon={<SettingOutlined />}
+                    onClick={() => {
+                      debugUtils.checkProgressStatus(patientId);
+                      debugUtils.fixSyncIssues(patientId);
+                      setTimeout(() => {
+                        syncWithStateManager();
+                        setProgressAnimation(true);
+                        setTimeout(() => setProgressAnimation(false), 1000);
+                      }, 500);
+                    }}
+                    title="Kiểm tra và sửa lỗi đồng bộ"
+                  >
+                    Sửa lỗi đồng bộ
+                  </Button>
+
+                  <Button
                     size="small"
                     icon={<SyncOutlined />}
                     onClick={() => {
                       debugAuthStatus();
                       loadExaminationData();
+                      loadTreatmentPlanFromAPI();
+                      treatmentStateManager.debugState(patientId);
                     }}
                     title="Kiểm tra trạng thái"
                   >

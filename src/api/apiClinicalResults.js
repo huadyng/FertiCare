@@ -9,74 +9,129 @@ export const clinicalResultsAPI = {
         "🔍 [apiClinicalResults] Fetching examination results for patient:",
         patientId
       );
-      const response = await axiosClient.get(
-        `/api/clinical-results/patient/${patientId}`
-      );
-      console.log("🔍 [apiClinicalResults] Raw response data:", response.data);
-      console.log(
-        "🔍 [apiClinicalResults] Response data type:",
-        typeof response.data
-      );
-      console.log(
-        "🔍 [apiClinicalResults] Response data length:",
-        response.data?.length
-      );
 
-      // Transform backend data to frontend format
-      if (response.data && Array.isArray(response.data)) {
-        // Filter out empty records before transforming
-        const nonEmptyRecords = response.data.filter((record) => {
-          const hasRealData =
-            record.diagnosis ||
-            record.recommendations ||
-            record.bloodPressureSystolic ||
-            record.bloodPressureDiastolic ||
-            record.temperature ||
-            record.heartRate ||
-            record.weight ||
-            record.height ||
-            record.fshLevel ||
-            record.lhLevel ||
-            record.estradiolLevel ||
-            record.testosteroneLevel ||
-            record.amhLevel ||
-            record.prolactinLevel ||
-            record.ultrasoundFindings ||
-            record.notes ||
-            (record.symptoms &&
-              record.symptoms !== "[]" &&
-              record.symptoms !== '[""]');
-
-          if (!hasRealData) {
-            console.log(
-              `🧹 [apiClinicalResults] Filtering out empty record:`,
-              record.id
-            );
-          }
-
-          return hasRealData;
-        });
-
-        console.log(
-          `🔍 [apiClinicalResults] Found ${response.data.length} records, ${nonEmptyRecords.length} non-empty`
+      // Thử API clinical-results trước
+      try {
+        const response = await axiosClient.get(
+          `/api/clinical-results/patient/${patientId}`
         );
-
-        const transformedData = nonEmptyRecords.map(transformBackendToFrontend);
         console.log(
-          "🔍 [apiClinicalResults] Transformed data:",
-          transformedData
-        );
-        return transformedData;
-      } else {
-        console.warn(
-          "⚠️ [apiClinicalResults] Response data is not an array:",
+          "🔍 [apiClinicalResults] Raw response data:",
           response.data
         );
-        return [];
+        console.log(
+          "🔍 [apiClinicalResults] Response data type:",
+          typeof response.data
+        );
+        console.log(
+          "🔍 [apiClinicalResults] Response data length:",
+          response.data?.length
+        );
+
+        // Transform backend data to frontend format
+        if (response.data && Array.isArray(response.data)) {
+          // Filter out empty records before transforming
+          const nonEmptyRecords = response.data.filter((record) => {
+            const hasRealData =
+              record.diagnosis ||
+              record.recommendations ||
+              record.bloodPressureSystolic ||
+              record.bloodPressureDiastolic ||
+              record.temperature ||
+              record.heartRate ||
+              record.weight ||
+              record.height ||
+              record.fshLevel ||
+              record.lhLevel ||
+              record.estradiolLevel ||
+              record.testosteroneLevel ||
+              record.amhLevel ||
+              record.prolactinLevel ||
+              record.ultrasoundFindings ||
+              record.notes ||
+              (record.symptoms &&
+                record.symptoms !== "[]" &&
+                record.symptoms !== '[""]');
+
+            if (!hasRealData) {
+              console.log(
+                `🧹 [apiClinicalResults] Filtering out empty record:`,
+                record.id
+              );
+            }
+
+            return hasRealData;
+          });
+
+          console.log(
+            `🔍 [apiClinicalResults] Found ${response.data.length} records, ${nonEmptyRecords.length} non-empty`
+          );
+
+          const transformedData = nonEmptyRecords.map(
+            transformBackendToFrontend
+          );
+          console.log(
+            "🔍 [apiClinicalResults] Transformed data:",
+            transformedData
+          );
+          return transformedData;
+        } else {
+          console.warn(
+            "⚠️ [apiClinicalResults] Response data is not an array:",
+            response.data
+          );
+          return [];
+        }
+      } catch (clinicalError) {
+        console.warn(
+          "⚠️ [apiClinicalResults] Không thể lấy từ clinical-results, thử treatment-workflow:",
+          clinicalError.message
+        );
+
+        // Thử API treatment-workflow
+        try {
+          const response = await axiosClient.get(
+            `/api/treatment-workflow/patient/${patientId}/clinical-results`
+          );
+          console.log(
+            "🔍 [apiClinicalResults] Raw response data from treatment-workflow:",
+            response.data
+          );
+
+          // Transform backend data to frontend format
+          if (response.data && Array.isArray(response.data)) {
+            const transformedData = response.data.map(
+              transformBackendToFrontend
+            );
+            console.log(
+              "🔍 [apiClinicalResults] Transformed data from treatment-workflow:",
+              transformedData
+            );
+            return transformedData;
+          } else {
+            console.warn(
+              "⚠️ [apiClinicalResults] Response data from treatment-workflow is not an array:",
+              response.data
+            );
+            return [];
+          }
+        } catch (treatmentError) {
+          console.warn(
+            "⚠️ [apiClinicalResults] Không thể lấy từ treatment-workflow:",
+            treatmentError.message
+          );
+
+          // Trả về dữ liệu mặc định thay vì throw error
+          console.log("✅ [apiClinicalResults] Sử dụng dữ liệu mặc định");
+          return [];
+        }
       }
     } catch (error) {
       console.error("Error fetching examination results:", error);
-      throw error;
+
+      // Trả về dữ liệu mặc định thay vì throw error
+      console.log("✅ [apiClinicalResults] Sử dụng dữ liệu mặc định do lỗi");
+      return [];
     }
   },
 

@@ -11,7 +11,7 @@
       "ivf": true,
       "iui": false,
       "doctorOption": "manual",
-      "doctor": "drA",
+      "doctor": "",
       "schedule": "09:00",
       "notes": "Ưu tiên bác sĩ nữ.",
       "agreePolicy": true
@@ -27,7 +27,7 @@
       "ivf": true,
       "iui": false,
       "doctorOption": "manual",
-      "doctor": "drA",
+      "doctor": "",
       "schedule": "08:06",
       "notes": "sđâ",
       "agreePolicy": true
@@ -77,112 +77,20 @@
       "doctorOption": "manual",
       "appointmentDate": "2025-06-13",
       "appointmentTime": "10:00",
-      "doctor": "drA",
+      "doctor": "",
       "schedule": "2025-06-13 10:00",
       "notes": "CSDSSADSA",
       "agreePolicy": true
     }
   ],
-  "doctors": [
-    {
-      "id": "drA",
-      "name": "Bác sĩ A",
-      "schedule": [
-        {
-          "date": "12-06-2025",
-          "slots": [
-            "08:00",
-            "09:00",
-            "14:00"
-          ]
-        },
-        {
-          "date": "2025-06-13",
-          "slots": [
-            "10:00",
-            "15:00"
-          ]
-        }
-      ],
-      "specialty": "IVF"
-    },
-    {
-      "id": "drB",
-      "name": "Bác sĩ B",
-      "schedule": [
-        {
-          "date": "12-06-2025",
-          "slots": [
-            "08:00",
-            "09:00",
-            "14:00"
-          ]
-        },
-        {
-          "date": "12-06-2025",
-          "slots": [
-            "10:00",
-            "15:00"
-          ]
-        }
-      ],
-      "specialty": "IUI"
-    },
-    {
-      "id": "drC",
-      "name": "Bác sĩ C",
-      "schedule": [
-        {
-          "date": "2025-06-12",
-          "slots": [
-            "08:00",
-            "09:00",
-            "14:00"
-          ]
-        },
-        {
-          "date": "2025-06-13",
-          "slots": [
-            "10:00",
-            "15:00"
-          ]
-        }
-      ],
-      "specialty": "IUI"
-    },
-    {
-      "id": "drD",
-      "name": "Bác sĩ D",
-      "schedule": [
-        {
-          "date": "2025-06-12",
-          "slots": [
-            "08:00",
-            "09:00",
-            "14:00"
-          ]
-        },
-        {
-          "date": "2025-06-13",
-          "slots": [
-            "10:00",
-            "15:00"
-          ]
-        }
-      ],
-      "specialty": "IVF"
-    }
-  ],
+  "doctors": [],
   "examinationResults": [
     {
       "id": "exam1",
       "patientId": "1",
-      "doctorId": "drA",
+      "doctorId": "",
       "examinationDate": "2025-01-15",
-      "symptoms": [
-        "đau bụng dưới",
-        "rối loạn kinh nguyệt"
-      ],
+      "symptoms": ["đau bụng dưới", "rối loạn kinh nguyệt"],
       "clinicalSigns": {
         "bloodPressure": "120/80",
         "temperature": "36.5",
@@ -201,21 +109,14 @@
       },
       "diagnosis": "Vô sinh nguyên phát",
       "recommendations": "Làm thêm xét nghiệm AMH, HSG",
-      "attachments": [
-        "ultrasound_image.jpg",
-        "blood_test.pdf"
-      ],
+      "attachments": ["ultrasound_image.jpg", "blood_test.pdf"],
       "status": "completed"
     },
     {
       "id": "1750165533160",
       "patientId": "1",
-      "doctorId": "drB",
-      "symptoms": [
-        "ra máu bất thường",
-        "mệt mỏi",
-        "căng tức vú"
-      ],
+      "doctorId": "",
+      "symptoms": ["ra máu bất thường", "mệt mỏi", "căng tức vú"],
       "clinicalSigns": {
         "bloodPressure": "120/80",
         "temperature": "36.5",
@@ -234,9 +135,7 @@
         }
       },
       "diagnosis": "hhaha",
-      "attachments": [
-        "achive.png"
-      ],
+      "attachments": ["achive.png"],
       "examinationDate": "2025-06-17",
       "status": "completed"
     },
@@ -246,10 +145,7 @@
       "doctorId": 3,
       "doctorName": "BS. Lê Văn Doctor",
       "examinationDate": "2025-06-18",
-      "symptoms": [
-        "rối loạn kinh nguyệt",
-        "khó thụ thai"
-      ],
+      "symptoms": ["rối loạn kinh nguyệt", "khó thụ thai"],
       "clinicalSigns": {
         "bloodPressure": "120/80",
         "temperature": 36.5,
@@ -314,11 +210,7 @@
             {
               "type": "xét nghiệm máu",
               "schedule": "ngày 2, 8, 10",
-              "tests": [
-                "E2",
-                "LH",
-                "P4"
-              ]
+              "tests": ["E2", "LH", "P4"]
             }
           ]
         },
@@ -486,13 +378,7 @@
                 "day": 2,
                 "name": "Xét nghiệm máu cơ bản",
                 "type": "test",
-                "tests": [
-                  "AMH",
-                  "FSH",
-                  "LH",
-                  "E2",
-                  "TSH"
-                ],
+                "tests": ["AMH", "FSH", "LH", "E2", "TSH"],
                 "duration": 30,
                 "room": "Phòng xét nghiệm",
                 "required": true
@@ -763,13 +649,7 @@
                 "day": 2,
                 "name": "Xét nghiệm máu cơ bản",
                 "type": "test",
-                "tests": [
-                  "AMH",
-                  "FSH",
-                  "LH",
-                  "E2",
-                  "TSH"
-                ],
+                "tests": ["AMH", "FSH", "LH", "E2", "TSH"],
                 "duration": 30,
                 "room": "Phòng xét nghiệm",
                 "required": true
@@ -1068,13 +948,7 @@
                 "day": 2,
                 "name": "Xét nghiệm máu cơ bản",
                 "type": "test",
-                "tests": [
-                  "AMH",
-                  "FSH",
-                  "LH",
-                  "E2",
-                  "TSH"
-                ],
+                "tests": ["AMH", "FSH", "LH", "E2", "TSH"],
                 "duration": 30,
                 "room": "Phòng xét nghiệm",
                 "required": true
@@ -1345,13 +1219,7 @@
                 "day": 2,
                 "name": "Xét nghiệm máu cơ bản",
                 "type": "test",
-                "tests": [
-                  "AMH",
-                  "FSH",
-                  "LH",
-                  "E2",
-                  "TSH"
-                ],
+                "tests": ["AMH", "FSH", "LH", "E2", "TSH"],
                 "duration": 30,
                 "room": "Phòng xét nghiệm",
                 "required": true
@@ -1652,12 +1520,7 @@
                 "day": 2,
                 "name": "Xét nghiệm cơ bản",
                 "type": "test",
-                "tests": [
-                  "FSH",
-                  "LH",
-                  "E2",
-                  "AMH"
-                ],
+                "tests": ["FSH", "LH", "E2", "AMH"],
                 "duration": 30,
                 "room": "Phòng xét nghiệm",
                 "required": true
@@ -1838,12 +1701,7 @@
                 "day": 2,
                 "name": "Xét nghiệm cơ bản",
                 "type": "test",
-                "tests": [
-                  "FSH",
-                  "LH",
-                  "E2",
-                  "AMH"
-                ],
+                "tests": ["FSH", "LH", "E2", "AMH"],
                 "duration": 30,
                 "room": "Phòng xét nghiệm",
                 "required": true
@@ -2052,13 +1910,7 @@
                 "day": 2,
                 "name": "Xét nghiệm máu cơ bản",
                 "type": "test",
-                "tests": [
-                  "AMH",
-                  "FSH",
-                  "LH",
-                  "E2",
-                  "TSH"
-                ],
+                "tests": ["AMH", "FSH", "LH", "E2", "TSH"],
                 "duration": 30,
                 "room": "Phòng xét nghiệm",
                 "required": true
@@ -2329,13 +2181,7 @@
                 "day": 2,
                 "name": "Xét nghiệm máu cơ bản",
                 "type": "test",
-                "tests": [
-                  "AMH",
-                  "FSH",
-                  "LH",
-                  "E2",
-                  "TSH"
-                ],
+                "tests": ["AMH", "FSH", "LH", "E2", "TSH"],
                 "duration": 30,
                 "room": "Phòng xét nghiệm",
                 "required": true
@@ -2656,11 +2502,7 @@
           "duration": 15,
           "status": "scheduled",
           "notes": "Xét nghiệm E2, LH, P4",
-          "tests": [
-            "E2",
-            "LH",
-            "P4"
-          ]
+          "tests": ["E2", "LH", "P4"]
         }
       ],
       "reminders": [
@@ -2691,12 +2533,8 @@
           "staff": "drA",
           "duration": 30,
           "status": "scheduled",
-          "medications": [
-            "Utrogestan"
-          ],
-          "tests": [
-            "P4"
-          ]
+          "medications": ["Utrogestan"],
+          "tests": ["P4"]
         }
       ],
       "reminders": [
@@ -2714,27 +2552,19 @@
       "id": "room1",
       "name": "Phòng siêu âm 1",
       "type": "ultrasound",
-      "equipment": [
-        "máy siêu âm 4D",
-        "màn hình"
-      ]
+      "equipment": ["máy siêu âm 4D", "màn hình"]
     },
     {
       "id": "room2",
       "name": "Phòng tiêm",
       "type": "injection",
-      "equipment": [
-        "tủ lạnh bảo quản thuốc",
-        "bàn tiêm"
-      ]
+      "equipment": ["tủ lạnh bảo quản thuốc", "bàn tiêm"]
     },
     {
       "id": "room3",
       "name": "Phòng xét nghiệm",
       "type": "laboratory",
-      "equipment": [
-        "máy xét nghiệm tự động"
-      ]
+      "equipment": ["máy xét nghiệm tự động"]
     }
   ],
   "staff": [

@@ -46,26 +46,83 @@ import {
   CalendarOutlined,
   FileTextOutlined,
 } from "@ant-design/icons";
-import {
-  treatmentTemplates,
-  getTemplateByType,
-} from "./data/treatmentTemplates";
 import { treatmentPlanAPI } from "../../../api/treatmentPlanAPI";
+import apiTreatmentManagement from "../../../api/apiTreatmentManagement";
 import { UserContext } from "../../../context/UserContext";
 import { treatmentStateManager } from "../../../utils/treatmentStateManager";
 import dayjs from "dayjs";
+import {
+  getTemplateByType,
+  generateScheduleFromTemplate,
+} from "./data/treatmentTemplates";
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
 const { Panel } = Collapse;
 const { TextArea } = Input;
 
+// Hàm chuyển đổi template từ backend sang định dạng frontend
+function chuyenDoiTemplateTuBackendSangFE(templateBE) {
+  if (!templateBE) return null;
+  return {
+    id: templateBE.templateId,
+    name: templateBE.name,
+    description: templateBE.description,
+    type: templateBE.treatmentType,
+    planName: templateBE.planName,
+    planDescription: templateBE.planDescription,
+    estimatedDuration: templateBE.estimatedDurationDays,
+    cost: templateBE.estimatedCost,
+    phases: (templateBE.treatmentSteps || []).map((buoc) => ({
+      id: `phase_${buoc.step}`,
+      name: buoc.name,
+      duration: buoc.duration,
+      description: buoc.description,
+      // activitiesDetail là mảng object, FE có thể mở rộng nếu cần
+      activities: (buoc.activities || []).map((hoatDong, idx) => ({
+        name: hoatDong,
+        day: idx + 1,
+        type: "procedure",
+        notes: "",
+      })),
+      // Nếu cần, có thể thêm activitiesDetail ở đây
+      activitiesDetail: (buoc.activities || []).map((hoatDong, idx) => ({
+        name: hoatDong,
+        day: idx + 1,
+        type: "procedure",
+        notes: "",
+      })),
+      medications: [], // Sẽ được map ở dưới nếu cần
+    })),
+    medications: (templateBE.medicationPlan || []).map((keHoach) => ({
+      phase: keHoach.phase,
+      medications: (keHoach.medications || []).map((thuoc) => ({
+        name: thuoc.name,
+        dosage: thuoc.dosage,
+        frequency: thuoc.frequency,
+        duration: thuoc.duration,
+        route: thuoc.route || "Uống",
+      })),
+    })),
+    monitoring: templateBE.monitoringSchedule || [],
+    successRate: templateBE.successProbability,
+    riskFactors: templateBE.riskFactors,
+    contraindications: templateBE.contraindications,
+    treatmentCycle: templateBE.treatmentCycle,
+    createdAt: templateBE.createdAt,
+    updatedAt: templateBE.updatedAt,
+    createdBy: templateBE.createdBy,
+    updatedBy: templateBE.updatedBy,
+    isActive: templateBE.isActive,
+  };
+}
+
 const TreatmentPlanEditor = ({
   patientId,
   patientInfo,
   examinationData,
-  existingPlan,
-  isEditing,
+  existingPlan: initialExistingPlan,
+  isEditing: initialIsEditing,
   onNext,
 }) => {
   const [form] = Form.useForm();
@@ -79,13 +136,57 @@ const TreatmentPlanEditor = ({
   const [isEditingPhase, setIsEditingPhase] = useState(false);
   const [hasError, setHasError] = useState(false);
 
+  // State để quản lý existing plan và edit mode
+  const [existingPlan, setExistingPlan] = useState(initialExistingPlan);
+  const [isEditing, setIsEditing] = useState(initialIsEditing);
+
   // New states for detailed activity editing
   const [editingActivity, setEditingActivity] = useState(null);
   const [isEditingActivity, setIsEditingActivity] = useState(false);
   const [editingActivityIndex, setEditingActivityIndex] = useState(null);
 
+  const [doctorSpecialty, setDoctorSpecialty] = useState(null);
+
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [submittedPlan, setSubmittedPlan] = useState(null);
+
+  // State để kiểm soát read-only khi đã có phác đồ
+  const [isReadOnly, setIsReadOnly] = useState(false);
+
+  // State để track xem template đã được load từ API chưa
+  const [templateLoadedFromAPI, setTemplateLoadedFromAPI] = useState(false);
+
+  // State để track loading status
+  const [templateLoading, setTemplateLoading] = useState(true);
+
+  // Role-based access control check
+  useEffect(() => {
+    const checkUserRole = () => {
+      const userRole = user?.role?.toUpperCase();
+      console.log(`🔍 [TreatmentPlanEditor] Current user role: ${userRole}`);
+
+      // Show warning if user is not a doctor but trying to access doctor features
+      if (userRole && userRole !== "DOCTOR") {
+        console.warn(
+          `⚠️ [TreatmentPlanEditor] User with role ${userRole} is accessing doctor features`
+        );
+        message.warning(
+          "Bạn đang truy cập tính năng dành cho bác sĩ. Một số chức năng có thể bị hạn chế."
+        );
+      }
+    };
+
+    checkUserRole();
+  }, [user]);
+
   // Load existing plan when editing
   useEffect(() => {
+    console.log("🔄 [TreatmentPlanEditor] useEffect for existing plan:", {
+      hasExistingPlan: !!existingPlan,
+      isEditing,
+      existingPlanData: existingPlan,
+    });
+
     if (existingPlan && isEditing) {
       const template =
         existingPlan.finalPlan ||
@@ -113,18 +214,132 @@ const TreatmentPlanEditor = ({
       return;
     }
 
-    // Load default template for new plans
-    if (examinationData && !selectedTemplate && !isEditing) {
+    // Load default template for new plans based on patient's registered service
+    if (!selectedTemplate && !isEditing) {
       const recommendedType = getRecommendedTreatment();
       if (recommendedType) {
-        handleTemplateChange(recommendedType);
-        form.setFieldsValue({ treatmentType: recommendedType });
+        (async () => {
+          await handleTemplateChange(recommendedType);
+          form.setFieldsValue({ treatmentType: recommendedType });
+        })();
       }
     }
-  }, [examinationData, existingPlan, isEditing]); // Updated dependencies
+  }, [examinationData, existingPlan, isEditing, patientInfo]); // Added patientInfo dependency
+
+  // Ensure template is loaded immediately when component mounts
+  useEffect(() => {
+    console.log(
+      "🔄 [TreatmentPlanEditor] useEffect for auto-loading template:",
+      {
+        hasSelectedTemplate: !!selectedTemplate,
+        isEditing,
+        hasExistingPlan: !!existingPlan,
+        patientInfo: !!patientInfo,
+        examinationData: !!examinationData,
+        doctorSpecialty,
+      }
+    );
+
+    // Nếu chưa có template và có existing plan, load template từ existing plan
+    if (!selectedTemplate && existingPlan?.treatmentType) {
+      console.log(
+        "🔄 Loading template from existing plan:",
+        existingPlan.treatmentType
+      );
+      (async () => {
+        await handleTemplateChange(existingPlan.treatmentType);
+        form.setFieldsValue({ treatmentType: existingPlan.treatmentType });
+      })();
+      return;
+    }
+
+    // Nếu chưa có template và không có existing plan, load template mặc định
+    if (!selectedTemplate && !existingPlan) {
+      const recommendedType = getRecommendedTreatment();
+      if (recommendedType) {
+        console.log("🔄 Auto-loading template for service:", recommendedType);
+        (async () => {
+          await handleTemplateChange(recommendedType);
+          form.setFieldsValue({ treatmentType: recommendedType });
+        })();
+      }
+    }
+  }, [patientInfo, examinationData, doctorSpecialty, existingPlan]); // Added existingPlan dependency
+
+  // Ensure template is loaded when existing plan changes
+  useEffect(() => {
+    console.log(
+      "🔄 [TreatmentPlanEditor] useEffect for existing plan template loading:",
+      {
+        hasExistingPlan: !!existingPlan,
+        hasSelectedTemplate: !!selectedTemplate,
+        treatmentType: existingPlan?.treatmentType,
+      }
+    );
+
+    if (existingPlan?.treatmentType && !selectedTemplate) {
+      console.log(
+        "🔄 Loading template for existing plan:",
+        existingPlan.treatmentType
+      );
+
+      // Load template từ API thay vì dùng local template
+      const loadTemplateFromAPI = async () => {
+        try {
+          const templateResponse =
+            await apiTreatmentManagement.getTemplateByType(
+              existingPlan.treatmentType
+            );
+
+          if (templateResponse.success && templateResponse.data) {
+            // Sử dụng hàm chuyển đổi template từ backend sang FE
+            const template = chuyenDoiTemplateTuBackendSangFE(
+              templateResponse.data
+            );
+            console.log(
+              "✅ Template loaded from API (đã chuyển đổi):",
+              template
+            );
+            setSelectedTemplate(template);
+            setTemplateLoadedFromAPI(true);
+
+            // Set form values
+            form.setFieldsValue({
+              treatmentType: existingPlan.treatmentType,
+              estimatedStartDate: existingPlan.startDate
+                ? dayjs(existingPlan.startDate)
+                : undefined,
+              doctorNotes: existingPlan.doctorNotes || "",
+            });
+
+            // Set other states
+            setCustomizations(existingPlan.customizations || {});
+            setCustomMedications(existingPlan.customMedications || []);
+            setDoctorNotes(existingPlan.doctorNotes || "");
+          } else {
+            console.warn(
+              "⚠️ Failed to load template from API, using local template"
+            );
+            handleTemplateChange(existingPlan.treatmentType);
+          }
+        } catch (error) {
+          console.error("❌ Error loading template from API:", error);
+          // Fallback to local template
+          handleTemplateChange(existingPlan.treatmentType);
+        }
+      };
+
+      loadTemplateFromAPI();
+    }
+  }, [existingPlan, selectedTemplate]);
 
   // Separate useEffect for auto-save (with stable interval)
   useEffect(() => {
+    console.log("🔄 [TreatmentPlanEditor] useEffect for auto-save:", {
+      hasSelectedTemplate: !!selectedTemplate,
+      hasPatientId: !!patientId,
+    });
+
     if (!selectedTemplate || !patientId) return;
 
     const interval = setInterval(() => {
@@ -153,56 +368,500 @@ const TreatmentPlanEditor = ({
     return () => clearInterval(interval);
   }, [patientId, selectedTemplate?.id]); // Only depend on stable identifiers
 
+  // Load doctor's specialty when component mounts
+  useEffect(() => {
+    console.log(
+      "🔄 [TreatmentPlanEditor] useEffect for loading doctor specialty"
+    );
+
+    const loadDoctorSpecialty = async () => {
+      try {
+        const user = localStorage.getItem("user");
+        if (user) {
+          const userData = JSON.parse(user);
+          const doctorId = userData.id || userData.userId;
+
+          if (doctorId) {
+            console.log(
+              "🔍 [TreatmentPlanEditor] Loading doctor specialty for ID:",
+              doctorId
+            );
+
+            // Use the new helper function from apiDoctor
+            const { default: apiDoctor } = await import(
+              "../../../api/apiDoctor"
+            );
+            const profileResponse =
+              await apiDoctor.getDoctorProfileWithFallback(doctorId);
+
+            if (profileResponse.success && profileResponse.data) {
+              console.log(
+                "✅ [TreatmentPlanEditor] Doctor profile loaded:",
+                profileResponse.data
+              );
+              setDoctorSpecialty(
+                profileResponse.data.specialty?.toUpperCase() ||
+                  profileResponse.data.role?.toUpperCase() ||
+                  "IUI"
+              );
+            } else {
+              console.warn(
+                "⚠️ [TreatmentPlanEditor] Could not load doctor profile:",
+                profileResponse.message
+              );
+
+              // Check if user has DOCTOR role in localStorage
+              const userRole = userData.role?.toUpperCase();
+              if (userRole === "DOCTOR") {
+                console.log(
+                  "ℹ️ [TreatmentPlanEditor] User has DOCTOR role, using default specialty"
+                );
+                setDoctorSpecialty("IUI"); // Default fallback for doctors
+              } else {
+                console.log(
+                  "ℹ️ [TreatmentPlanEditor] User is not a doctor, using IUI specialty"
+                );
+                setDoctorSpecialty("IUI"); // Default fallback
+              }
+            }
+          } else {
+            console.warn(
+              "⚠️ [TreatmentPlanEditor] No doctor ID found in user data"
+            );
+            setDoctorSpecialty("IUI"); // Default fallback
+          }
+        } else {
+          console.warn(
+            "⚠️ [TreatmentPlanEditor] No user data found in localStorage"
+          );
+          setDoctorSpecialty("IUI"); // Default fallback
+        }
+      } catch (error) {
+        console.warn(
+          "⚠️ [TreatmentPlanEditor] Error loading doctor specialty:",
+          error
+        );
+        // Fallback to IUI since that's what's available
+        setDoctorSpecialty("IUI");
+      }
+    };
+
+    loadDoctorSpecialty();
+  }, []);
+
+  // Load active treatment plan từ API khi vào trang hoặc khi patientId thay đổi
+  useEffect(() => {
+    const loadActivePlan = async () => {
+      if (!patientId) return;
+      setLoading(true);
+      try {
+        const response = await apiTreatmentManagement.getActiveTreatmentPlan(
+          patientId
+        );
+        if (response.success && response.data) {
+          // Nếu đã có phác đồ active, set vào state và chuyển sang chế độ xem/chỉnh sửa
+          const frontendPlan = transformApiPlanToFrontend(response.data);
+          setExistingPlan(frontendPlan);
+          setIsEditing(false);
+          setIsReadOnly(true);
+        } else {
+          // Nếu chưa có phác đồ, cho phép tạo mới
+          setExistingPlan(null);
+          setIsEditing(false);
+          setIsReadOnly(false);
+        }
+      } catch (error) {
+        setExistingPlan(null);
+        setIsEditing(false);
+        setIsReadOnly(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadActivePlan();
+  }, [patientId]);
+
+  // Function to get current doctor's specialty
+  const getCurrentDoctorSpecialty = useCallback(async () => {
+    try {
+      const user = localStorage.getItem("user");
+      if (user) {
+        const userData = JSON.parse(user);
+        const doctorId = userData.id || userData.userId;
+
+        if (doctorId) {
+          console.log(
+            "🔍 [TreatmentPlanEditor] Getting doctor specialty for ID:",
+            doctorId
+          );
+
+          // Use the correct endpoint for doctor profile
+          try {
+            const response = await fetch(`/api/profiles/doctor/me`, {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+                "Content-Type": "application/json",
+              },
+            });
+
+            if (response.ok) {
+              const doctorProfile = await response.json();
+              console.log(
+                "✅ [TreatmentPlanEditor] Doctor profile:",
+                doctorProfile
+              );
+              return (
+                doctorProfile.specialty?.toUpperCase() ||
+                doctorProfile.role?.toUpperCase() ||
+                "IUI"
+              );
+            } else {
+              console.warn(
+                "⚠️ [TreatmentPlanEditor] Failed to load doctor profile:",
+                response.status
+              );
+            }
+          } catch (error) {
+            console.warn(
+              "⚠️ [TreatmentPlanEditor] Error loading doctor profile:",
+              error
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.warn(
+        "⚠️ [TreatmentPlanEditor] Error getting doctor specialty:",
+        error
+      );
+    }
+    return "IUI"; // Default fallback
+  }, []);
+
   const getRecommendedTreatment = () => {
-    // Enhanced logic based on examination data
-    if (!examinationData) return "IVF";
-
-    const diagnosis = examinationData.diagnosis?.toLowerCase() || "";
-    const recommendedService = examinationData.recommendedService;
-
-    // Prioritize examination recommendation
-    if (recommendedService) {
-      return recommendedService;
+    // Enhanced logic based on doctor's specialty and patient data
+    if (!examinationData && !patientInfo) {
+      console.log(
+        "🔍 [TreatmentPlanEditor] No examination data or patient info, using default IUI"
+      );
+      return "IUI"; // Default to IUI since that's what's available
     }
 
-    // Fallback logic
-    if (
-      diagnosis.includes("tắc ống dẫn trứng") ||
-      diagnosis.includes("tuổi cao") ||
-      diagnosis.includes("amh thấp")
-    ) {
-      return "IVF";
-    } else if (
-      diagnosis.includes("rối loạn rụng trứng") ||
-      diagnosis.includes("tinh trùng yếu")
-    ) {
-      return "IUI";
+    console.log("🔍 [TreatmentPlanEditor] Full patientInfo:", patientInfo);
+    console.log(
+      "🔍 [TreatmentPlanEditor] Full examinationData:",
+      examinationData
+    );
+    console.log(
+      "🔍 [TreatmentPlanEditor] Current doctor specialty:",
+      doctorSpecialty
+    );
+
+    // Priority 1: Check doctor's specialty from loaded state
+    if (doctorSpecialty) {
+      console.log(
+        "🔍 [TreatmentPlanEditor] Using doctor specialty:",
+        doctorSpecialty
+      );
+
+      if (doctorSpecialty === "IUI") return "IUI";
+      if (doctorSpecialty === "IVF") return "IVF";
+      if (doctorSpecialty === "ICSI") return "ICSI";
     }
 
-    return "IVF"; // Default
+    // Priority 2: Check examination data
+    if (examinationData?.recommendedService) {
+      console.log(
+        "🔍 [TreatmentPlanEditor] Using examination recommended service:",
+        examinationData.recommendedService
+      );
+      return examinationData.recommendedService.toUpperCase();
+    }
+
+    // Priority 3: Check patient info
+    if (patientInfo?.registeredService) {
+      console.log(
+        "🔍 [TreatmentPlanEditor] Using patient registered service:",
+        patientInfo.registeredService
+      );
+      return patientInfo.registeredService.toUpperCase();
+    }
+
+    // Priority 4: Check patient info for treatmentType
+    if (patientInfo?.treatmentType) {
+      console.log(
+        "🔍 [TreatmentPlanEditor] Using patient treatmentType:",
+        patientInfo.treatmentType
+      );
+      return patientInfo.treatmentType.toUpperCase();
+    }
+
+    // Priority 5: Check patient info for servicePackage
+    if (patientInfo?.servicePackage) {
+      console.log(
+        "🔍 [TreatmentPlanEditor] Using patient servicePackage:",
+        patientInfo.servicePackage
+      );
+      return patientInfo.servicePackage.toUpperCase();
+    }
+
+    // Default fallback
+    console.log("🔍 [TreatmentPlanEditor] Using default IUI");
+    return "IUI";
   };
 
-  const handleTemplateChange = useCallback((treatmentType) => {
-    const template = getTemplateByType(treatmentType);
-    setSelectedTemplate(template);
-    setCustomizations({
-      phases: {},
-      medications: {},
-      notes: "",
-    });
+  // Transform API treatment plan data to frontend format
+  const transformApiPlanToFrontend = (apiPlan) => {
+    if (!apiPlan) return null;
 
-    // Reset custom medications when changing template
-    setCustomMedications([]);
+    console.log("🔍 [TreatmentPlanEditor] Transforming API plan:", apiPlan);
 
-    // Generate doctor suggestions based on examination data
-    generateDoctorSuggestions(template);
-  }, []);
+    // Handle different API response formats
+    let planData = apiPlan;
+
+    // If API returns a wrapper object with phases, extract the plan
+    if (apiPlan.phases && Array.isArray(apiPlan.phases) && apiPlan.planId) {
+      console.log(
+        "🔍 [TreatmentPlanEditor] API plan has phases array, extracting plan data"
+      );
+      planData = {
+        planId: apiPlan.planId,
+        patientId: apiPlan.patientId,
+        doctorId: apiPlan.doctorId,
+        treatmentType: apiPlan.treatmentType,
+        planName: apiPlan.planName,
+        status: apiPlan.status,
+        startDate: apiPlan.startDate,
+        endDate: apiPlan.endDate,
+        // Extract treatment steps from phases if available
+        treatmentSteps: apiPlan.phases.map((phase, index) => ({
+          step: index + 1,
+          // Nếu phaseName là UUID (dài 36 ký tự, có dấu -), thì đặt tên mặc định
+          name:
+            phase.phaseName && /^[0-9a-fA-F-]{36}$/.test(phase.phaseName)
+              ? `Giai đoạn ${index + 1}`
+              : phase.phaseName || `Giai đoạn ${index + 1}`,
+          duration: phase.estimatedDuration || "5-7 ngày",
+          description: phase.description || "",
+          activities: Array.isArray(phase.activities) ? phase.activities : [], // Đảm bảo luôn là mảng
+        })),
+        notes: apiPlan.notes || "",
+      };
+      console.log("🔍 [TreatmentPlanEditor] Extracted plan data:", planData);
+    } else {
+      console.log("🔍 [TreatmentPlanEditor] API plan format:", {
+        hasPhases: !!apiPlan.phases,
+        isPhasesArray: Array.isArray(apiPlan.phases),
+        hasPlanId: !!apiPlan.planId,
+        planKeys: Object.keys(apiPlan),
+      });
+    }
+
+    const transformedPlan = {
+      id: planData.planId,
+      patientId: planData.patientId,
+      doctorId: planData.doctorId,
+      templateId: planData.templateId,
+      treatmentType: planData.treatmentType || "IUI", // Default to IUI if not provided
+      planName: planData.planName || `Plan ${planData.planId}`,
+      planDescription: planData.planDescription || "Phác đồ điều trị",
+      estimatedDuration: planData.estimatedDurationDays || 21,
+      estimatedCost: planData.estimatedCost || 0,
+      successRate: planData.successProbability || 0.7,
+      startDate: planData.startDate,
+      endDate: planData.endDate,
+      status: planData.status || "active",
+      notes: planData.notes || "",
+
+      // Transform treatment steps to phases format
+      finalPlan: {
+        phases:
+          planData.treatmentSteps && planData.treatmentSteps.length > 0
+            ? planData.treatmentSteps.map((step, index) => ({
+                id: `phase_${index}`,
+                name: step.name,
+                duration: step.duration,
+                description: step.description,
+                activities: Array.isArray(step.activities)
+                  ? step.activities
+                  : [], // Đảm bảo luôn là mảng
+                activitiesDetail:
+                  step.activities?.map((activity, actIndex) => ({
+                    id: `activity_${index}_${actIndex}`,
+                    name: activity,
+                    day: actIndex + 1,
+                    type: "procedure",
+                    department: "Khoa Sản",
+                    room: "Phòng khám 1",
+                    status: "pending",
+                    time: "09:00",
+                    duration: 60,
+                    priority: "normal",
+                    cost: 0,
+                    staff: "",
+                    preparation: "",
+                    followUp: "",
+                    notes: "",
+                    requirements: [],
+                  })) || [],
+                medications: [],
+              }))
+            : [
+                {
+                  id: "phase_0",
+                  name: "Giai đoạn điều trị",
+                  duration: "21 ngày",
+                  description: "Giai đoạn điều trị chính",
+                  activities: [],
+                  activitiesDetail: [],
+                  medications: [],
+                },
+              ],
+
+        medications: planData.medicationPlan || [],
+        monitoring: planData.monitoringSchedule || [],
+      },
+
+      // Customizations
+      customizations: {
+        phases: {},
+        medications: {},
+        notes: planData.notes || "",
+      },
+
+      customMedications: planData.medicationPlan || [],
+      doctorNotes: planData.notes || "",
+
+      // Metadata
+      createdDate: planData.createdDate,
+      updatedDate: planData.updatedDate,
+      isEdited: false,
+    };
+
+    // Đảm bảo mỗi phase luôn có activities là mảng
+    if (
+      transformedPlan.finalPlan &&
+      Array.isArray(transformedPlan.finalPlan.phases)
+    ) {
+      transformedPlan.finalPlan.phases = transformedPlan.finalPlan.phases.map(
+        (phase) => ({
+          ...phase,
+          activities: Array.isArray(phase.activities) ? phase.activities : [],
+        })
+      );
+    }
+
+    console.log("✅ [TreatmentPlanEditor] Transformed plan:", transformedPlan);
+    return transformedPlan;
+  };
+
+  const handleTemplateChange = useCallback(
+    async (treatmentType) => {
+      console.log(
+        "🔄 [TreatmentPlanEditor] handleTemplateChange called with:",
+        treatmentType
+      );
+
+      try {
+        // Thử load template từ API trước
+        const templateResponse = await apiTreatmentManagement.getTemplateByType(
+          treatmentType
+        );
+
+        if (templateResponse.success && templateResponse.data) {
+          // Sử dụng hàm chuyển đổi template từ backend sang FE
+          const template = chuyenDoiTemplateTuBackendSangFE(
+            templateResponse.data
+          );
+          console.log(
+            "✅ [TreatmentPlanEditor] Template loaded from API (đã chuyển đổi):",
+            template.name
+          );
+          setSelectedTemplate(template);
+          setTemplateLoadedFromAPI(true);
+          setTemplateLoading(false);
+          generateDoctorSuggestions(template);
+        } else {
+          console.warn(
+            `⚠️ [TreatmentPlanEditor] API template not found for type: ${treatmentType}, falling back to local template`
+          );
+
+          // Fallback to local template
+          const localTemplate = getTemplateByType(treatmentType);
+          if (localTemplate) {
+            setSelectedTemplate(localTemplate);
+            generateDoctorSuggestions(localTemplate);
+          } else {
+            console.warn(
+              `⚠️ [TreatmentPlanEditor] Local template not found for type: ${treatmentType}, falling back to IUI`
+            );
+            const fallbackTemplate = getTemplateByType("IUI");
+            if (fallbackTemplate) {
+              setSelectedTemplate(fallbackTemplate);
+              generateDoctorSuggestions(fallbackTemplate);
+            } else {
+              console.error(
+                "❌ [TreatmentPlanEditor] No fallback template available!"
+              );
+              // Create a minimal template to prevent errors
+              const minimalTemplate = {
+                id: "fallback",
+                name: "Template mặc định",
+                type: "IUI",
+                description: "Template mặc định cho điều trị",
+                phases: [],
+                requirements: [],
+                contraindications: [],
+                medications: [],
+                monitoring: [],
+              };
+              setSelectedTemplate(minimalTemplate);
+              generateDoctorSuggestions(minimalTemplate);
+            }
+          }
+        }
+      } catch (error) {
+        console.error(
+          "❌ [TreatmentPlanEditor] Error loading template from API:",
+          error
+        );
+
+        // Fallback to local template on error
+        const localTemplate = getTemplateByType(treatmentType);
+        if (localTemplate) {
+          setSelectedTemplate(localTemplate);
+          generateDoctorSuggestions(localTemplate);
+        } else {
+          const fallbackTemplate = getTemplateByType("IUI");
+          if (fallbackTemplate) {
+            setSelectedTemplate(fallbackTemplate);
+            generateDoctorSuggestions(fallbackTemplate);
+          }
+        }
+      }
+
+      setCustomizations({
+        phases: {},
+        medications: {},
+        notes: "",
+      });
+
+      // Reset custom medications when changing template
+      setCustomMedications([]);
+    },
+    [examinationData, patientInfo]
+  ); // Add dependencies for generateDoctorSuggestions
 
   const generateDoctorSuggestions = useCallback(
     (template) => {
+      console.log(
+        "🔄 [TreatmentPlanEditor] generateDoctorSuggestions called with template:",
+        template?.type
+      );
+
       let suggestions = [];
 
-      // Enhanced suggestions based on examination data
+      // Enhanced suggestions based on examination data and patient service
       if (
         examinationData?.diagnosis?.includes("tuổi cao") ||
         patientInfo?.age > 35
@@ -226,6 +885,29 @@ const TreatmentPlanEditor = ({
         );
       }
 
+      // Service-specific suggestions based on patient's registered service
+      const patientService =
+        patientInfo?.treatmentType || patientInfo?.servicePackage;
+      if (patientService) {
+        const serviceUpper = patientService.toUpperCase();
+        if (serviceUpper.includes("IVF")) {
+          suggestions.push("💡 IVF - cân nhắc ICSI nếu tinh trùng kém");
+          suggestions.push("💡 Có thể freeze phôi thừa để sử dụng sau");
+          suggestions.push(
+            "💡 Theo dõi kỹ OHSS (hội chứng quá kích thích buồng trứng)"
+          );
+        } else if (serviceUpper.includes("ICSI")) {
+          suggestions.push("💡 ICSI - phù hợp cho trường hợp tinh trùng yếu");
+          suggestions.push("💡 Theo dõi kỹ chất lượng phôi sau ICSI");
+          suggestions.push("💡 Có thể cần PGT-M nếu có bệnh di truyền");
+        } else if (serviceUpper.includes("IUI")) {
+          suggestions.push("💡 IUI - theo dõi kỹ thời điểm rụng trứng");
+          suggestions.push("💡 Nếu thất bại 3 lần, chuyển sang IVF");
+          suggestions.push("💡 Kiểm tra ống dẫn trứng thông thoáng");
+        }
+      }
+
+      // Template-specific suggestions
       if (template?.type === "IVF") {
         suggestions.push("💡 IVF - cân nhắc ICSI nếu tinh trùng kém");
         suggestions.push("💡 Có thể freeze phôi thừa để sử dụng sau");
@@ -240,13 +922,41 @@ const TreatmentPlanEditor = ({
         suggestions.push("💡 Kiểm tra ống dẫn trứng thông thoáng");
       }
 
-      setDoctorNotes(suggestions.join("\n"));
+      console.log(
+        "✅ [TreatmentPlanEditor] Generated suggestions:",
+        suggestions.length
+      );
+
+      // Only set doctor notes if we have suggestions
+      if (suggestions.length > 0) {
+        setDoctorNotes(suggestions.join("\n"));
+      } else {
+        setDoctorNotes("");
+      }
     },
     [examinationData, patientInfo]
   );
 
   const handleEditPhase = (phase) => {
-    setEditingPhase(JSON.parse(JSON.stringify(phase))); // Deep clone
+    // Đảm bảo phase có activitiesDetail và medications là mảng
+    const phaseWithActivitiesDetail = {
+      ...phase,
+      activitiesDetail: phase.activitiesDetail || phase.activities || [],
+      medications: Array.isArray(phase.medications) ? phase.medications : [],
+    };
+    // Nếu chưa có thuốc nào, tự động thêm một dòng trống để nhập
+    if (phaseWithActivitiesDetail.medications.length === 0) {
+      phaseWithActivitiesDetail.medications = [
+        {
+          name: "",
+          dosage: "",
+          frequency: "1 lần/ngày",
+          route: "Uống",
+          duration: "theo giai đoạn",
+        },
+      ];
+    }
+    setEditingPhase(JSON.parse(JSON.stringify(phaseWithActivitiesDetail))); // Deep clone
     setIsEditingPhase(true);
   };
 
@@ -260,15 +970,15 @@ const TreatmentPlanEditor = ({
   };
 
   const handleActivityChange = (activityIndex, field, value) => {
-    if (editingPhase && editingPhase.activities) {
-      const updatedActivities = [...editingPhase.activities];
+    if (editingPhase && editingPhase.activitiesDetail) {
+      const updatedActivities = [...editingPhase.activitiesDetail];
       updatedActivities[activityIndex] = {
         ...updatedActivities[activityIndex],
         [field]: value,
       };
       setEditingPhase((prev) => ({
         ...prev,
-        activities: updatedActivities,
+        activitiesDetail: updatedActivities,
       }));
     }
   };
@@ -276,8 +986,10 @@ const TreatmentPlanEditor = ({
   // New function to add activity
   const handleAddActivity = () => {
     if (editingPhase) {
+      const currentActivities =
+        editingPhase.activitiesDetail || editingPhase.activities || [];
       const newActivity = {
-        day: (editingPhase.activities?.length || 0) + 1,
+        day: currentActivities.length + 1,
         name: "",
         type: "procedure", // procedure, medication, test, consultation
         notes: "",
@@ -297,12 +1009,12 @@ const TreatmentPlanEditor = ({
       };
 
       const updatedActivities = [
-        ...(editingPhase.activities || []),
+        ...(editingPhase.activitiesDetail || []),
         newActivity,
       ];
       setEditingPhase((prev) => ({
         ...prev,
-        activities: updatedActivities,
+        activitiesDetail: updatedActivities,
       }));
     }
   };
@@ -317,12 +1029,12 @@ const TreatmentPlanEditor = ({
   // New function to save activity details
   const handleSaveActivityDetails = () => {
     if (editingActivity && editingActivityIndex !== null && editingPhase) {
-      const updatedActivities = [...editingPhase.activities];
+      const updatedActivities = [...editingPhase.activitiesDetail];
       updatedActivities[editingActivityIndex] = editingActivity;
 
       setEditingPhase((prev) => ({
         ...prev,
-        activities: updatedActivities,
+        activitiesDetail: updatedActivities,
       }));
       setIsEditingActivity(false);
       setEditingActivity(null);
@@ -410,7 +1122,14 @@ const TreatmentPlanEditor = ({
   // Get effective phase (customized or original)
   const getEffectivePhase = (phase) => {
     const customPhase = customizations.phases?.[phase.id];
-    return customPhase ? { ...phase, ...customPhase } : phase;
+    const effectivePhase = customPhase ? { ...phase, ...customPhase } : phase;
+
+    // Đảm bảo có activitiesDetail
+    return {
+      ...effectivePhase,
+      activitiesDetail:
+        effectivePhase.activitiesDetail || effectivePhase.activities || [],
+    };
   };
 
   const handleAddMedication = () => {
@@ -440,131 +1159,324 @@ const TreatmentPlanEditor = ({
   const handleSubmit = async (values) => {
     try {
       setLoading(true);
-
       // Validate required fields
       if (!selectedTemplate) {
-        // message.error("Vui lòng chọn phác đồ điều trị");
+        message.error("❌ Vui lòng chọn phác đồ điều trị");
         return;
       }
-
-      // Merge template with customizations
-      const finalPlan = {
-        ...selectedTemplate,
-        phases: selectedTemplate.phases.map((phase) => {
-          const customPhase = customizations.phases?.[phase.id];
-          return customPhase ? { ...phase, ...customPhase } : phase;
-        }),
-      };
-
+      // Build medicationPlan từ các phase
+      const medicationPlan = selectedTemplate?.phases?.reduce((acc, phase) => {
+        if (Array.isArray(phase.medications) && phase.medications.length > 0) {
+          acc.push({
+            phase: phase.name,
+            medications: phase.medications.map((med) => ({
+              name: med.name,
+              dosage: med.dosage,
+              frequency: med.frequency,
+              route: med.route,
+              duration: med.duration,
+            })),
+          });
+        }
+        return acc;
+      }, []);
+      // Build planData với các trường bắt buộc
       const planData = {
-        id: existingPlan?.id || Date.now().toString(),
-        patientId,
-        doctorId: examinationData?.doctorId || user?.id,
-        doctorName: user?.fullName || "Bác sĩ",
-        templateId: selectedTemplate.id,
-        templateName: selectedTemplate.name,
-        treatmentType: selectedTemplate.type,
-
-        // Plan details
-        estimatedStartDate:
-          values.startDate?.format("YYYY-MM-DD") ||
-          existingPlan?.estimatedStartDate ||
-          new Date().toISOString().split("T")[0],
-        estimatedDuration: selectedTemplate.estimatedDuration,
-        estimatedCost: selectedTemplate.cost,
-        successRate: selectedTemplate.successRate,
-
-        // Customizations
-        originalTemplate: selectedTemplate,
-        finalPlan: finalPlan,
-        customizations: customizations,
-        customMedications: customMedications,
-
-        // Additional data
-        basedOnExamination: examinationData?.id,
-        doctorNotes: doctorNotes,
-        planNotes: values.planNotes,
-
-        // Enhanced metadata for editing
-        createdDate:
-          existingPlan?.createdDate || new Date().toISOString().split("T")[0],
-        status: isEditing ? "updated" : "approved",
-        isEdited: isEditing,
-        editedAt: isEditing ? new Date().toISOString() : undefined,
-        originalPlan: isEditing ? existingPlan : undefined,
-        editCount: (existingPlan?.editCount || 0) + (isEditing ? 1 : 0),
-
-        // Phase summary for quick access
-        totalPhases: finalPlan.phases.length,
-        customizedPhases: Object.keys(customizations.phases || {}).length,
-
-        // Clinical context
-        patientDiagnosis: examinationData?.diagnosis,
-        patientAge: patientInfo?.age,
-        recommendedService: examinationData?.recommendedService,
+        patientId: patientId,
+        treatmentType: selectedTemplate?.type,
+        templateId: selectedTemplate?.id,
+        treatmentCycle: 1,
+        planName: selectedTemplate?.name,
+        planDescription:
+          selectedTemplate?.description ||
+          `Phác đồ ${selectedTemplate?.type} cho bệnh nhân`,
+        estimatedDurationDays:
+          parseInt(selectedTemplate?.estimatedDuration) || 21,
+        estimatedCost: parseFloat(selectedTemplate?.cost) || 0.0,
+        treatmentSteps: selectedTemplate?.phases?.map((phase, idx) => ({
+          step: idx + 1,
+          name: phase.name,
+          description: phase.description,
+          duration: phase.duration,
+          activities: (phase.activities || []).map((act) =>
+            typeof act === "string" ? act : act.name
+          ),
+        })),
+        medicationPlan: medicationPlan,
+        monitoringSchedule: [],
+        successProbability: parseFloat(selectedTemplate?.successRate) || 0.7,
+        riskFactors: examinationData?.diagnosis || "Cần theo dõi",
+        contraindications: "",
+        startDate:
+          values.startDate?.format("YYYY-MM-DDTHH:mm:ss") ||
+          new Date().toISOString().slice(0, 19),
+        endDate: null,
+        status: "draft",
+        notes: doctorNotes || values.planNotes || "",
       };
-
-      // Try to save via API
+      // Validate các trường bắt buộc
+      if (
+        !planData.patientId ||
+        !planData.treatmentType ||
+        !planData.templateId
+      ) {
+        message.error(
+          "❌ Thiếu thông tin bắt buộc (patientId, treatmentType, templateId)"
+        );
+        setLoading(false);
+        return;
+      }
+      // Xóa các trường undefined/null (nếu có)
+      Object.keys(planData).forEach((key) => {
+        if (planData[key] === undefined) {
+          delete planData[key];
+        }
+      });
+      console.log(
+        "🔍 [TreatmentPlanEditor] planData gửi backend:",
+        JSON.stringify(planData, null, 2)
+      );
       try {
-        const result = await treatmentPlanAPI.saveTreatmentPlan(planData);
+        let result;
+        if (isEditing && existingPlan?.id) {
+          // Nếu đang chỉnh sửa, luôn gọi API update
+          console.log(
+            "🔄 [TreatmentPlanEditor] Updating existing plan:",
+            existingPlan.id
+          );
+          result = await apiTreatmentManagement.modifyTreatmentPlan(
+            existingPlan.id,
+            planData
+          );
+        } else if (isEditing && existingPlan?.planId) {
+          // Fallback cho trường hợp sử dụng planId
+          console.log(
+            "🔄 [TreatmentPlanEditor] Updating existing plan with planId:",
+            existingPlan.planId
+          );
+          result = await apiTreatmentManagement.modifyTreatmentPlan(
+            existingPlan.planId,
+            planData
+          );
+        } else {
+          // Nếu chưa có plan, mới gọi API tạo mới
+          console.log("🆕 [TreatmentPlanEditor] Creating new treatment plan");
+          let resultId = null;
+          if (examinationData && examinationData.id) {
+            resultId = examinationData.id;
+          } else {
+            const clinicalResults =
+              await apiTreatmentManagement.getClinicalResultsByPatient(
+                patientId
+              );
+            if (clinicalResults.success && clinicalResults.data.length > 0) {
+              resultId = clinicalResults.data[0].id;
+            }
+          }
+          if (resultId) {
+            result =
+              await apiTreatmentManagement.createTreatmentPlanFromClinicalResult(
+                resultId,
+                planData
+              );
+          } else {
+            result = await treatmentPlanAPI.saveTreatmentPlan(planData);
+          }
+        }
         const savedPlan = result.success ? result.data : null;
         if (!isEditing) {
           localStorage.removeItem(`treatment_plan_draft_${patientId}`);
         }
-
         const actionText = isEditing ? "Cập nhật" : "Lưu";
+        message.success(`✅ ${actionText} phác đồ điều trị thành công!`);
 
-        // Log the data being passed to next step
-        console.log("📋 Data being passed to schedule:", savedPlan || planData);
+        // Cập nhật existing plan với dữ liệu mới
+        if (isEditing && savedPlan) {
+          const updatedPlan = transformApiPlanToFrontend(savedPlan);
+          setExistingPlan(updatedPlan);
+          setIsEditing(false);
+          setIsReadOnly(true);
+        }
 
-        // Update treatment state manager
+        // Phát ra sự kiện hoàn thành treatment plan để cập nhật thanh tiến độ
+        const treatmentPlanCompletedEvent = new CustomEvent(
+          "treatmentPlanCompleted",
+          {
+            detail: {
+              patientId: patientId,
+              data: savedPlan || planData,
+              stepIndex: 1,
+              stepName: "Lập phác đồ",
+              autoAdvance: !isEditing, // Chỉ auto advance khi tạo mới
+            },
+          }
+        );
+        window.dispatchEvent(treatmentPlanCompletedEvent);
+
+        // Phát ra sự kiện stepCompleted để đồng bộ với state manager
+        const stepCompletedEvent = new CustomEvent("stepCompleted", {
+          detail: {
+            patientId: patientId,
+            stepIndex: 1,
+            stepName: "Lập phác đồ",
+            data: savedPlan || planData,
+            autoAdvance: !isEditing, // Chỉ auto advance khi tạo mới
+          },
+        });
+        window.dispatchEvent(stepCompletedEvent);
+
+        // Cập nhật state manager
         treatmentStateManager.updateTreatmentPlan(
           patientId,
           savedPlan || planData
         );
 
-        // Call onNext with the saved plan data
-        if (onNext) {
-          onNext(savedPlan || planData);
+        // Sau khi lưu thành công, chuyển sang trạng thái đã lưu (chỉ khi tạo mới)
+        if (!isEditing) {
+          // Gọi lại API lấy phác đồ active để reload giao diện
+          await apiTreatmentManagement
+            .getActiveTreatmentPlan(patientId)
+            .then((response) => {
+              if (response.success && response.data) {
+                const frontendPlan = transformApiPlanToFrontend(response.data);
+                setExistingPlan(frontendPlan);
+                setIsEditing(false);
+                setIsReadOnly(true);
+              }
+            });
+          setIsCompleted(true);
+          setSubmittedPlan(savedPlan || planData);
         }
       } catch (apiError) {
-        // If API fails, still proceed with local data
-        console.warn("API save failed, using local data:", apiError);
-        // message.warning("Đã lưu phác đồ cục bộ. Hệ thống sẽ đồng bộ sau.");
-
-        console.log("📋 Local data being passed to schedule:", planData);
-
-        // Update treatment state manager (even if API failed)
-        treatmentStateManager.updateTreatmentPlan(patientId, planData);
-
-        if (onNext) {
-          onNext(planData);
+        console.error("❌ API Error:", apiError);
+        // Nếu có message chi tiết từ backend, show ra cho user
+        const backendMsg = apiError?.response?.data?.message;
+        if (backendMsg) {
+          message.error(`❌ ${backendMsg}`);
+        } else {
+          message.error("❌ Có lỗi xảy ra khi lưu phác đồ. Vui lòng thử lại!");
         }
       }
     } catch (error) {
       console.error("Error creating treatment plan:", error);
-      // message.error("❌ Có lỗi xảy ra khi lưu phác đồ. Vui lòng thử lại!");
+      message.error("❌ Có lỗi xảy ra khi lưu phác đồ. Vui lòng thử lại!");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSaveDraft = () => {
-    const currentValues = form.getFieldsValue();
-    const draftData = {
-      ...currentValues,
-      template: selectedTemplate,
-      customizations,
-      customMedications,
-      doctorNotes,
-      lastSaved: new Date().toISOString(),
-    };
+  // Khi muốn chỉnh sửa lại, cho phép quay lại form
+  const handleEdit = () => {
+    setIsCompleted(false);
+    setSubmittedPlan(null);
+  };
 
-    localStorage.setItem(
-      `treatment_plan_draft_${patientId}`,
-      JSON.stringify(draftData)
-    );
-    // message.success("💾 Đã lưu bản nháp thành công");
+  // Thêm function để bật chế độ chỉnh sửa
+  const handleEnableEdit = () => {
+    setIsReadOnly(false);
+    setIsEditing(true);
+    if (existingPlan) {
+      // Luôn lấy template chuẩn từ API khi chỉnh sửa
+      (async () => {
+        try {
+          const templateResponse =
+            await apiTreatmentManagement.getTemplateByType(
+              existingPlan.treatmentType
+            );
+          let mergedTemplate;
+          if (templateResponse.success && templateResponse.data) {
+            // Sử dụng hàm chuyển đổi template từ backend sang FE
+            const template = chuyenDoiTemplateTuBackendSangFE(
+              templateResponse.data
+            );
+            // Merge sâu customizations vào từng phase của template
+            mergedTemplate = { ...template };
+            if (
+              existingPlan.customizations &&
+              existingPlan.customizations.phases
+            ) {
+              mergedTemplate.phases = mergedTemplate.phases.map(
+                (phase, idx) => {
+                  const customPhase =
+                    existingPlan.customizations.phases[phase.id];
+                  if (customPhase) {
+                    // Merge sâu từng trường của phase
+                    return {
+                      ...phase,
+                      ...customPhase,
+                      // Nếu customPhase có activitiesDetail thì dùng, không thì lấy từ template
+                      activitiesDetail:
+                        customPhase.activitiesDetail ||
+                        phase.activitiesDetail ||
+                        phase.activities ||
+                        [],
+                      // Nếu customPhase có activities thì dùng, không thì lấy từ template
+                      activities:
+                        customPhase.activities || phase.activities || [],
+                      // Nếu customPhase có medications thì dùng, không thì lấy từ template
+                      medications:
+                        customPhase.medications || phase.medications || [],
+                      // Nếu customPhase có description/duration thì dùng, không thì lấy từ template
+                      description: customPhase.description || phase.description,
+                      duration: customPhase.duration || phase.duration,
+                    };
+                  }
+                  return phase;
+                }
+              );
+            }
+          } else {
+            // Fallback: dùng finalPlan nếu không lấy được template
+            mergedTemplate = existingPlan.finalPlan || existingPlan.template;
+          }
+          setSelectedTemplate(mergedTemplate);
+          setCustomizations(existingPlan.customizations || {});
+          setCustomMedications(existingPlan.customMedications || []);
+          setDoctorNotes(existingPlan.doctorNotes || "");
+          form.setFieldsValue({
+            treatmentType: existingPlan.treatmentType,
+            estimatedStartDate: existingPlan.startDate
+              ? dayjs(existingPlan.startDate)
+              : undefined,
+            doctorNotes: existingPlan.doctorNotes || "",
+          });
+          console.log("[handleEnableEdit] existingPlan:", existingPlan);
+          setTimeout(() => {
+            console.log(
+              "[handleEnableEdit] selectedTemplate after edit:",
+              mergedTemplate
+            );
+          }, 100);
+        } catch (error) {
+          console.error("[handleEnableEdit] Error loading template:", error);
+        }
+      })();
+    }
+    message.info("🔄 Đã chuyển sang chế độ chỉnh sửa");
+  };
+
+  // Thêm function để hủy chỉnh sửa
+  const handleCancelEdit = () => {
+    setIsReadOnly(true);
+    setIsEditing(false);
+    // Reload lại dữ liệu gốc
+    if (existingPlan) {
+      const template = existingPlan.finalPlan || existingPlan.template;
+      if (template) {
+        setSelectedTemplate(template);
+        setCustomizations(existingPlan.customizations || {});
+        setCustomMedications(existingPlan.customMedications || []);
+        setDoctorNotes(existingPlan.doctorNotes || "");
+
+        form.setFieldsValue({
+          treatmentType: existingPlan.treatmentType,
+          estimatedStartDate: existingPlan.startDate
+            ? dayjs(existingPlan.startDate)
+            : undefined,
+        });
+      }
+    }
+    message.info("❌ Đã hủy chỉnh sửa");
   };
 
   // Columns for phases table
@@ -582,22 +1494,38 @@ const TreatmentPlanEditor = ({
     },
     {
       title: "Hoạt động chính",
-      dataIndex: "activities",
-      key: "activities",
-      render: (activities) => (
-        <div>
-          {activities.slice(0, 2).map((activity, index) => (
-            <Tag key={index} style={{ marginBottom: 4 }}>
-              Ngày {activity.day}: {activity.name}
-            </Tag>
-          ))}
-          {activities.length > 2 && (
-            <Text type="secondary">
-              +{activities.length - 2} hoạt động khác
-            </Text>
-          )}
-        </div>
-      ),
+      dataIndex: "activitiesDetail",
+      key: "activitiesDetail",
+      render: (activitiesDetail, record) => {
+        // Sử dụng activitiesDetail nếu có, nếu không thì parse từ activities string
+        const activities =
+          activitiesDetail ||
+          (record.activities || []).map((act) => {
+            if (typeof act === "string") {
+              // Parse string thành object đơn giản
+              return { name: act, day: 1, type: "activity" };
+            }
+            return act;
+          });
+
+        return (
+          <div>
+            {activities?.slice(0, 2).map((activity, index) => (
+              <Tag key={index} style={{ marginBottom: 4 }}>
+                {activity.day ? `Ngày ${activity.day}: ` : ""}
+                {activity.name}
+                {activity.time && ` (${activity.time})`}
+                {activity.department && ` - ${activity.department}`}
+              </Tag>
+            ))}
+            {activities?.length > 2 && (
+              <Text type="secondary">
+                +{activities.length - 2} hoạt động khác
+              </Text>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: "Thuốc",
@@ -605,12 +1533,12 @@ const TreatmentPlanEditor = ({
       key: "medications",
       render: (medications) => (
         <div>
-          {medications.slice(0, 2).map((med, index) => (
+          {medications?.slice(0, 2).map((med, index) => (
             <Tag color="blue" key={index} style={{ marginBottom: 4 }}>
               {med.name}
             </Tag>
           ))}
-          {medications.length > 2 && (
+          {medications?.length > 2 && (
             <Text type="secondary">+{medications.length - 2} thuốc khác</Text>
           )}
         </div>
@@ -620,13 +1548,13 @@ const TreatmentPlanEditor = ({
 
   // New function to remove activity
   const handleRemoveActivity = (activityIndex) => {
-    if (editingPhase && editingPhase.activities) {
-      const updatedActivities = editingPhase.activities.filter(
+    if (editingPhase && editingPhase.activitiesDetail) {
+      const updatedActivities = editingPhase.activitiesDetail.filter(
         (_, index) => index !== activityIndex
       );
       setEditingPhase((prev) => ({
         ...prev,
-        activities: updatedActivities,
+        activitiesDetail: updatedActivities,
       }));
       // message.success("✅ Đã xóa hoạt động");
     }
@@ -743,6 +1671,15 @@ const TreatmentPlanEditor = ({
       suggestions.push("Theo dõi kỹ phản ứng buồng trứng");
     }
 
+    // Nếu không có gợi ý nào, trả về gợi ý mặc định
+    if (suggestions.length === 0) {
+      return [
+        "Khám sức khỏe tổng quát",
+        "Tư vấn dinh dưỡng",
+        "Theo dõi sức khỏe",
+        "Xét nghiệm cơ bản",
+      ];
+    }
     return suggestions;
   };
 
@@ -820,148 +1757,482 @@ const TreatmentPlanEditor = ({
     return suggestions;
   };
 
+  // Debug function to check API status
+  const debugAPIStatus = useCallback(async () => {
+    console.log("🔍 [TreatmentPlanEditor] === DEBUG API STATUS ===");
+    console.log("Patient ID:", patientId);
+    console.log("User:", user);
+    console.log("Patient Info:", patientInfo);
+    console.log("Examination Data:", examinationData);
+    console.log("Doctor Specialty:", doctorSpecialty);
+
+    try {
+      // Test getActiveTreatmentPlan
+      console.log("🔍 Testing getActiveTreatmentPlan...");
+      const planResponse = await apiTreatmentManagement.getActiveTreatmentPlan(
+        patientId
+      );
+      console.log("Plan Response:", planResponse);
+
+      // Test getTemplateByType
+      console.log("🔍 Testing getTemplateByType...");
+      const templateResponse = await apiTreatmentManagement.getTemplateByType(
+        "IUI"
+      );
+      console.log("Template Response:", templateResponse);
+
+      // Test getCurrentUserRole
+      console.log("🔍 Testing getCurrentUserRole...");
+      const userRole = apiTreatmentManagement.getCurrentUserRole();
+      console.log("User Role:", userRole);
+
+      // Test getRoleAppropriateEndpoint
+      console.log("🔍 Testing getRoleAppropriateEndpoint...");
+      const endpoint = apiTreatmentManagement.getRoleAppropriateEndpoint(
+        patientId,
+        "treatment-phases"
+      );
+      console.log("Endpoint:", endpoint);
+    } catch (error) {
+      console.error("❌ Debug API Error:", error);
+    }
+
+    console.log("🔍 [TreatmentPlanEditor] === END DEBUG ===");
+  }, [patientId, user, patientInfo, examinationData, doctorSpecialty]);
+
+  // Debug function để kiểm tra trạng thái
+  const debugComponentState = () => {
+    console.log("🔍 [TreatmentPlanEditor] Current State:", {
+      isReadOnly,
+      isEditing,
+      isCompleted,
+      hasExistingPlan: !!existingPlan,
+      selectedTemplate: !!selectedTemplate,
+      loading,
+      patientId,
+      userRole: user?.role,
+    });
+
+    if (existingPlan) {
+      console.log("📋 [TreatmentPlanEditor] Existing Plan Details:", {
+        id: existingPlan.id,
+        planId: existingPlan.planId,
+        treatmentType: existingPlan.treatmentType,
+        status: existingPlan.status,
+        finalPlan: !!existingPlan.finalPlan,
+        template: !!existingPlan.template,
+      });
+    }
+  };
+
+  // Debug function để kiểm tra template loading
+  const debugTemplateLoading = async () => {
+    console.log("🔍 [debugTemplateLoading] Starting template debug...");
+
+    if (existingPlan?.treatmentType) {
+      console.log(
+        "🔍 [debugTemplateLoading] Loading template for type:",
+        existingPlan.treatmentType
+      );
+
+      try {
+        const templateResponse = await apiTreatmentManagement.getTemplateByType(
+          existingPlan.treatmentType
+        );
+        console.log(
+          "📡 [debugTemplateLoading] Template API Response:",
+          templateResponse
+        );
+
+        if (templateResponse.success && templateResponse.data) {
+          const template = apiTreatmentManagement.transformTemplateData(
+            templateResponse.data
+          );
+          console.log(
+            "✅ [debugTemplateLoading] Transformed template:",
+            template
+          );
+          setSelectedTemplate(template);
+          message.success("✅ Template loaded successfully!");
+        } else {
+          console.error(
+            "❌ [debugTemplateLoading] Failed to load template:",
+            templateResponse.message
+          );
+          message.error(
+            `❌ Failed to load template: ${templateResponse.message}`
+          );
+        }
+      } catch (error) {
+        console.error(
+          "❌ [debugTemplateLoading] Error loading template:",
+          error
+        );
+        message.error("❌ Error loading template");
+      }
+    } else {
+      console.warn(
+        "⚠️ [debugTemplateLoading] No treatment type found in existing plan"
+      );
+      message.warning("⚠️ No treatment type found");
+    }
+  };
+
+  // Debug function để force reload template từ existing plan
+  const forceReloadTemplate = async () => {
+    console.log("🔄 [forceReloadTemplate] Force reloading template...");
+
+    if (!existingPlan?.treatmentType) {
+      message.error("❌ No treatment type found in existing plan");
+      return;
+    }
+
+    try {
+      // Load template từ API
+      const templateResponse = await apiTreatmentManagement.getTemplateByType(
+        existingPlan.treatmentType
+      );
+
+      if (templateResponse.success && templateResponse.data) {
+        // Sử dụng hàm chuyển đổi template từ backend sang FE
+        const template = chuyenDoiTemplateTuBackendSangFE(
+          templateResponse.data
+        );
+        setSelectedTemplate(template);
+
+        // Set form values
+        form.setFieldsValue({
+          treatmentType: existingPlan.treatmentType,
+          estimatedStartDate: existingPlan.startDate
+            ? dayjs(existingPlan.startDate)
+            : undefined,
+          doctorNotes: existingPlan.doctorNotes || "",
+        });
+
+        // Set other states
+        setCustomizations(existingPlan.customizations || {});
+        setCustomMedications(existingPlan.customMedications || []);
+        setDoctorNotes(existingPlan.doctorNotes || "");
+
+        console.log(
+          "✅ [forceReloadTemplate] Template reloaded successfully:",
+          template
+        );
+        message.success("✅ Template reloaded successfully!");
+      } else {
+        console.error(
+          "❌ [forceReloadTemplate] Failed to load template:",
+          templateResponse.message
+        );
+        message.error(
+          `❌ Failed to load template: ${templateResponse.message}`
+        );
+      }
+    } catch (error) {
+      console.error("❌ [forceReloadTemplate] Error:", error);
+      message.error("❌ Error reloading template");
+    }
+  };
+
+  // Add debug button to UI (temporary)
+  useEffect(() => {
+    // Add debug function to window for testing
+    window.debugTreatmentPlanEditor = debugAPIStatus;
+    console.log(
+      "🔍 [TreatmentPlanEditor] Debug function added to window.debugTreatmentPlanEditor"
+    );
+  }, [debugAPIStatus]);
+
+  // Thêm log chi tiết về dữ liệu phases trước khi render bảng
+  console.log("selectedTemplate.phases", selectedTemplate?.phases);
+  if (selectedTemplate?.phases) {
+    selectedTemplate.phases.forEach((phase, idx) => {
+      console.log(`Phase ${idx}:`, phase);
+    });
+  }
+
+  // Banner trạng thái phác đồ
+  const renderPlanStatusBanner = () => {
+    if (!existingPlan) return null;
+    let color = "#1890ff";
+    let text = "Phác đồ nháp";
+    if (existingPlan.status === "active") {
+      color = "#52c41a";
+      text = "Phác đồ đang điều trị";
+    } else if (existingPlan.status === "completed") {
+      color = "#faad14";
+      text = "Phác đồ đã hoàn thành";
+    } else if (existingPlan.status === "cancelled") {
+      color = "#ff4d4f";
+      text = "Phác đồ đã hủy";
+    }
+    return (
+      <div
+        className={`plan-banner plan-banner--${existingPlan.status || "draft"}`}
+      >
+        <span>{text}</span>
+        <span>Mã phác đồ: {existingPlan.id || existingPlan.planId}</span>
+      </div>
+    );
+  };
+
+  // Sticky nút chỉnh sửa/lưu
+  const renderStickyActionBar = () => {
+    if (!existingPlan) return null;
+    return (
+      <div className="sticky-action-bar">
+        {!isEditing ? (
+          <Button
+            type="primary"
+            icon={<EditOutlined />}
+            onClick={handleEnableEdit}
+            size="large"
+          >
+            Chỉnh sửa phác đồ
+          </Button>
+        ) : (
+          <Button
+            type="primary"
+            icon={<SaveOutlined />}
+            htmlType="submit"
+            size="large"
+            loading={loading}
+            style={{ minWidth: 120 }}
+          >
+            Lưu/Cập nhật
+          </Button>
+        )}
+      </div>
+    );
+  };
+
+  // Tổng quan phác đồ
+  const renderPlanOverview = () => {
+    if (!existingPlan) return null;
+    return (
+      <Descriptions
+        bordered
+        size="small"
+        column={2}
+        style={{ marginBottom: 16 }}
+        labelStyle={{ fontWeight: 600 }}
+      >
+        <Descriptions.Item label="Tên phác đồ">
+          {existingPlan.planName}
+        </Descriptions.Item>
+        <Descriptions.Item label="Trạng thái">
+          {existingPlan.status}
+        </Descriptions.Item>
+        <Descriptions.Item label="Ngày bắt đầu">
+          {existingPlan.startDate
+            ? dayjs(existingPlan.startDate).format("DD/MM/YYYY")
+            : "-"}
+        </Descriptions.Item>
+        <Descriptions.Item label="Bác sĩ phụ trách">
+          {doctorSpecialty || "-"}
+        </Descriptions.Item>
+      </Descriptions>
+    );
+  };
+
+  // Cảnh báo khi có thay đổi chưa lưu
+  useEffect(() => {
+    if (!isEditing) return;
+    const handleBeforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = "Bạn có thay đổi chưa lưu. Rời trang sẽ mất dữ liệu.";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isEditing]);
+
   return (
     <div className="treatment-plan-container">
-      <div className="treatment-plan-content">
-        {hasError ? (
-          <Card className="error-card">
-            <Alert
-              message="Có lỗi xảy ra"
-              description="Vui lòng tải lại trang hoặc liên hệ hỗ trợ kỹ thuật."
-              type="error"
-              showIcon
-              action={
+      {existingPlan && isReadOnly ? (
+        <Card className="treatment-plan-main-card">
+          <div className="treatment-plan-header">
+            <Title level={2} className="treatment-plan-title">
+              <Space>
+                <MedicineBoxOutlined className="title-icon" />
+                Phác Đồ Điều Trị Đã Tạo
+              </Space>
+            </Title>
+          </div>
+          <div className="treatment-plan-body">
+            <Descriptions
+              title="Thông tin phác đồ"
+              bordered
+              column={1}
+              size="middle"
+              style={{ marginBottom: 24 }}
+            >
+              <Descriptions.Item label="Tên phác đồ">
+                {existingPlan.planName}
+              </Descriptions.Item>
+              <Descriptions.Item label="Loại điều trị">
+                {existingPlan.treatmentType}
+              </Descriptions.Item>
+              <Descriptions.Item label="Thời gian dự kiến">
+                {existingPlan.estimatedDurationDays ||
+                  existingPlan.estimatedDuration}{" "}
+                ngày
+              </Descriptions.Item>
+              <Descriptions.Item label="Chi phí dự kiến">
+                {existingPlan.estimatedCost?.toLocaleString("vi-VN")} VNĐ
+              </Descriptions.Item>
+              <Descriptions.Item label="Ghi chú">
+                {existingPlan.notes || existingPlan.doctorNotes || "-"}
+              </Descriptions.Item>
+            </Descriptions>
+
+            {/* Nút chỉnh sửa phác đồ */}
+            <div className="view-mode-actions">
+              <Space size="large">
                 <Button
-                  size="small"
-                  className="action-btn primary-btn"
-                  onClick={() => {
-                    setHasError(false);
-                    window.location.reload();
-                  }}
+                  type="primary"
+                  size="large"
+                  icon={<EditOutlined />}
+                  onClick={handleEnableEdit}
+                  className="action-btn edit-action-btn"
                 >
-                  Tải lại
+                  ✏️ Chỉnh Sửa Phác Đồ
                 </Button>
-              }
-            />
-          </Card>
-        ) : (
-          <>
-            <Card className="treatment-plan-main-card">
-              <div className="treatment-plan-header">
-                <Title level={2} className="treatment-plan-title">
-                  <Space>
-                    <MedicineBoxOutlined className="title-icon" />
-                    Lập Phác Đồ Điều Trị Cá Nhân Hóa
-                  </Space>
-                </Title>
-              </div>
-
-              <div className="treatment-plan-body">
-                {/* Thông tin bệnh nhân và chẩn đoán */}
-                <Card className="patient-diagnosis-section">
-                  <div className="section-title">
-                    <UserOutlined className="section-icon" />
-                    <span>Thông tin bệnh nhân & Chẩn đoán</span>
-                  </div>
-                  <Row gutter={16}>
-                    <Col span={8}>
-                      <div>
-                        <Text strong style={{ color: "var(--primary-dark)" }}>
-                          Bệnh nhân:
-                        </Text>
-                        <br />
-                        <Text style={{ fontSize: "16px" }}>
-                          {patientInfo?.name}
-                        </Text>
-                        <br />
-                        <br />
-                        <Text strong style={{ color: "var(--primary-dark)" }}>
-                          Chẩn đoán:
-                        </Text>
-                        <br />
-                        <Text style={{ fontSize: "14px" }}>
-                          {examinationData?.diagnosis}
-                        </Text>
-                      </div>
-                    </Col>
-                    <Col span={8}>
-                      <div>
-                        <Text strong style={{ color: "var(--primary-dark)" }}>
-                          Khuyến nghị:
-                        </Text>
-                        <br />
-                        <Text style={{ fontSize: "14px" }}>
-                          {examinationData?.recommendations}
-                        </Text>
-                      </div>
-                    </Col>
-                    <Col span={8}>
-                      <div>
-                        <Text strong style={{ color: "var(--primary-dark)" }}>
-                          Bác sĩ khám:
-                        </Text>
-                        <br />
-                        <Text style={{ fontSize: "14px" }}>
-                          {examinationData?.doctorId}
-                        </Text>
-                      </div>
-                    </Col>
-                  </Row>
-                </Card>
-
-                <Form
-                  form={form}
-                  layout="vertical"
-                  onFinish={handleSubmit}
-                  className="treatment-form"
+                <Button
+                  type="default"
+                  size="large"
+                  icon={<FileTextOutlined />}
+                  onClick={() => {
+                    // Có thể thêm logic để xem chi tiết phác đồ
+                    message.info("📋 Xem chi tiết phác đồ điều trị");
+                  }}
+                  className="action-btn secondary-btn"
                 >
-                  <Form.Item
-                    label="Chọn loại điều trị"
-                    name="treatmentType"
-                    rules={[
-                      {
-                        required: true,
-                        message: "Vui lòng chọn loại điều trị",
-                      },
-                    ]}
-                  >
-                    <Select
-                      placeholder="Chọn dịch vụ điều trị..."
-                      onChange={handleTemplateChange}
-                      size="large"
-                      className="treatment-type-select"
+                  📋 Xem Chi Tiết
+                </Button>
+              </Space>
+            </div>
+
+            {/* Hiển thị các bước điều trị nếu có */}
+            {existingPlan.finalPlan?.phases &&
+              existingPlan.finalPlan.phases.length > 0 && (
+                <div style={{ marginTop: 24 }}>
+                  <Title level={4}>Các Giai Đoạn Điều Trị</Title>
+                  <Collapse
+                    accordion
+                    items={existingPlan.finalPlan.phases.map(
+                      (phase, index) => ({
+                        key: phase.id || index,
+                        label: `${index + 1}. ${phase.name} (${
+                          phase.duration
+                        })`,
+                        children: (
+                          <div>
+                            <p>
+                              <strong>Mô tả:</strong> {phase.description}
+                            </p>
+                            {phase.activities &&
+                              phase.activities.length > 0 && (
+                                <div>
+                                  <p>
+                                    <strong>Hoạt động:</strong>
+                                  </p>
+                                  <ul>
+                                    {phase.activities.map(
+                                      (activity, actIndex) => (
+                                        <li key={actIndex}>{activity}</li>
+                                      )
+                                    )}
+                                  </ul>
+                                </div>
+                              )}
+                          </div>
+                        ),
+                      })
+                    )}
+                  />
+                </div>
+              )}
+          </div>
+        </Card>
+      ) : (
+        <>
+          {console.log("🔍 [Render] Rendering edit mode:", {
+            isEditing,
+            hasExistingPlan: !!existingPlan,
+            hasSelectedTemplate: !!selectedTemplate,
+            isReadOnly,
+          })}
+          <Card className="treatment-plan-main-card">
+            <div className="treatment-plan-header">
+              <Title
+                level={2}
+                className={`treatment-plan-title ${
+                  isEditing && existingPlan ? "edit-mode-title" : ""
+                }`}
+              >
+                <Space>
+                  <MedicineBoxOutlined className="title-icon" />
+                  {isEditing && existingPlan
+                    ? "Chỉnh Sửa Phác Đồ Điều Trị"
+                    : "Lập Phác Đồ Điều Trị Cá Nhân Hóa"}
+                  {isEditing && existingPlan && (
+                    <Tag
+                      color="orange"
+                      icon={<EditOutlined />}
+                      className="edit-mode-indicator"
                     >
-                      <Option value="IVF">
-                        🧪 IVF - Thụ tinh trong ống nghiệm
-                      </Option>
-                      <Option value="IUI">
-                        💉 IUI - Thụ tinh nhân tạo trong tử cung
-                      </Option>
-                    </Select>
-                  </Form.Item>
-
-                  {/* Gợi ý của bác sĩ */}
-                  {doctorNotes && (
-                    <Alert
-                      message="💡 Gợi ý từ hệ thống dựa trên kết quả khám"
-                      description={
-                        <pre
-                          style={{
-                            whiteSpace: "pre-line",
-                            fontFamily: "inherit",
-                          }}
-                        >
-                          {doctorNotes}
-                        </pre>
-                      }
-                      type="info"
-                      showIcon
-                      className="doctor-suggestions-alert"
-                    />
+                      Đang chỉnh sửa
+                    </Tag>
                   )}
+                </Space>
+              </Title>
+            </div>
+            <div className="treatment-plan-body">
+              <Form
+                form={form}
+                layout="vertical"
+                onFinish={handleSubmit}
+                className="treatment-form"
+                disabled={isReadOnly}
+              >
+                {/* Hidden treatment type field - automatically set based on patient's service */}
+                <Form.Item
+                  name="treatmentType"
+                  hidden={true}
+                  initialValue={getRecommendedTreatment()}
+                >
+                  <Input disabled={!isEditing} />
+                </Form.Item>
 
-                  {/* Template Details with Real-time Updates */}
-                  {selectedTemplate && (
+                {/* Template Details with Real-time Updates */}
+                {console.log("🔍 [Render] Checking selectedTemplate:", {
+                  hasSelectedTemplate: !!selectedTemplate,
+                  templateName: selectedTemplate?.name,
+                  templateType: selectedTemplate?.type,
+                  hasPhases: !!selectedTemplate?.phases,
+                  phasesLength: selectedTemplate?.phases?.length,
+                  isReadOnly,
+                  isEditing,
+                })}
+                {templateLoadedFromAPI &&
+                  selectedTemplate &&
+                  selectedTemplate.name &&
+                  selectedTemplate.type &&
+                  selectedTemplate.phases && (
+                    <div className="template-details-card">
+                      <strong>🔍 DEBUG: Template should be visible here</strong>
+                      <p>Template Name: {selectedTemplate.name}</p>
+                      <p>Template Type: {selectedTemplate.type}</p>
+                      <p>
+                        Phases Count: {selectedTemplate.phases?.length || 0}
+                      </p>
+                    </div>
+                  )}
+                {templateLoadedFromAPI &&
+                  selectedTemplate &&
+                  selectedTemplate.name &&
+                  selectedTemplate.type &&
+                  selectedTemplate.phases && (
                     <Card
                       className="template-details-card"
                       title={
@@ -1015,7 +2286,7 @@ const TreatmentPlanEditor = ({
 
                       <Collapse
                         accordion
-                        items={selectedTemplate.phases.map((phase, index) => {
+                        items={selectedTemplate?.phases?.map((phase, index) => {
                           const effectivePhase = getEffectivePhase(phase);
                           const isCustomized =
                             customizations.phases?.[phase.id];
@@ -1069,7 +2340,7 @@ const TreatmentPlanEditor = ({
                               </Space>
                             ),
                             children: (
-                              <div>
+                              <div className="phase-section">
                                 <div style={{ marginBottom: 16 }}>
                                   <Text strong>Mô tả:</Text>{" "}
                                   {effectivePhase.description}
@@ -1089,8 +2360,8 @@ const TreatmentPlanEditor = ({
                                   size="small"
                                   dataSource={effectivePhase.activities}
                                   pagination={false}
-                                  rowKey={(record, index) =>
-                                    `activity-${index}`
+                                  rowKey={(record) =>
+                                    `activity-${record.name}-${record.day}`
                                   }
                                   columns={[
                                     {
@@ -1135,6 +2406,7 @@ const TreatmentPlanEditor = ({
                                       ),
                                     },
                                   ]}
+                                  style={{ marginBottom: 0 }}
                                 />
 
                                 {/* Medications for this phase */}
@@ -1148,8 +2420,8 @@ const TreatmentPlanEditor = ({
                                         size="small"
                                         dataSource={effectivePhase.medications}
                                         pagination={false}
-                                        rowKey={(record, index) =>
-                                          `medication-${index}`
+                                        rowKey={(record) =>
+                                          `medication-${record.name}-${record.startDay}`
                                         }
                                         columns={[
                                           {
@@ -1180,6 +2452,7 @@ const TreatmentPlanEditor = ({
                                             ),
                                           },
                                         ]}
+                                        style={{ marginBottom: 0 }}
                                       />
                                     </div>
                                   )}
@@ -1191,1469 +2464,668 @@ const TreatmentPlanEditor = ({
                     </Card>
                   )}
 
-                  {/* Custom Medications */}
-                  {customMedications.length > 0 && (
-                    <Card
-                      className="custom-medications-card"
-                      title={
-                        <div className="section-title">
-                          <MedicineBoxOutlined className="section-icon" />
-                          <span>Thuốc tùy chỉnh thêm</span>
-                        </div>
-                      }
-                      size="small"
-                    >
-                      {customMedications.map((med) => (
-                        <Card
-                          key={med.id}
-                          type="inner"
-                          size="small"
-                          style={{ marginBottom: 8 }}
-                        >
-                          <Row gutter={8}>
-                            <Col span={6}>
-                              <Input
-                                placeholder="Tên thuốc"
-                                value={med.name}
-                                onChange={(e) =>
-                                  handleUpdateMedication(
-                                    med.id,
-                                    "name",
-                                    e.target.value
-                                  )
-                                }
-                              />
-                            </Col>
-                            <Col span={4}>
-                              <Input
-                                placeholder="Liều lượng"
-                                value={med.dosage}
-                                onChange={(e) =>
-                                  handleUpdateMedication(
-                                    med.id,
-                                    "dosage",
-                                    e.target.value
-                                  )
-                                }
-                              />
-                            </Col>
-                            <Col span={4}>
-                              <Input
-                                placeholder="Tần suất"
-                                value={med.frequency}
-                                onChange={(e) =>
-                                  handleUpdateMedication(
-                                    med.id,
-                                    "frequency",
-                                    e.target.value
-                                  )
-                                }
-                              />
-                            </Col>
-                            <Col span={3}>
-                              <Select
-                                value={med.route}
-                                onChange={(value) =>
-                                  handleUpdateMedication(med.id, "route", value)
-                                }
-                              >
-                                <Option value="Uống">Uống</Option>
-                                <Option value="Tiêm">Tiêm</Option>
-                                <Option value="Bôi">Bôi</Option>
-                              </Select>
-                            </Col>
-                            <Col span={3}>
-                              <InputNumber
-                                placeholder="Ngày bắt đầu"
-                                value={med.startDay}
-                                onChange={(value) =>
-                                  handleUpdateMedication(
-                                    med.id,
-                                    "startDay",
-                                    value
-                                  )
-                                }
-                                min={1}
-                              />
-                            </Col>
-                            <Col span={3}>
-                              <InputNumber
-                                placeholder="Thời gian (ngày)"
-                                value={med.duration}
-                                onChange={(value) =>
-                                  handleUpdateMedication(
-                                    med.id,
-                                    "duration",
-                                    value
-                                  )
-                                }
-                                min={1}
-                              />
-                            </Col>
-                            <Col span={1}>
-                              <Popconfirm
-                                title="Xóa thuốc này?"
-                                onConfirm={() => handleDeleteMedication(med.id)}
-                              >
-                                <Button
-                                  icon={<DeleteOutlined />}
-                                  size="small"
-                                  danger
-                                />
-                              </Popconfirm>
-                            </Col>
-                          </Row>
-                        </Card>
-                      ))}
-                    </Card>
-                  )}
-
-                  {/* Requirements and Contraindications */}
-                  {selectedTemplate && (
-                    <>
-                      <Row gutter={16} style={{ marginTop: 16 }}>
-                        <Col span={12}>
-                          <Card
-                            className="requirements-card"
-                            title={
-                              <div className="section-title">
-                                <CheckCircleOutlined className="section-icon" />
-                                <span>Yêu cầu</span>
-                              </div>
-                            }
-                            size="small"
-                          >
-                            <ul>
-                              {selectedTemplate.requirements.map(
-                                (req, index) => (
-                                  <li key={index}>
-                                    <Text>{req}</Text>
-                                  </li>
-                                )
-                              )}
-                            </ul>
-                          </Card>
-                        </Col>
-                        <Col span={12}>
-                          <Card
-                            className="contraindications-card"
-                            title={
-                              <div className="section-title">
-                                <ExclamationCircleOutlined className="section-icon" />
-                                <span>Chống chỉ định</span>
-                              </div>
-                            }
-                            size="small"
-                          >
-                            <ul>
-                              {selectedTemplate.contraindications.map(
-                                (contra, index) => (
-                                  <li key={index}>
-                                    <Text type="danger">{contra}</Text>
-                                  </li>
-                                )
-                              )}
-                            </ul>
-                          </Card>
-                        </Col>
-                      </Row>
-                    </>
-                  )}
-
-                  <Form.Item
-                    label="Mức độ ưu tiên"
-                    name="priority"
-                    style={{ marginTop: 16 }}
-                  >
-                    <Select>
-                      <Option value="high">🔴 Cao (Khẩn cấp)</Option>
-                      <Option value="normal">🟡 Bình thường</Option>
-                      <Option value="low">🟢 Thấp</Option>
-                    </Select>
-                  </Form.Item>
-
-                  <Form.Item
-                    label="Ghi chú riêng của bác sĩ"
-                    name="doctorNotes"
-                    tooltip="Những điều chỉnh, lưu ý đặc biệt cho bệnh nhân này"
-                  >
-                    <Input.TextArea
-                      rows={4}
-                      placeholder="VD: Bệnh nhân có tiền sử dị ứng với thuốc X, cần theo dõi đặc biệt giai đoạn Y..."
-                      value={doctorNotes}
-                      onChange={(e) => setDoctorNotes(e.target.value)}
-                    />
-                  </Form.Item>
-
-                  <Form.Item className="form-actions">
-                    <Space size="large">
-                      <Button
-                        icon={<SaveOutlined />}
-                        onClick={handleSaveDraft}
-                        disabled={!selectedTemplate}
-                        className="action-btn draft-btn"
-                      >
-                        Lưu nháp
-                      </Button>
-                      <Button
-                        type="primary"
-                        htmlType="submit"
-                        loading={loading}
-                        size="large"
-                        disabled={!selectedTemplate}
-                        className="action-btn primary-btn"
-                        icon={<CheckCircleOutlined />}
-                      >
-                        Xác nhận phác đồ & Lập lịch
-                      </Button>
-                    </Space>
-                  </Form.Item>
-                </Form>
-              </div>
-            </Card>
-
-            {/* Edit Phase Modal */}
-            <Modal
-              className="treatment-plan-modal"
-              title={
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: "12px" }}
-                >
-                  <div
-                    style={{
-                      width: "40px",
-                      height: "40px",
-                      borderRadius: "50%",
-                      backgroundColor: "#1890ff",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "18px",
-                    }}
-                  >
-                    ⚙️
-                  </div>
-                  <div>
-                    <div
-                      style={{
-                        fontSize: "18px",
-                        fontWeight: "600",
-                        color: "#1890ff",
-                      }}
-                    >
-                      Chỉnh sửa giai đoạn
-                    </div>
-                    <div
-                      style={{
-                        fontSize: "14px",
-                        color: "#666",
-                        fontWeight: "normal",
-                      }}
-                    >
-                      {editingPhase?.name}
-                    </div>
-                  </div>
-                </div>
-              }
-              open={isEditingPhase}
-              onOk={handleSavePhaseEdit}
-              onCancel={handleCancelPhaseEdit}
-              width={1000}
-              okText="💾 Lưu thay đổi"
-              cancelText="❌ Hủy"
-              style={{ top: 20 }}
-              styles={{
-                body: {
-                  padding: "24px",
-                  backgroundColor: "#fafafa",
-                },
-              }}
-              footer={[
-                <Button
-                  key="test"
-                  type="dashed"
-                  onClick={() => {
-                    if (editingPhase) {
-                      // Add sample data for testing
-                      const sampleActivity = {
-                        day: (editingPhase.activities?.length || 0) + 1,
-                        name: "Tiêm FSH theo chỉ định - TEST",
-                        type: "medication",
-                      };
-                      const sampleMedication = {
-                        name: "Gonal-F (TEST)",
-                        dosage: "150 IU/ngày",
-                        frequency: "1 lần/ngày",
-                      };
-
-                      setEditingPhase((prev) => ({
-                        ...prev,
-                        activities: [
-                          ...(prev.activities || []),
-                          sampleActivity,
-                        ],
-                        medications: [
-                          ...(prev.medications || []),
-                          sampleMedication,
-                        ],
-                      }));
-
-                      // message.success("🧪 Đã thêm dữ liệu mẫu cho test");
+                {/* Custom Medications */}
+                {customMedications?.length > 0 && (
+                  <Card
+                    className="custom-medications-card"
+                    title={
+                      <div className="section-title">
+                        <MedicineBoxOutlined className="section-icon" />
+                        <span>Thuốc tùy chỉnh thêm</span>
+                      </div>
                     }
+                    size="small"
+                  >
+                    {customMedications?.map((med) => (
+                      <Card
+                        key={med.id}
+                        type="inner"
+                        size="small"
+                        style={{ marginBottom: 8 }}
+                      >
+                        <Row gutter={8}>
+                          <Col span={6}>
+                            <Input
+                              placeholder="Tên thuốc"
+                              value={med.name}
+                              onChange={(e) =>
+                                handleUpdateMedication(
+                                  med.id,
+                                  "name",
+                                  e.target.value
+                                )
+                              }
+                            />
+                          </Col>
+                          <Col span={4}>
+                            <Input
+                              placeholder="Liều lượng"
+                              value={med.dosage}
+                              onChange={(e) =>
+                                handleUpdateMedication(
+                                  med.id,
+                                  "dosage",
+                                  e.target.value
+                                )
+                              }
+                            />
+                          </Col>
+                          <Col span={4}>
+                            <Input
+                              placeholder="Tần suất"
+                              value={med.frequency}
+                              onChange={(e) =>
+                                handleUpdateMedication(
+                                  med.id,
+                                  "frequency",
+                                  e.target.value
+                                )
+                              }
+                            />
+                          </Col>
+                          <Col span={3}>
+                            <Select
+                              value={med.route}
+                              onChange={(value) =>
+                                handleUpdateMedication(med.id, "route", value)
+                              }
+                            >
+                              <Option value="Uống">Uống</Option>
+                              <Option value="Tiêm">Tiêm</Option>
+                              <Option value="Bôi">Bôi</Option>
+                            </Select>
+                          </Col>
+                          <Col span={3}>
+                            <InputNumber
+                              placeholder="Ngày bắt đầu"
+                              value={med.startDay}
+                              onChange={(value) =>
+                                handleUpdateMedication(
+                                  med.id,
+                                  "startDay",
+                                  value
+                                )
+                              }
+                              min={1}
+                            />
+                          </Col>
+                          <Col span={3}>
+                            <InputNumber
+                              placeholder="Thời gian (ngày)"
+                              value={med.duration}
+                              onChange={(value) =>
+                                handleUpdateMedication(
+                                  med.id,
+                                  "duration",
+                                  value
+                                )
+                              }
+                              min={1}
+                            />
+                          </Col>
+                          <Col span={1}>
+                            <Popconfirm
+                              title="Xóa thuốc này?"
+                              onConfirm={() => handleDeleteMedication(med.id)}
+                            >
+                              <Button
+                                icon={<DeleteOutlined />}
+                                size="small"
+                                danger
+                              />
+                            </Popconfirm>
+                          </Col>
+                        </Row>
+                      </Card>
+                    ))}
+                  </Card>
+                )}
+
+                <Form.Item
+                  label="Mức độ ưu tiên"
+                  name="priority"
+                  style={{ marginTop: 16 }}
+                >
+                  <Select>
+                    <Option value="high">🔴 Cao (Khẩn cấp)</Option>
+                    <Option value="normal">🟡 Bình thường</Option>
+                    <Option value="low">🟢 Thấp</Option>
+                  </Select>
+                </Form.Item>
+
+                <Form.Item
+                  label="Ghi chú riêng của bác sĩ"
+                  name="doctorNotes"
+                  tooltip="Những điều chỉnh, lưu ý đặc biệt cho bệnh nhân này"
+                >
+                  <Input.TextArea
+                    rows={4}
+                    placeholder="VD: Bệnh nhân có tiền sử dị ứng với thuốc X, cần theo dõi đặc biệt giai đoạn Y..."
+                    value={doctorNotes}
+                    onChange={(e) => setDoctorNotes(e.target.value)}
+                  />
+                </Form.Item>
+
+                <Form.Item className="form-actions">
+                  <Space>
+                    <Button
+                      type="primary"
+                      htmlType="submit"
+                      loading={loading}
+                      size="large"
+                      disabled={
+                        isReadOnly ||
+                        !selectedTemplate ||
+                        (!isEditing && existingPlan)
+                      }
+                      className="action-btn primary-btn"
+                      icon={<CheckCircleOutlined />}
+                    >
+                      {isEditing
+                        ? "Cập nhật phác đồ"
+                        : "Xác nhận phác đồ & Lập lịch"}
+                    </Button>
+
+                    {/* Nút hủy chỉnh sửa khi đang trong chế độ chỉnh sửa */}
+                    {isEditing && existingPlan && (
+                      <Button
+                        type="default"
+                        size="large"
+                        onClick={handleCancelEdit}
+                        icon={<ExclamationCircleOutlined />}
+                        className="action-btn cancel-edit-btn"
+                      >
+                        ❌ Hủy Chỉnh Sửa
+                      </Button>
+                    )}
+                  </Space>
+                </Form.Item>
+              </Form>
+            </div>
+          </Card>
+        </>
+      )}
+      {isEditingPhase && editingPhase && (
+        <Modal
+          className="treatment-plan-modal phase-edit-modal-custom"
+          open={isEditingPhase}
+          title={
+            <div
+              style={{
+                background:
+                  "linear-gradient(135deg, #ff7eb3 0%, #ff758c 50%, #ff6b9d 100%)",
+                color: "#fff",
+                padding: "18px 32px",
+                borderRadius: "8px",
+                fontWeight: 700,
+                fontSize: 22,
+                letterSpacing: 1,
+                display: "flex",
+                alignItems: "center",
+                minHeight: 56,
+                margin: "-24px -24px 16px -24px",
+              }}
+            >
+              <span style={{ color: "#fff", textShadow: "0 2px 8px #0002" }}>
+                Chỉnh sửa giai đoạn:{" "}
+                <span style={{ fontWeight: 900 }}>{editingPhase.name}</span>
+              </span>
+            </div>
+          }
+          onCancel={handleCancelPhaseEdit}
+          onOk={handleSavePhaseEdit}
+          okText="Lưu"
+          cancelText="Hủy"
+          width={1200}
+        >
+          <div className="phase-edit-section">
+            <Form layout="vertical">
+              <div
+                style={{
+                  display: "flex",
+                  gap: 16,
+                  marginBottom: 24,
+                  flexWrap: "wrap",
+                }}
+              >
+                <Form.Item
+                  label="Tên giai đoạn"
+                  style={{ flex: 2, minWidth: 180 }}
+                >
+                  <Input
+                    value={editingPhase.name}
+                    onChange={(e) =>
+                      handlePhaseFieldChange("name", e.target.value)
+                    }
+                  />
+                </Form.Item>
+                <Form.Item label="Mô tả" style={{ flex: 3, minWidth: 220 }}>
+                  <Input
+                    value={editingPhase.description}
+                    onChange={(e) =>
+                      handlePhaseFieldChange("description", e.target.value)
+                    }
+                  />
+                </Form.Item>
+                <Form.Item label="Thời gian" style={{ flex: 1, minWidth: 120 }}>
+                  <Input
+                    value={editingPhase.duration}
+                    onChange={(e) =>
+                      handlePhaseFieldChange("duration", e.target.value)
+                    }
+                  />
+                </Form.Item>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 40,
+                  marginBottom: 8,
+                  flexWrap: "wrap",
+                  alignItems: "flex-start",
+                }}
+              >
+                {/* Hoạt động */}
+                <div
+                  style={{
+                    flex: 1,
+                    minWidth: 500,
+                    background: "#fafbfc",
+                    padding: 28,
+                    borderRadius: 12,
+                    boxShadow: "0 1px 8px #e0e0e0",
+                    marginBottom: 16,
                   }}
                 >
-                  🧪 Test thêm mẫu
-                </Button>,
-                <Button key="cancel" onClick={handleCancelPhaseEdit}>
-                  ❌ Hủy
-                </Button>,
-                <Button key="save" type="primary" onClick={handleSavePhaseEdit}>
-                  💾 Lưu thay đổi
-                </Button>,
-              ]}
-            >
-              {editingPhase && (
-                <div>
-                  <Form layout="vertical">
-                    <Row gutter={16}>
-                      <Col span={12}>
-                        <Form.Item label="Tên giai đoạn">
-                          <Input
-                            value={editingPhase.name}
-                            onChange={(e) =>
-                              handlePhaseFieldChange("name", e.target.value)
-                            }
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col span={12}>
-                        <Form.Item label="Thời gian (ngày)">
-                          <Input
-                            value={editingPhase.duration}
-                            onChange={(e) =>
-                              handlePhaseFieldChange("duration", e.target.value)
-                            }
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-
-                    <Form.Item label="Mô tả chi tiết">
-                      <Input.TextArea
-                        rows={3}
-                        value={editingPhase.description}
-                        onChange={(e) =>
-                          handlePhaseFieldChange("description", e.target.value)
-                        }
-                      />
-                    </Form.Item>
-
-                    <Row gutter={16}>
-                      <Col span={12}>
-                        <Card
-                          title="Hoạt động"
-                          size="small"
-                          extra={
-                            <Space>
-                              <Button
-                                type="primary"
-                                size="small"
-                                icon={<PlusOutlined />}
-                                onClick={handleAddActivity}
-                              >
-                                Thêm
-                              </Button>
-                              <Select
-                                size="small"
-                                placeholder="Gợi ý hoạt động"
-                                style={{ width: 200 }}
-                                showSearch
-                                allowClear
-                                onSelect={(value) => {
-                                  const newActivity = {
-                                    day:
-                                      (editingPhase.activities?.length || 0) +
-                                      1,
-                                    name: value,
-                                    type: "procedure",
-                                  };
-                                  const updatedActivities = [
-                                    ...(editingPhase.activities || []),
-                                    newActivity,
-                                  ];
-                                  setEditingPhase((prev) => ({
-                                    ...prev,
-                                    activities: updatedActivities,
-                                  }));
-                                }}
-                              >
-                                {getActivitySuggestions(
-                                  editingPhase?.name || ""
-                                ).map((suggestion, index) => (
-                                  <Option key={index} value={suggestion}>
-                                    {suggestion}
-                                  </Option>
-                                ))}
-                              </Select>
-                            </Space>
-                          }
-                        >
-                          <div
-                            style={{
-                              maxHeight: "400px",
-                              overflowY: "auto",
-                              paddingRight: "8px",
-                            }}
-                          >
-                            {editingPhase.activities?.map((activity, index) => (
-                              <Card
-                                key={`activity-${index}`}
-                                size="small"
-                                style={{
-                                  marginBottom: "12px",
-                                  borderRadius: "12px",
-                                  border: "1px solid #e8f4fd",
-                                  backgroundColor: "#fafcff",
-                                  transition: "all 0.3s ease",
-                                  boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
-                                }}
-                                hoverable
-                                styles={{ body: { padding: "16px" } }}
-                              >
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "flex-start",
-                                    gap: "12px",
-                                  }}
-                                >
-                                  {/* Day Badge */}
-                                  <div
-                                    style={{
-                                      flex: "0 0 auto",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      width: "56px",
-                                      height: "56px",
-                                      borderRadius: "50%",
-                                      backgroundColor: "#1890ff",
-                                      color: "white",
-                                      fontWeight: "bold",
-                                      fontSize: "11px",
-                                      textAlign: "center",
-                                      lineHeight: "1.2",
-                                    }}
-                                  >
-                                    Ngày
-                                    <br />
-                                    {activity.day}
-                                  </div>
-
-                                  {/* Activity Content */}
-                                  <div
-                                    style={{
-                                      flex: 1,
-                                      display: "flex",
-                                      flexDirection: "column",
-                                      gap: "8px",
-                                    }}
-                                  >
-                                    {/* Activity Name Input */}
-                                    <Input
-                                      value={activity.name}
-                                      onChange={(e) => {
-                                        const updatedActivities = [
-                                          ...editingPhase.activities,
-                                        ];
-                                        updatedActivities[index] = {
-                                          ...updatedActivities[index],
-                                          name: e.target.value,
-                                        };
-                                        setEditingPhase((prev) => ({
-                                          ...prev,
-                                          activities: updatedActivities,
-                                        }));
-                                      }}
-                                      placeholder="Nhập tên hoạt động..."
-                                      style={{
-                                        fontSize: "14px",
-                                        fontWeight: "500",
-                                        border: "1px solid #d9d9d9",
-                                        borderRadius: "6px",
-                                      }}
-                                    />
-
-                                    {/* Activity Info Tags */}
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "8px",
-                                        flexWrap: "wrap",
-                                      }}
-                                    >
-                                      {/* Activity Type Icon */}
-                                      <Tag
-                                        color="geekblue"
-                                        style={{
-                                          margin: 0,
-                                          fontSize: "11px",
-                                          borderRadius: "4px",
-                                        }}
-                                      >
-                                        {activity.type === "procedure"
-                                          ? "🏥"
-                                          : activity.type === "medication"
-                                          ? "💊"
-                                          : activity.type === "test"
-                                          ? "🔬"
-                                          : activity.type === "consultation"
-                                          ? "💬"
-                                          : activity.type === "monitoring"
-                                          ? "📊"
-                                          : "📋"}
-                                        {activity.type === "procedure"
-                                          ? "Thủ thuật"
-                                          : activity.type === "medication"
-                                          ? "Thuốc"
-                                          : activity.type === "test"
-                                          ? "Xét nghiệm"
-                                          : activity.type === "consultation"
-                                          ? "Tư vấn"
-                                          : activity.type === "monitoring"
-                                          ? "Theo dõi"
-                                          : "Chuẩn bị"}
-                                      </Tag>
-
-                                      {/* Time */}
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          alignItems: "center",
-                                          gap: "4px",
-                                          color: "#666",
-                                          fontSize: "12px",
-                                          backgroundColor: "#f5f5f5",
-                                          padding: "2px 6px",
-                                          borderRadius: "4px",
-                                        }}
-                                      >
-                                        🕒 {activity.time || "09:00"}
-                                        {activity.duration
-                                          ? ` (${activity.duration}p)`
-                                          : ""}
-                                      </div>
-
-                                      {/* Department */}
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          alignItems: "center",
-                                          gap: "4px",
-                                          color: "#666",
-                                          fontSize: "12px",
-                                          backgroundColor: "#f0f9ff",
-                                          padding: "2px 6px",
-                                          borderRadius: "4px",
-                                        }}
-                                      >
-                                        📍{" "}
-                                        {getDepartmentOptions()
-                                          .find(
-                                            (d) =>
-                                              d.value === activity.department
-                                          )
-                                          ?.label?.split(" ")[1] ||
-                                          "Phòng khám"}
-                                        {activity.room && ` - ${activity.room}`}
-                                      </div>
-
-                                      {/* Staff */}
-                                      {activity.staff && (
-                                        <div
-                                          style={{
-                                            display: "flex",
-                                            alignItems: "center",
-                                            gap: "4px",
-                                            color: "#666",
-                                            fontSize: "12px",
-                                            backgroundColor: "#f6ffed",
-                                            padding: "2px 6px",
-                                            borderRadius: "4px",
-                                          }}
-                                        >
-                                          👨‍⚕️ {activity.staff}
-                                        </div>
-                                      )}
-
-                                      {/* Priority Tag */}
-                                      {activity.priority &&
-                                        activity.priority !== "normal" && (
-                                          <Tag
-                                            color={
-                                              activity.priority === "urgent"
-                                                ? "red"
-                                                : activity.priority === "high"
-                                                ? "orange"
-                                                : activity.priority === "low"
-                                                ? "green"
-                                                : "blue"
-                                            }
-                                            style={{
-                                              margin: 0,
-                                              fontSize: "11px",
-                                            }}
-                                          >
-                                            {activity.priority === "urgent"
-                                              ? "🔴 Khẩn cấp"
-                                              : activity.priority === "high"
-                                              ? "🟠 Cao"
-                                              : activity.priority === "low"
-                                              ? "🟢 Thấp"
-                                              : "🟡 Bình thường"}
-                                          </Tag>
-                                        )}
-                                    </div>
-
-                                    {/* Cost Display */}
-                                    {activity.cost && (
-                                      <div
-                                        style={{
-                                          fontSize: "12px",
-                                          color: "#52c41a",
-                                          fontWeight: "500",
-                                        }}
-                                      >
-                                        💰{" "}
-                                        {activity.cost?.toLocaleString("vi-VN")}{" "}
-                                        VNĐ
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  {/* Status & Actions */}
-                                  <div
-                                    style={{
-                                      flex: "0 0 auto",
-                                      display: "flex",
-                                      flexDirection: "column",
-                                      alignItems: "flex-end",
-                                      gap: "8px",
-                                    }}
-                                  >
-                                    {/* Status Badge */}
-                                    <Tag
-                                      color={
-                                        getStatusOptions().find(
-                                          (s) => s.value === activity.status
-                                        )?.color || "blue"
-                                      }
-                                      style={{
-                                        borderRadius: "8px",
-                                        fontWeight: "500",
-                                      }}
-                                    >
-                                      {getStatusOptions()
-                                        .find(
-                                          (s) => s.value === activity.status
-                                        )
-                                        ?.label?.split(" ")[1] || "Kế hoạch"}
-                                    </Tag>
-
-                                    {/* Action Buttons */}
-                                    <div
-                                      style={{ display: "flex", gap: "6px" }}
-                                    >
-                                      <Button
-                                        type="primary"
-                                        icon={<EditOutlined />}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleEditActivityDetails(
-                                            activity,
-                                            index
-                                          );
-                                        }}
-                                        size="small"
-                                        style={{
-                                          borderRadius: "6px",
-                                          boxShadow:
-                                            "0 2px 4px rgba(24, 144, 255, 0.2)",
-                                        }}
-                                      >
-                                        Chi tiết
-                                      </Button>
-
-                                      <Button
-                                        danger
-                                        icon={<DeleteOutlined />}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleRemoveActivity(index);
-                                        }}
-                                        size="small"
-                                        style={{
-                                          borderRadius: "6px",
-                                          boxShadow:
-                                            "0 2px 4px rgba(255, 77, 79, 0.2)",
-                                        }}
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-                              </Card>
-                            ))}
-                          </div>
-
-                          {(!editingPhase.activities ||
-                            editingPhase.activities.length === 0) && (
-                            <div
-                              style={{
-                                textAlign: "center",
-                                padding: "40px 20px",
-                                backgroundColor: "#f9f9f9",
-                                borderRadius: "8px",
-                                border: "2px dashed #d9d9d9",
-                                margin: "16px 0",
-                              }}
+                  <div
+                    style={{ fontWeight: 600, fontSize: 16, marginBottom: 8 }}
+                  >
+                    Hoạt động
+                  </div>
+                  <Form.Item style={{ marginBottom: 8 }}>
+                    <Table
+                      size="small"
+                      dataSource={editingPhase.activitiesDetail || []}
+                      pagination={false}
+                      rowKey={(record, idx) => `activity-${idx}`}
+                      columns={[
+                        {
+                          title: "Tên hoạt động",
+                          dataIndex: "name",
+                          key: "name",
+                          render: (text, record, idx) => (
+                            <Input
+                              value={text}
+                              placeholder={`Tên hoạt động #${idx + 1}`}
+                              onChange={(e) =>
+                                handleActivityChange(
+                                  idx,
+                                  "name",
+                                  e.target.value
+                                )
+                              }
+                            />
+                          ),
+                        },
+                        {
+                          title: "Ngày",
+                          dataIndex: "day",
+                          key: "day",
+                          width: 80,
+                          render: (text, record, idx) => (
+                            <Input
+                              value={text}
+                              placeholder="Ngày"
+                              style={{ width: 60 }}
+                              onChange={(e) =>
+                                handleActivityChange(idx, "day", e.target.value)
+                              }
+                            />
+                          ),
+                        },
+                        {
+                          title: "Loại",
+                          dataIndex: "type",
+                          key: "type",
+                          width: 120,
+                          render: (text, record, idx) => (
+                            <Select
+                              value={text || "procedure"}
+                              style={{ width: 110 }}
+                              onChange={(value) =>
+                                handleActivityChange(idx, "type", value)
+                              }
                             >
-                              <div
-                                style={{
-                                  fontSize: "48px",
-                                  marginBottom: "16px",
-                                }}
-                              >
-                                📋
-                              </div>
-                              <Text
-                                type="secondary"
-                                style={{
-                                  fontSize: "16px",
-                                  display: "block",
-                                  marginBottom: "8px",
-                                }}
-                              >
-                                Chưa có hoạt động nào
-                              </Text>
-                              <Text
-                                type="secondary"
-                                style={{ fontSize: "14px" }}
-                              >
-                                Click <strong>"Thêm"</strong> để thêm hoạt động
-                                mới hoặc chọn từ <strong>gợi ý</strong> phía
-                                trên.
-                              </Text>
-                            </div>
-                          )}
-                        </Card>
-                      </Col>
-
-                      <Col span={12}>
-                        <Card
-                          title="Thuốc điều trị"
-                          size="small"
-                          extra={
-                            <Space>
-                              <Button
-                                type="primary"
-                                size="small"
-                                icon={<PlusOutlined />}
-                                onClick={handleAddPhaseMedication}
-                              >
-                                Thêm
-                              </Button>
-                              <Select
-                                size="small"
-                                placeholder="Gợi ý thuốc"
-                                style={{ width: 200 }}
-                                showSearch
-                                allowClear
-                                onSelect={(value) => {
-                                  const suggestions = getMedicationSuggestions(
-                                    editingPhase?.name || ""
-                                  );
-                                  const selectedMed = suggestions.find(
-                                    (med) => med.name === value
-                                  );
-
-                                  const newMedication = selectedMed || {
-                                    name: value,
-                                    dosage: "",
-                                    frequency: "1 lần/ngày",
-                                  };
-
-                                  const updatedMedications = [
-                                    ...(editingPhase.medications || []),
-                                    newMedication,
-                                  ];
-                                  setEditingPhase((prev) => ({
-                                    ...prev,
-                                    medications: updatedMedications,
-                                  }));
-                                }}
-                              >
-                                {getMedicationSuggestions(
-                                  editingPhase?.name || ""
-                                ).map((suggestion, index) => (
-                                  <Option key={index} value={suggestion.name}>
-                                    <div>
-                                      <Text strong>{suggestion.name}</Text>
-                                      <br />
-                                      <Text
-                                        type="secondary"
-                                        style={{ fontSize: "12px" }}
-                                      >
-                                        {suggestion.dosage} -{" "}
-                                        {suggestion.frequency}
-                                      </Text>
-                                    </div>
-                                  </Option>
-                                ))}
-                              </Select>
-                            </Space>
-                          }
-                        >
-                          <div
-                            style={{
-                              maxHeight: "400px",
-                              overflowY: "auto",
-                              paddingRight: "8px",
-                            }}
-                          >
-                            {editingPhase.medications?.map((med, index) => (
-                              <Card
-                                key={`medication-${index}`}
-                                size="small"
-                                style={{
-                                  marginBottom: "12px",
-                                  borderRadius: "12px",
-                                  border: "1px solid #e8f0fe",
-                                  backgroundColor: "#fbfcff",
-                                  transition: "all 0.3s ease",
-                                  boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
-                                }}
-                                hoverable
-                                styles={{ body: { padding: "16px" } }}
-                              >
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "flex-start",
-                                    gap: "12px",
-                                  }}
-                                >
-                                  {/* Medicine Icon */}
-                                  <div
-                                    style={{
-                                      flex: "0 0 auto",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      width: "56px",
-                                      height: "56px",
-                                      borderRadius: "50%",
-                                      backgroundColor: "#52c41a",
-                                      color: "white",
-                                      fontSize: "24px",
-                                    }}
-                                  >
-                                    💊
-                                  </div>
-
-                                  {/* Medicine Content */}
-                                  <div
-                                    style={{
-                                      flex: 1,
-                                      display: "flex",
-                                      flexDirection: "column",
-                                      gap: "8px",
-                                    }}
-                                  >
-                                    {/* Medicine Name */}
-                                    <Input
-                                      value={med.name}
-                                      placeholder="Tên thuốc..."
-                                      style={{
-                                        fontSize: "14px",
-                                        fontWeight: "500",
-                                        border: "1px solid #d9d9d9",
-                                        borderRadius: "6px",
-                                      }}
-                                      onChange={(e) => {
-                                        const newMeds = [
-                                          ...editingPhase.medications,
-                                        ];
-                                        newMeds[index] = {
-                                          ...med,
-                                          name: e.target.value,
-                                        };
-                                        handlePhaseFieldChange(
-                                          "medications",
-                                          newMeds
-                                        );
-                                      }}
-                                    />
-
-                                    {/* Dosage */}
-                                    <Input
-                                      value={med.dosage}
-                                      placeholder="Liều lượng (VD: 150 IU/ngày)"
-                                      style={{
-                                        fontSize: "13px",
-                                        border: "1px solid #d9d9d9",
-                                        borderRadius: "6px",
-                                      }}
-                                      onChange={(e) => {
-                                        const newMeds = [
-                                          ...editingPhase.medications,
-                                        ];
-                                        newMeds[index] = {
-                                          ...med,
-                                          dosage: e.target.value,
-                                        };
-                                        handlePhaseFieldChange(
-                                          "medications",
-                                          newMeds
-                                        );
-                                      }}
-                                    />
-
-                                    {/* Frequency */}
-                                    <Select
-                                      value={med.frequency}
-                                      placeholder="Tần suất sử dụng"
-                                      style={{
-                                        width: "100%",
-                                        fontSize: "13px",
-                                      }}
-                                      onChange={(value) => {
-                                        const newMeds = [
-                                          ...editingPhase.medications,
-                                        ];
-                                        newMeds[index] = {
-                                          ...med,
-                                          frequency: value,
-                                        };
-                                        handlePhaseFieldChange(
-                                          "medications",
-                                          newMeds
-                                        );
-                                      }}
-                                    >
-                                      <Option value="1 lần/ngày">
-                                        🕘 1 lần/ngày
-                                      </Option>
-                                      <Option value="2 lần/ngày">
-                                        🕘 2 lần/ngày
-                                      </Option>
-                                      <Option value="3 lần/ngày">
-                                        🕘 3 lần/ngày
-                                      </Option>
-                                      <Option value="1 lần/ngày tối">
-                                        🌙 1 lần/ngày tối
-                                      </Option>
-                                      <Option value="1 lần/ngày sáng">
-                                        🌅 1 lần/ngày sáng
-                                      </Option>
-                                      <Option value="khi cần">
-                                        ⚡ Khi cần
-                                      </Option>
-                                      <Option value="theo chu kỳ">
-                                        🔄 Theo chu kỳ
-                                      </Option>
-                                    </Select>
-
-                                    {/* Medicine Info Tags */}
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "6px",
-                                        flexWrap: "wrap",
-                                        marginTop: "4px",
-                                      }}
-                                    >
-                                      <Tag
-                                        color="green"
-                                        style={{
-                                          margin: 0,
-                                          fontSize: "11px",
-                                          borderRadius: "4px",
-                                        }}
-                                      >
-                                        💊 Thuốc điều trị
-                                      </Tag>
-
-                                      {med.route && (
-                                        <Tag
-                                          color="blue"
-                                          style={{
-                                            margin: 0,
-                                            fontSize: "11px",
-                                            borderRadius: "4px",
-                                          }}
-                                        >
-                                          🎯 {med.route}
-                                        </Tag>
-                                      )}
-
-                                      {med.duration && (
-                                        <Tag
-                                          color="orange"
-                                          style={{
-                                            margin: 0,
-                                            fontSize: "11px",
-                                            borderRadius: "4px",
-                                          }}
-                                        >
-                                          ⏱️ {med.duration}
-                                        </Tag>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  {/* Delete Button */}
-                                  <div
-                                    style={{
-                                      flex: "0 0 auto",
-                                      display: "flex",
-                                      alignItems: "flex-start",
-                                    }}
-                                  >
-                                    <Button
-                                      danger
-                                      icon={<DeleteOutlined />}
-                                      onClick={() =>
-                                        handleRemovePhaseMedication(index)
-                                      }
-                                      size="small"
-                                      style={{
-                                        borderRadius: "6px",
-                                        boxShadow:
-                                          "0 2px 4px rgba(255, 77, 79, 0.2)",
-                                      }}
-                                    />
-                                  </div>
-                                </div>
-                              </Card>
-                            ))}
-                          </div>
-
-                          {(!editingPhase.medications ||
-                            editingPhase.medications.length === 0) && (
-                            <div
-                              style={{
-                                textAlign: "center",
-                                padding: "40px 20px",
-                                backgroundColor: "#f6ffed",
-                                borderRadius: "8px",
-                                border: "2px dashed #b7eb8f",
-                                margin: "16px 0",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  fontSize: "48px",
-                                  marginBottom: "16px",
-                                }}
-                              >
-                                💊
-                              </div>
-                              <Text
-                                type="secondary"
-                                style={{
-                                  fontSize: "16px",
-                                  display: "block",
-                                  marginBottom: "8px",
-                                }}
-                              >
-                                Chưa có thuốc nào
-                              </Text>
-                              <Text
-                                type="secondary"
-                                style={{ fontSize: "14px" }}
-                              >
-                                Click <strong>"Thêm"</strong> để thêm thuốc mới
-                                hoặc chọn từ <strong>gợi ý</strong> phía trên.
-                              </Text>
-                            </div>
-                          )}
-                        </Card>
-                      </Col>
-                    </Row>
-                  </Form>
-                </div>
-              )}
-            </Modal>
-
-            {/* Detailed Activity Editing Modal */}
-            <Modal
-              className="doctor-modal"
-              title={
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
-                >
-                  <EditOutlined style={{ color: "#1890ff" }} />
-                  <span>Chi tiết hoạt động</span>
-                </div>
-              }
-              open={isEditingActivity}
-              onOk={handleSaveActivityDetails}
-              onCancel={handleCancelActivityEdit}
-              width={800}
-              okText="💾 Lưu thay đổi"
-              cancelText="❌ Hủy"
-              okButtonProps={{
-                type: "primary",
-                disabled: !editingActivity?.name?.trim(),
-              }}
-            >
-              {editingActivity && (
-                <div style={{ padding: "16px 0" }}>
-                  {/* Basic Information */}
-                  <Row gutter={[16, 16]}>
-                    <Col span={12}>
-                      <div style={{ marginBottom: "8px" }}>
-                        <Text strong>
-                          Tên hoạt động <span style={{ color: "red" }}>*</span>
-                        </Text>
-                      </div>
-                      <Input
-                        value={editingActivity.name}
-                        onChange={(e) =>
-                          handleActivityFieldChange("name", e.target.value)
-                        }
-                        placeholder="Nhập tên hoạt động..."
-                        size="large"
-                      />
-                    </Col>
-
-                    <Col span={6}>
-                      <div style={{ marginBottom: "8px" }}>
-                        <Text strong>Ngày trong giai đoạn</Text>
-                      </div>
-                      <InputNumber
-                        value={editingActivity.day}
-                        onChange={(value) =>
-                          handleActivityFieldChange("day", value)
-                        }
-                        min={1}
-                        max={30}
-                        size="large"
-                        style={{ width: "100%" }}
-                      />
-                    </Col>
-
-                    <Col span={6}>
-                      <div style={{ marginBottom: "8px" }}>
-                        <Text strong>Loại hoạt động</Text>
-                      </div>
-                      <Select
-                        value={editingActivity.type}
-                        onChange={(value) =>
-                          handleActivityFieldChange("type", value)
-                        }
-                        size="large"
-                        style={{ width: "100%" }}
-                      >
-                        <Option value="procedure">🏥 Thủ thuật</Option>
-                        <Option value="medication">💊 Dùng thuốc</Option>
-                        <Option value="test">🔬 Xét nghiệm</Option>
-                        <Option value="consultation">💬 Tư vấn</Option>
-                        <Option value="monitoring">📊 Theo dõi</Option>
-                        <Option value="preparation">📋 Chuẩn bị</Option>
-                      </Select>
-                    </Col>
-                  </Row>
-
-                  {/* Schedule Information */}
-                  <Divider orientation="left">📅 Thông tin lịch hẹn</Divider>
-                  <Row gutter={[16, 16]}>
-                    <Col span={8}>
-                      <div style={{ marginBottom: "8px" }}>
-                        <Text strong>Ngày cụ thể</Text>
-                      </div>
-                      <DatePicker
-                        value={
-                          editingActivity.specificDate
-                            ? dayjs(editingActivity.specificDate)
-                            : null
-                        }
-                        onChange={(date) =>
-                          handleActivityFieldChange(
-                            "specificDate",
-                            date ? date.toISOString() : null
-                          )
-                        }
-                        format="DD/MM/YYYY"
-                        placeholder="Chọn ngày"
-                        size="large"
-                        style={{ width: "100%" }}
-                      />
-                    </Col>
-
-                    <Col span={8}>
-                      <div style={{ marginBottom: "8px" }}>
-                        <Text strong>Giờ thực hiện</Text>
-                      </div>
-                      <TimePicker
-                        value={
-                          editingActivity.time
-                            ? dayjs(editingActivity.time, "HH:mm")
-                            : null
-                        }
-                        onChange={(time) =>
-                          handleActivityFieldChange(
-                            "time",
-                            time ? time.format("HH:mm") : "09:00"
-                          )
-                        }
-                        format="HH:mm"
-                        placeholder="Chọn giờ"
-                        size="large"
-                        style={{ width: "100%" }}
-                      />
-                    </Col>
-
-                    <Col span={8}>
-                      <div style={{ marginBottom: "8px" }}>
-                        <Text strong>Thời gian (phút)</Text>
-                      </div>
-                      <InputNumber
-                        value={editingActivity.duration}
-                        onChange={(value) =>
-                          handleActivityFieldChange("duration", value)
-                        }
-                        min={5}
-                        max={480}
-                        step={15}
-                        size="large"
-                        style={{ width: "100%" }}
-                        addonAfter="phút"
-                      />
-                    </Col>
-                  </Row>
-
-                  {/* Location & Staff */}
-                  <Divider orientation="left">🏥 Địa điểm & Nhân sự</Divider>
-                  <Row gutter={[16, 16]}>
-                    <Col span={8}>
-                      <div style={{ marginBottom: "8px" }}>
-                        <Text strong>Phòng ban</Text>
-                      </div>
-                      <Select
-                        value={editingActivity.department}
-                        onChange={(value) => {
-                          handleActivityFieldChange("department", value);
-                          handleActivityFieldChange("room", ""); // Reset room when department changes
+                              <Option value="procedure">Thủ thuật</Option>
+                              <Option value="test">Xét nghiệm</Option>
+                              <Option value="consultation">Tư vấn</Option>
+                              <Option value="medication">Dùng thuốc</Option>
+                            </Select>
+                          ),
+                        },
+                        {
+                          title: "Ghi chú",
+                          dataIndex: "notes",
+                          key: "notes",
+                          render: (text, record, idx) => (
+                            <Input
+                              value={text}
+                              placeholder="Ghi chú"
+                              onChange={(e) =>
+                                handleActivityChange(
+                                  idx,
+                                  "notes",
+                                  e.target.value
+                                )
+                              }
+                            />
+                          ),
+                        },
+                        {
+                          title: "",
+                          key: "action",
+                          width: 40,
+                          render: (_, __, idx) => (
+                            <Button
+                              icon={<DeleteOutlined />}
+                              size="small"
+                              danger
+                              onClick={() => handleRemoveActivity(idx)}
+                            />
+                          ),
+                        },
+                      ]}
+                      style={{ marginBottom: 8 }}
+                    />
+                    <Button
+                      type="dashed"
+                      onClick={handleAddActivity}
+                      icon={<PlusOutlined />}
+                      style={{ marginTop: 8, marginBottom: 8 }}
+                    >
+                      Thêm hoạt động
+                    </Button>
+                    {/* Gợi ý hoạt động */}
+                    <div className="mt-8">
+                      <div
+                        style={{
+                          fontWeight: 700,
+                          color: "#ff4081",
+                          marginBottom: 8,
+                          fontSize: 16,
                         }}
-                        size="large"
-                        style={{ width: "100%" }}
-                        options={getDepartmentOptions()}
-                      />
-                    </Col>
-
-                    <Col span={8}>
-                      <div style={{ marginBottom: "8px" }}>
-                        <Text strong>Phòng</Text>
-                      </div>
-                      <Select
-                        value={editingActivity.room}
-                        onChange={(value) =>
-                          handleActivityFieldChange("room", value)
-                        }
-                        size="large"
-                        style={{ width: "100%" }}
-                        placeholder="Chọn phòng"
-                        allowClear
                       >
-                        {getRoomOptions(editingActivity.department).map(
-                          (room) => (
-                            <Option key={room} value={room}>
-                              {room}
-                            </Option>
+                        Gợi ý hoạt động:
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: 10,
+                          marginBottom: 8,
+                        }}
+                      >
+                        {(getActivitySuggestions(editingPhase.name) || []).map(
+                          (suggestion, i) => (
+                            <Button
+                              key={i}
+                              type="primary"
+                              shape="round"
+                              size="middle"
+                              icon={<PlusOutlined />}
+                              style={{
+                                marginBottom: 8,
+                                marginRight: 8,
+                                background:
+                                  "linear-gradient(90deg, #ff7eb3 0%, #ff758c 100%)",
+                                border: "none",
+                                fontWeight: 600,
+                                boxShadow: "0 2px 8px #ffb6d580",
+                              }}
+                              onClick={() => {
+                                const newActivity = {
+                                  name: suggestion,
+                                  day:
+                                    (editingPhase.activitiesDetail?.length ||
+                                      0) + 1,
+                                  type: "procedure",
+                                  notes: "",
+                                };
+                                setEditingPhase((prev) => ({
+                                  ...prev,
+                                  activitiesDetail: [
+                                    ...(prev.activitiesDetail || []),
+                                    newActivity,
+                                  ],
+                                }));
+                              }}
+                            >
+                              {suggestion}
+                            </Button>
                           )
                         )}
-                      </Select>
-                    </Col>
-
-                    <Col span={8}>
-                      <div style={{ marginBottom: "8px" }}>
-                        <Text strong>Nhân viên phụ trách</Text>
                       </div>
-                      <Input
-                        value={editingActivity.staff}
-                        onChange={(e) =>
-                          handleActivityFieldChange("staff", e.target.value)
-                        }
-                        placeholder="Tên bác sĩ/nhân viên"
-                        size="large"
-                      />
-                    </Col>
-                  </Row>
-
-                  {/* Status & Priority */}
-                  <Divider orientation="left">📊 Trạng thái & Ưu tiên</Divider>
-                  <Row gutter={[16, 16]}>
-                    <Col span={8}>
-                      <div style={{ marginBottom: "8px" }}>
-                        <Text strong>Trạng thái</Text>
-                      </div>
-                      <Select
-                        value={editingActivity.status}
-                        onChange={(value) =>
-                          handleActivityFieldChange("status", value)
-                        }
-                        size="large"
-                        style={{ width: "100%" }}
-                        options={getStatusOptions()}
-                      />
-                    </Col>
-
-                    <Col span={8}>
-                      <div style={{ marginBottom: "8px" }}>
-                        <Text strong>Mức độ ưu tiên</Text>
-                      </div>
-                      <Select
-                        value={editingActivity.priority}
-                        onChange={(value) =>
-                          handleActivityFieldChange("priority", value)
-                        }
-                        size="large"
-                        style={{ width: "100%" }}
-                      >
-                        <Option value="low">🟢 Thấp</Option>
-                        <Option value="normal">🟡 Bình thường</Option>
-                        <Option value="high">🟠 Cao</Option>
-                        <Option value="urgent">🔴 Khẩn cấp</Option>
-                      </Select>
-                    </Col>
-
-                    <Col span={8}>
-                      <div style={{ marginBottom: "8px" }}>
-                        <Text strong>Chi phí (VNĐ)</Text>
-                      </div>
-                      <InputNumber
-                        value={editingActivity.cost}
-                        onChange={(value) =>
-                          handleActivityFieldChange("cost", value)
-                        }
-                        min={0}
-                        formatter={(value) =>
-                          `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-                        }
-                        parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
-                        size="large"
-                        style={{ width: "100%" }}
-                        placeholder="0"
-                      />
-                    </Col>
-                  </Row>
-
-                  {/* Additional Information */}
-                  <Divider orientation="left">📝 Thông tin bổ sung</Divider>
-                  <Row gutter={[16, 16]}>
-                    <Col span={12}>
-                      <div style={{ marginBottom: "8px" }}>
-                        <Text strong>Chuẩn bị trước</Text>
-                      </div>
-                      <TextArea
-                        value={editingActivity.preparation}
-                        onChange={(e) =>
-                          handleActivityFieldChange(
-                            "preparation",
-                            e.target.value
-                          )
-                        }
-                        placeholder="Hướng dẫn chuẩn bị trước khi thực hiện..."
-                        rows={3}
-                        showCount
-                        maxLength={500}
-                      />
-                    </Col>
-
-                    <Col span={12}>
-                      <div style={{ marginBottom: "8px" }}>
-                        <Text strong>Theo dõi sau</Text>
-                      </div>
-                      <TextArea
-                        value={editingActivity.followUp}
-                        onChange={(e) =>
-                          handleActivityFieldChange("followUp", e.target.value)
-                        }
-                        placeholder="Hướng dẫn theo dõi sau khi hoàn thành..."
-                        rows={3}
-                        showCount
-                        maxLength={500}
-                      />
-                    </Col>
-
-                    <Col span={24}>
-                      <div style={{ marginBottom: "8px" }}>
-                        <Text strong>Ghi chú</Text>
-                      </div>
-                      <TextArea
-                        value={editingActivity.notes}
-                        onChange={(e) =>
-                          handleActivityFieldChange("notes", e.target.value)
-                        }
-                        placeholder="Ghi chú thêm về hoạt động này..."
-                        rows={2}
-                        showCount
-                        maxLength={1000}
-                      />
-                    </Col>
-                  </Row>
-
-                  {/* Requirements Tags */}
-                  <Divider orientation="left">✅ Yêu cầu đặc biệt</Divider>
-                  <div style={{ marginBottom: "16px" }}>
-                    <Text type="secondary" style={{ fontSize: "12px" }}>
-                      Nhấp để thêm/bỏ các yêu cầu đặc biệt
-                    </Text>
-                    <div
-                      style={{
-                        marginTop: "8px",
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: "4px",
-                      }}
-                    >
-                      {[
-                        "Nhịn ăn 8h",
-                        "Uống nước đầy bàng quang",
-                        "Mang theo thuốc",
-                        "Có người nhà đi cùng",
-                        "Không lái xe",
-                        "Nghỉ việc 1 ngày",
-                        "Kiểm tra tiền sử dị ứng",
-                        "Chuẩn bị tâm lý",
-                        "Đọc hướng dẫn chi tiết",
-                      ].map((req) => (
-                        <Tag.CheckableTag
-                          key={req}
-                          checked={editingActivity.requirements?.includes(req)}
-                          onChange={(checked) => {
-                            const currentReqs =
-                              editingActivity.requirements || [];
-                            const newReqs = checked
-                              ? [...currentReqs, req]
-                              : currentReqs.filter((r) => r !== req);
-                            handleActivityFieldChange("requirements", newReqs);
-                          }}
-                        >
-                          {req}
-                        </Tag.CheckableTag>
-                      ))}
                     </div>
-                  </div>
+                  </Form.Item>
                 </div>
-              )}
-            </Modal>
-          </>
-        )}
-      </div>
+                {/* Thuốc */}
+                <div
+                  style={{
+                    flex: 1,
+                    minWidth: 500,
+                    background: "#fafbfc",
+                    padding: 28,
+                    borderRadius: 12,
+                    boxShadow: "0 1px 8px #e0e0e0",
+                    marginBottom: 16,
+                  }}
+                >
+                  <div
+                    style={{ fontWeight: 600, fontSize: 16, marginBottom: 8 }}
+                  >
+                    Thuốc
+                  </div>
+                  <Form.Item style={{ marginBottom: 8 }}>
+                    <Table
+                      size="small"
+                      dataSource={editingPhase.medications || []}
+                      pagination={false}
+                      rowKey={(record, idx) => `medication-${idx}`}
+                      columns={[
+                        {
+                          title: "Tên thuốc",
+                          dataIndex: "name",
+                          key: "name",
+                          render: (text, record, idx) => (
+                            <Input
+                              value={text}
+                              placeholder={`Tên thuốc #${idx + 1}`}
+                              onChange={(e) => {
+                                const newMeds = [...editingPhase.medications];
+                                newMeds[idx] = {
+                                  ...newMeds[idx],
+                                  name: e.target.value,
+                                };
+                                handlePhaseFieldChange("medications", newMeds);
+                              }}
+                            />
+                          ),
+                        },
+                        {
+                          title: "Liều lượng",
+                          dataIndex: "dosage",
+                          key: "dosage",
+                          render: (text, record, idx) => (
+                            <Input
+                              value={text}
+                              placeholder="Liều lượng"
+                              onChange={(e) => {
+                                const newMeds = [...editingPhase.medications];
+                                newMeds[idx] = {
+                                  ...newMeds[idx],
+                                  dosage: e.target.value,
+                                };
+                                handlePhaseFieldChange("medications", newMeds);
+                              }}
+                            />
+                          ),
+                        },
+                        {
+                          title: "Tần suất",
+                          dataIndex: "frequency",
+                          key: "frequency",
+                          render: (text, record, idx) => (
+                            <Input
+                              value={text}
+                              placeholder="Tần suất"
+                              onChange={(e) => {
+                                const newMeds = [...editingPhase.medications];
+                                newMeds[idx] = {
+                                  ...newMeds[idx],
+                                  frequency: e.target.value,
+                                };
+                                handlePhaseFieldChange("medications", newMeds);
+                              }}
+                            />
+                          ),
+                        },
+                        {
+                          title: "Đường dùng",
+                          dataIndex: "route",
+                          key: "route",
+                          render: (text, record, idx) => (
+                            <Select
+                              value={text || "Uống"}
+                              style={{ width: 90 }}
+                              onChange={(value) => {
+                                const newMeds = [...editingPhase.medications];
+                                newMeds[idx] = {
+                                  ...newMeds[idx],
+                                  route: value,
+                                };
+                                handlePhaseFieldChange("medications", newMeds);
+                              }}
+                            >
+                              <Option value="Uống">Uống</Option>
+                              <Option value="Tiêm">Tiêm</Option>
+                              <Option value="Bôi">Bôi</Option>
+                            </Select>
+                          ),
+                        },
+                        {
+                          title: "Thời gian",
+                          dataIndex: "duration",
+                          key: "duration",
+                          render: (text, record, idx) => (
+                            <Input
+                              value={text}
+                              placeholder="Thời gian"
+                              onChange={(e) => {
+                                const newMeds = [...editingPhase.medications];
+                                newMeds[idx] = {
+                                  ...newMeds[idx],
+                                  duration: e.target.value,
+                                };
+                                handlePhaseFieldChange("medications", newMeds);
+                              }}
+                            />
+                          ),
+                        },
+                        {
+                          title: "",
+                          key: "action",
+                          width: 40,
+                          render: (_, __, idx) => (
+                            <Button
+                              icon={<DeleteOutlined />}
+                              size="small"
+                              danger
+                              onClick={() => handleRemovePhaseMedication(idx)}
+                            />
+                          ),
+                        },
+                      ]}
+                      style={{ marginBottom: 8 }}
+                    />
+                    <Button
+                      type="dashed"
+                      onClick={handleAddPhaseMedication}
+                      icon={<PlusOutlined />}
+                      style={{ marginTop: 8, marginBottom: 8 }}
+                    >
+                      Thêm thuốc
+                    </Button>
+                    {/* Gợi ý thuốc */}
+                    <div className="mt-8">
+                      <div
+                        style={{
+                          fontWeight: 700,
+                          color: "#ff4081",
+                          marginBottom: 8,
+                          fontSize: 16,
+                        }}
+                      >
+                        Gợi ý thuốc:
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: 10,
+                          marginBottom: 8,
+                        }}
+                      >
+                        {(
+                          getMedicationSuggestions(editingPhase.name) || []
+                        ).map((med, i) => (
+                          <Button
+                            key={i}
+                            type="primary"
+                            shape="round"
+                            size="middle"
+                            icon={<PlusOutlined />}
+                            style={{
+                              marginBottom: 8,
+                              marginRight: 8,
+                              background:
+                                "linear-gradient(90deg, #ff7eb3 0%, #ff758c 100%)",
+                              border: "none",
+                              fontWeight: 600,
+                              boxShadow: "0 2px 8px #ffb6d580",
+                            }}
+                            onClick={() => {
+                              const newMed = {
+                                name: med.name,
+                                dosage: med.dosage,
+                                frequency: med.frequency,
+                                route: med.route || "Uống",
+                                duration: med.duration || "theo giai đoạn",
+                              };
+                              setEditingPhase((prev) => ({
+                                ...prev,
+                                medications: [
+                                  ...(prev.medications || []),
+                                  newMed,
+                                ],
+                              }));
+                            }}
+                          >
+                            {med.name}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  </Form.Item>
+                </div>
+              </div>
+            </Form>
+          </div>
+        </Modal>
+      )}
+      {existingPlan && renderPlanStatusBanner()}
+      {existingPlan && renderPlanOverview()}
+      {/* Sticky action bar chỉ khi đã có plan */}
+      {existingPlan && renderStickyActionBar()}
     </div>
   );
 };

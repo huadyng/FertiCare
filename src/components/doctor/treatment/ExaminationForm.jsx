@@ -217,7 +217,6 @@ const ExaminationForm = ({
 
       form.setFieldsValue({
         diagnosis: data.diagnosis || "",
-        recommendations: data.recommendations || "",
         bloodPressure: data.clinicalSigns?.bloodPressure || "",
         temperature: data.clinicalSigns?.temperature || "",
         heartRate: data.clinicalSigns?.heartRate || "",
@@ -281,7 +280,6 @@ const ExaminationForm = ({
 
     const hasRealData =
       data.diagnosis ||
-      data.recommendations ||
       data.clinicalSigns?.bloodPressure ||
       data.clinicalSigns?.temperature ||
       data.clinicalSigns?.heartRate ||
@@ -373,8 +371,8 @@ const ExaminationForm = ({
       setLoading(true);
 
       // Validate required fields
-      if (!values.diagnosis || !values.recommendations) {
-        message.error("Vui lòng nhập đầy đủ chẩn đoán và khuyến nghị");
+      if (!values.diagnosis) {
+        message.error("Vui lòng nhập chẩn đoán");
         return;
       }
 
@@ -399,12 +397,10 @@ const ExaminationForm = ({
           ultrasound: values.ultrasound,
         },
         diagnosis: values.diagnosis,
-        recommendations: values.recommendations,
         attachments: attachments.map((file) => file.name),
         notes: values.notes,
         status: "completed",
         // Enhanced metadata
-        recommendedService: getRecommendedService(values.diagnosis),
         isEdited: isEditing,
         editedAt: isEditing ? new Date().toISOString() : undefined,
         originalData: isEditing ? existingData : undefined,
@@ -516,6 +512,12 @@ const ExaminationForm = ({
         });
         window.dispatchEvent(progressEvent);
         console.log("🔔 Dispatched stepCompleted event:", progressEvent.detail);
+
+        // Force refresh state manager để đảm bảo cập nhật
+        setTimeout(() => {
+          treatmentStateManager.forceRefresh();
+          console.log("🔄 Forced refresh of treatment state manager");
+        }, 500);
       } catch (apiError) {
         console.error("API save failed:", apiError);
         message.error(
@@ -572,28 +574,6 @@ const ExaminationForm = ({
     } finally {
       setLoading(false);
     }
-  };
-
-  // Helper function to recommend service based on diagnosis
-  const getRecommendedService = (diagnosis) => {
-    const diagnosisLower = diagnosis.toLowerCase();
-
-    if (
-      diagnosisLower.includes("tắc ống dẫn trứng") ||
-      diagnosisLower.includes("tuổi cao") ||
-      diagnosisLower.includes("amh thấp") ||
-      diagnosisLower.includes("phôi kém")
-    ) {
-      return "IVF";
-    } else if (
-      diagnosisLower.includes("rối loạn rụng trứng") ||
-      diagnosisLower.includes("tinh trùng yếu") ||
-      diagnosisLower.includes("vô sinh nguyên phát nhẹ")
-    ) {
-      return "IUI";
-    }
-
-    return "IVF"; // Default recommendation
   };
 
   const uploadProps = {
@@ -800,9 +780,9 @@ const ExaminationForm = ({
 
                 <Divider className="section-divider" />
 
-                {/* Chuẩn đoán và khuyến nghị */}
+                {/* Chuẩn đoán lâm sàng */}
                 <Row gutter={24}>
-                  <Col span={12}>
+                  <Col span={24}>
                     <Form.Item
                       label="🔍 Chuẩn đoán lâm sàng"
                       name="diagnosis"
@@ -810,21 +790,274 @@ const ExaminationForm = ({
                         { required: true, message: "Vui lòng nhập chuẩn đoán" },
                       ]}
                     >
+                      <div
+                        style={{
+                          marginBottom: 8,
+                          display: "flex",
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                          gap: 8,
+                        }}
+                      >
+                        <Select
+                          placeholder="Chọn chẩn đoán nhanh"
+                          style={{ width: 200 }}
+                          size="small"
+                          onChange={(value) =>
+                            form.setFieldsValue({ diagnosis: value })
+                          }
+                          allowClear
+                        >
+                          <Option
+                            value="Vô sinh nguyên phát"
+                            label="Vô sinh nguyên phát"
+                          >
+                            <div
+                              style={{ display: "flex", alignItems: "center" }}
+                            >
+                              <span
+                                style={{ color: "#ff4d4f", marginRight: 8 }}
+                              >
+                                🔴
+                              </span>
+                              Vô sinh nguyên phát
+                            </div>
+                          </Option>
+                          <Option
+                            value="Vô sinh thứ phát"
+                            label="Vô sinh thứ phát"
+                          >
+                            <div
+                              style={{ display: "flex", alignItems: "center" }}
+                            >
+                              <span
+                                style={{ color: "#ff4d4f", marginRight: 8 }}
+                              >
+                                🔴
+                              </span>
+                              Vô sinh thứ phát
+                            </div>
+                          </Option>
+                          <Option
+                            value="Rối loạn rụng trứng"
+                            label="Rối loạn rụng trứng"
+                          >
+                            <div
+                              style={{ display: "flex", alignItems: "center" }}
+                            >
+                              <span
+                                style={{ color: "#faad14", marginRight: 8 }}
+                              >
+                                🟡
+                              </span>
+                              Rối loạn rụng trứng
+                            </div>
+                          </Option>
+                          <Option
+                            value="Tắc ống dẫn trứng"
+                            label="Tắc ống dẫn trứng"
+                          >
+                            <div
+                              style={{ display: "flex", alignItems: "center" }}
+                            >
+                              <span
+                                style={{ color: "#ff4d4f", marginRight: 8 }}
+                              >
+                                🔴
+                              </span>
+                              Tắc ống dẫn trứng
+                            </div>
+                          </Option>
+                          <Option
+                            value="Lạc nội mạc tử cung"
+                            label="Lạc nội mạc tử cung"
+                          >
+                            <div
+                              style={{ display: "flex", alignItems: "center" }}
+                            >
+                              <span
+                                style={{ color: "#ff4d4f", marginRight: 8 }}
+                              >
+                                🔴
+                              </span>
+                              Lạc nội mạc tử cung
+                            </div>
+                          </Option>
+                          <Option
+                            value="Hội chứng buồng trứng đa nang (PCOS)"
+                            label="PCOS"
+                          >
+                            <div
+                              style={{ display: "flex", alignItems: "center" }}
+                            >
+                              <span
+                                style={{ color: "#faad14", marginRight: 8 }}
+                              >
+                                🟡
+                              </span>
+                              Hội chứng buồng trứng đa nang (PCOS)
+                            </div>
+                          </Option>
+                          <Option
+                            value="AMH thấp - Dự trữ buồng trứng kém"
+                            label="AMH thấp"
+                          >
+                            <div
+                              style={{ display: "flex", alignItems: "center" }}
+                            >
+                              <span
+                                style={{ color: "#ff4d4f", marginRight: 8 }}
+                              >
+                                🔴
+                              </span>
+                              AMH thấp - Dự trữ buồng trứng kém
+                            </div>
+                          </Option>
+                          <Option
+                            value="Tuổi cao - Dự trữ buồng trứng giảm"
+                            label="Tuổi cao"
+                          >
+                            <div
+                              style={{ display: "flex", alignItems: "center" }}
+                            >
+                              <span
+                                style={{ color: "#faad14", marginRight: 8 }}
+                              >
+                                🟡
+                              </span>
+                              Tuổi cao - Dự trữ buồng trứng giảm
+                            </div>
+                          </Option>
+                          <Option
+                            value="Tinh trùng yếu - Nam giới"
+                            label="Tinh trùng yếu"
+                          >
+                            <div
+                              style={{ display: "flex", alignItems: "center" }}
+                            >
+                              <span
+                                style={{ color: "#1890ff", marginRight: 8 }}
+                              >
+                                🔵
+                              </span>
+                              Tinh trùng yếu - Nam giới
+                            </div>
+                          </Option>
+                          <Option
+                            value="Vô tinh trùng - Nam giới"
+                            label="Vô tinh trùng"
+                          >
+                            <div
+                              style={{ display: "flex", alignItems: "center" }}
+                            >
+                              <span
+                                style={{ color: "#ff4d4f", marginRight: 8 }}
+                              >
+                                🔴
+                              </span>
+                              Vô tinh trùng - Nam giới
+                            </div>
+                          </Option>
+                          <Option
+                            value="Rối loạn nội tiết tố"
+                            label="Rối loạn nội tiết"
+                          >
+                            <div
+                              style={{ display: "flex", alignItems: "center" }}
+                            >
+                              <span
+                                style={{ color: "#faad14", marginRight: 8 }}
+                              >
+                                🟡
+                              </span>
+                              Rối loạn nội tiết tố
+                            </div>
+                          </Option>
+                          <Option value="U xơ tử cung" label="U xơ tử cung">
+                            <div
+                              style={{ display: "flex", alignItems: "center" }}
+                            >
+                              <span
+                                style={{ color: "#faad14", marginRight: 8 }}
+                              >
+                                🟡
+                              </span>
+                              U xơ tử cung
+                            </div>
+                          </Option>
+                        </Select>
+                        <Button
+                          size="small"
+                          type="text"
+                          style={{
+                            border: "1px solid #d9d9d9",
+                            borderRadius: 6,
+                            fontSize: 11,
+                            height: 28,
+                          }}
+                          onClick={() =>
+                            form.setFieldsValue({
+                              diagnosis: "Vô sinh nguyên phát",
+                            })
+                          }
+                        >
+                          🔴 Vô sinh nguyên phát
+                        </Button>
+                        <Button
+                          size="small"
+                          type="text"
+                          style={{
+                            border: "1px solid #d9d9d9",
+                            borderRadius: 6,
+                            fontSize: 11,
+                            height: 28,
+                          }}
+                          onClick={() =>
+                            form.setFieldsValue({
+                              diagnosis: "Rối loạn rụng trứng",
+                            })
+                          }
+                        >
+                          🟡 Rối loạn rụng trứng
+                        </Button>
+                        <Button
+                          size="small"
+                          type="text"
+                          style={{
+                            border: "1px solid #d9d9d9",
+                            borderRadius: 6,
+                            fontSize: 11,
+                            height: 28,
+                          }}
+                          onClick={() =>
+                            form.setFieldsValue({
+                              diagnosis: "Tắc ống dẫn trứng",
+                            })
+                          }
+                        >
+                          🔴 Tắc ống dẫn trứng
+                        </Button>
+                        <Button
+                          size="small"
+                          type="text"
+                          style={{
+                            border: "1px solid #d9d9d9",
+                            borderRadius: 6,
+                            fontSize: 11,
+                            height: 28,
+                          }}
+                          onClick={() =>
+                            form.setFieldsValue({
+                              diagnosis: "AMH thấp - Dự trữ buồng trứng kém",
+                            })
+                          }
+                        >
+                          🔴 AMH thấp
+                        </Button>
+                      </div>
                       <TextArea
                         rows={3}
                         placeholder="Nhập chuẩn đoán..."
-                        className="examination-textarea"
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      label="💊 Khuyến nghị điều trị"
-                      name="recommendations"
-                    >
-                      <TextArea
-                        rows={3}
-                        placeholder="Nhập khuyến nghị..."
                         className="examination-textarea"
                       />
                     </Form.Item>
@@ -909,7 +1142,6 @@ const ExaminationForm = ({
                       onClick={() => {
                         form.setFieldsValue({
                           diagnosis: "Vô sinh nguyên phát",
-                          recommendations: "Điều trị IVF",
                           bloodPressure: "120/80",
                           temperature: 36.5,
                           heartRate: 72,
@@ -1152,7 +1384,7 @@ const ExaminationForm = ({
                     <Row gutter={24}>
                       <Col span={24}>
                         <Descriptions
-                          title="📋 Kết luận và khuyến nghị"
+                          title="📋 Kết luận"
                           variant="bordered"
                           column={1}
                           size="small"
@@ -1162,15 +1394,6 @@ const ExaminationForm = ({
                             {submittedData.diagnosis ? (
                               <Tag className="result-conclusion-tag">
                                 {submittedData.diagnosis}
-                              </Tag>
-                            ) : (
-                              "Chưa có"
-                            )}
-                          </Descriptions.Item>
-                          <Descriptions.Item label="Khuyến nghị điều trị">
-                            {submittedData.recommendations ? (
-                              <Tag className="result-conclusion-tag">
-                                {submittedData.recommendations}
                               </Tag>
                             ) : (
                               "Chưa có"
