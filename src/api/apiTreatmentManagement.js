@@ -1739,6 +1739,84 @@ const apiTreatmentManagement = {
     }
   },
 
+  // ========== PHASE ACTIVITIES MANAGEMENT ==========
+
+  // Lấy chi tiết hoạt động của một phase
+  getPhaseActivities: async (phaseId, treatmentPlanId) => {
+    try {
+      console.log(
+        `🔄 [apiTreatmentManagement] Getting activities for phase: ${phaseId}, planId: ${treatmentPlanId}`
+      );
+
+      // Since we don't have a direct API endpoint for phase activities yet,
+      // we'll simulate this functionality for now
+      // In a real implementation, this would make an actual API call like:
+      // const response = await axiosClient.get(`/api/treatment-workflow/phase/${phaseId}/activities`);
+
+      // For now, return simulated activities based on phase
+      const mockActivities = [
+        {
+          id: `activity_${phaseId}_1`,
+          name: "Khám sàng lọc ban đầu",
+          type: "examination",
+          estimatedDuration: 30,
+          isRequired: true,
+          status: "pending",
+          order: 1,
+          room: "Phòng khám 1",
+          assignedStaff: "BS. Chuyên khoa",
+          cost: 200000,
+          scheduledDate: null,
+        },
+        {
+          id: `activity_${phaseId}_2`,
+          name: "Xét nghiệm máu",
+          type: "test",
+          estimatedDuration: 15,
+          isRequired: true,
+          status: "pending",
+          order: 2,
+          room: "Phòng xét nghiệm",
+          assignedStaff: "KTV. Xét nghiệm",
+          cost: 150000,
+          scheduledDate: null,
+        },
+        {
+          id: `activity_${phaseId}_3`,
+          name: "Siêu âm theo dõi",
+          type: "ultrasound",
+          estimatedDuration: 20,
+          isRequired: false,
+          status: "pending",
+          order: 3,
+          room: "Phòng siêu âm",
+          assignedStaff: "BS. Siêu âm",
+          cost: 300000,
+          scheduledDate: null,
+        },
+      ];
+
+      console.log(
+        `✅ [apiTreatmentManagement] Mock activities for phase ${phaseId}:`,
+        mockActivities
+      );
+
+      return {
+        success: true,
+        data: mockActivities,
+        message: "Lấy danh sách hoạt động thành công",
+      };
+    } catch (error) {
+      console.error("❌ Error getting phase activities:", error);
+      return {
+        success: false,
+        data: [],
+        message:
+          error.response?.data?.message || "Không thể lấy danh sách hoạt động",
+      };
+    }
+  },
+
   // ========== ENHANCED UTILITY FUNCTIONS ==========
 
   // Validate treatment phase data
