@@ -495,7 +495,9 @@ const TreatmentScheduleForm = ({
             activities: phaseActivities[phase.phaseId] || [
               // Fallback activities nếu không load được từ API
               {
-                id: `fallback_activity_${idx}_1`,
+                id: `fallback_activity_${
+                  phase.phaseId || idx
+                }_1_${Date.now()}_${Math.random()}`,
                 name: "Khám sàng lọc",
                 type: "examination",
                 estimatedDuration: 30,
@@ -506,7 +508,9 @@ const TreatmentScheduleForm = ({
                 cost: 200000,
               },
               {
-                id: `fallback_activity_${idx}_2`,
+                id: `fallback_activity_${
+                  phase.phaseId || idx
+                }_2_${Date.now()}_${Math.random()}`,
                 name: "Theo dõi tiến trình",
                 type: "consultation",
                 estimatedDuration: 20,
@@ -577,7 +581,9 @@ const TreatmentScheduleForm = ({
             activities: phaseActivities[phase.phaseId] || [
               // Fallback activities cho apiPhases
               {
-                id: `fallback_activity_${idx}_1`,
+                id: `fallback_activity_${
+                  phase.phaseId || idx
+                }_1_${Date.now()}_${Math.random()}`,
                 name: "Hoạt động chính",
                 type: "examination",
                 estimatedDuration: 30,
@@ -1056,8 +1062,11 @@ const TreatmentScheduleForm = ({
   };
 
   const handleAddCustomSession = () => {
+    const uniqueId = `custom_${Date.now()}_${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
     const newSession = {
-      id: `custom_${Date.now()}`,
+      id: uniqueId,
       phaseId: "custom",
       phaseName: "Tùy chỉnh bác sĩ",
       date: dayjs().add(1, "day").format("YYYY-MM-DD"),
@@ -1226,7 +1235,7 @@ const TreatmentScheduleForm = ({
       title: "Ngày",
       dataIndex: "date",
       key: "date",
-      render: (date) => (
+      render: (date, record) => (
         <Space direction="vertical" size="small">
           <Text strong>{dayjs(date).format("DD/MM/YYYY")}</Text>
           <Text type="secondary">{dayjs(date).format("dddd")}</Text>
@@ -1240,16 +1249,16 @@ const TreatmentScheduleForm = ({
       key: "phaseName",
       render: (text, record) => (
         <Space>
-          <Tag key="main" color={record.custom ? "orange" : "blue"}>
+          <Tag color={record.custom ? "orange" : "blue"}>
             {record.order}. {text}
           </Tag>
           {record.modified && (
-            <Tag key="modified" color="green" size="small">
+            <Tag color="green" size="small">
               Đã sửa
             </Tag>
           )}
           {record.custom && (
-            <Tag key="custom" color="purple" size="small">
+            <Tag color="purple" size="small">
               Tùy chỉnh
             </Tag>
           )}
@@ -1262,17 +1271,15 @@ const TreatmentScheduleForm = ({
       key: "activity",
       render: (text, record) => (
         <Space direction="vertical" size="small">
-          <Text key="activity-text">{text}</Text>
+          <Text>{text}</Text>
           <Space>
-            <Tag key="duration" icon={<ClockCircleOutlined />}>
-              {record.duration} phút
-            </Tag>
-            <Tag key="required" color={record.required ? "red" : "green"}>
+            <Tag icon={<ClockCircleOutlined />}>{record.duration} phút</Tag>
+            <Tag color={record.required ? "red" : "green"}>
               {record.required ? "Bắt buộc" : "Tùy chọn"}
             </Tag>
           </Space>
           {scheduleAdjustments[record.id] && (
-            <Text key="adjustment" type="secondary" style={{ fontSize: 12 }}>
+            <Text type="secondary" style={{ fontSize: 12 }}>
               Sửa từ: {scheduleAdjustments[record.id].originalActivity}
             </Text>
           )}
@@ -1283,7 +1290,7 @@ const TreatmentScheduleForm = ({
       title: "Loại",
       dataIndex: "type",
       key: "type",
-      render: (type) => {
+      render: (type, record) => {
         const typeMap = {
           consultation: { color: "blue", text: "Tư vấn" },
           test: { color: "orange", text: "Xét nghiệm" },
@@ -1303,12 +1310,12 @@ const TreatmentScheduleForm = ({
     },
     {
       title: "Thao tác",
+      dataIndex: "actions",
       key: "actions",
       width: 120,
       render: (_, record) => (
         <Space size="small">
           <Button
-            key="edit"
             size="small"
             icon={<EditOutlined />}
             onClick={() => handleEditSession(record)}
@@ -1316,7 +1323,6 @@ const TreatmentScheduleForm = ({
             title="Chỉnh sửa buổi điều trị"
           />
           <Button
-            key="delete"
             size="small"
             icon={<DeleteOutlined />}
             onClick={() => handleDeleteSession(record.id)}
@@ -1770,7 +1776,11 @@ const TreatmentScheduleForm = ({
                                 (phase) => phase.status === "In Progress"
                               )}
                               items={apiPhases.map((phase, index) => ({
-                                key: `phase-step-${phase.phaseId || index}`,
+                                key: `phase-step-${
+                                  phase.phaseId ||
+                                  phase.statusId ||
+                                  `fallback-${index}`
+                                }`,
                                 title: (
                                   <Space direction="vertical" size="small">
                                     <Text strong>{phase.phaseName}</Text>
@@ -1821,13 +1831,21 @@ const TreatmentScheduleForm = ({
                           dataSource={apiPhases}
                           pagination={false}
                           loading={loadingPhases}
-                          rowKey={(record) =>
-                            record.statusId ||
-                            record.phaseId ||
-                            `phase-${record.phaseName || "unknown"}-${
-                              record.phaseOrder || Math.random()
-                            }`
-                          }
+                          rowKey={(record) => {
+                            // Create a unique key using multiple fallback strategies
+                            const baseKey =
+                              record.statusId ||
+                              record.phaseId ||
+                              `phase-${record.phaseOrder || Math.random()}`;
+                            const phaseNameKey = record.phaseName
+                              ? record.phaseName.replace(/\s+/g, "-")
+                              : "unknown";
+                            const orderKey = record.phaseOrder || Math.random();
+                            const uniqueSuffix = `${Date.now()}-${Math.random()
+                              .toString(36)
+                              .substr(2, 9)}`;
+                            return `${baseKey}-${phaseNameKey}-${orderKey}-${uniqueSuffix}`;
+                          }}
                           expandable={{
                             expandedRowKeys: Array.from(expandedPhases),
                             onExpand: (expanded, record) => {
@@ -1894,17 +1912,13 @@ const TreatmentScheduleForm = ({
                                   key: "name",
                                   render: (name, activity) => (
                                     <Space direction="vertical" size="small">
-                                      <Text key="name" strong>
-                                        {name}
-                                      </Text>
+                                      <Text strong>{name}</Text>
                                       <Space size="small">
-                                        <Tag key="type" color="blue">
+                                        <Tag color="blue">
                                           {activity.type || "examination"}
                                         </Tag>
                                         {activity.isRequired && (
-                                          <Tag key="required" color="red">
-                                            Bắt buộc
-                                          </Tag>
+                                          <Tag color="red">Bắt buộc</Tag>
                                         )}
                                       </Space>
                                     </Space>
@@ -1955,13 +1969,16 @@ const TreatmentScheduleForm = ({
                                           )
                                         }
                                       >
-                                        <Option value="pending">
+                                        <Option key="pending" value="pending">
                                           <Badge
                                             status={statusConfig.pending.color}
                                             text={statusConfig.pending.text}
                                           />
                                         </Option>
-                                        <Option value="in-progress">
+                                        <Option
+                                          key="in-progress"
+                                          value="in-progress"
+                                        >
                                           <Badge
                                             status={
                                               statusConfig["in-progress"].color
@@ -1971,7 +1988,10 @@ const TreatmentScheduleForm = ({
                                             }
                                           />
                                         </Option>
-                                        <Option value="completed">
+                                        <Option
+                                          key="completed"
+                                          value="completed"
+                                        >
                                           <Badge
                                             status={
                                               statusConfig.completed.color
@@ -1979,7 +1999,10 @@ const TreatmentScheduleForm = ({
                                             text={statusConfig.completed.text}
                                           />
                                         </Option>
-                                        <Option value="cancelled">
+                                        <Option
+                                          key="cancelled"
+                                          value="cancelled"
+                                        >
                                           <Badge
                                             status={
                                               statusConfig.cancelled.color
@@ -1987,7 +2010,7 @@ const TreatmentScheduleForm = ({
                                             text={statusConfig.cancelled.text}
                                           />
                                         </Option>
-                                        <Option value="delayed">
+                                        <Option key="delayed" value="delayed">
                                           <Badge
                                             status={statusConfig.delayed.color}
                                             text={statusConfig.delayed.text}
@@ -2003,12 +2026,12 @@ const TreatmentScheduleForm = ({
                                   width: 150,
                                   render: (_, activity) => (
                                     <Space direction="vertical" size="small">
-                                      <Text key="duration" type="secondary">
+                                      <Text type="secondary">
                                         <ClockCircleOutlined />{" "}
                                         {activity.estimatedDuration || 60} phút
                                       </Text>
                                       {activity.scheduledDate && (
-                                        <Text key="scheduled" type="secondary">
+                                        <Text type="secondary">
                                           <CalendarOutlined />{" "}
                                           {dayjs(activity.scheduledDate).format(
                                             "DD/MM/YYYY HH:mm"
@@ -2020,15 +2043,15 @@ const TreatmentScheduleForm = ({
                                 },
                                 {
                                   title: "Địa điểm",
+                                  dataIndex: "location",
                                   key: "location",
                                   width: 120,
                                   render: (_, activity) => (
                                     <Space direction="vertical" size="small">
-                                      <Text key="room" type="secondary">
+                                      <Text type="secondary">
                                         {activity.room || "TBD"}
                                       </Text>
                                       <Text
-                                        key="staff"
                                         type="secondary"
                                         style={{ fontSize: "12px" }}
                                       >
@@ -2144,14 +2167,25 @@ const TreatmentScheduleForm = ({
                                       columns={activityColumns}
                                       pagination={false}
                                       size="small"
-                                      rowKey={(record) =>
-                                        record.id ||
-                                        `activity-${
-                                          record.name || "unknown"
-                                        }-${Math.random()
+                                      rowKey={(record) => {
+                                        // Create unique key for activities
+                                        const baseKey =
+                                          record.id ||
+                                          `activity-${
+                                            record.phaseId || "unknown"
+                                          }-${Math.random()
+                                            .toString(36)
+                                            .substr(2, 5)}`;
+                                        const nameKey = record.name
+                                          ? record.name.replace(/\s+/g, "-")
+                                          : "unknown";
+                                        const orderKey =
+                                          record.order || Math.random();
+                                        const uniqueSuffix = Math.random()
                                           .toString(36)
-                                          .substr(2, 9)}`
-                                      }
+                                          .substr(2, 9);
+                                        return `${baseKey}-${nameKey}-${orderKey}-${uniqueSuffix}`;
+                                      }}
                                       bordered
                                       style={{ backgroundColor: "#fafafa" }}
                                     />
@@ -2161,6 +2195,11 @@ const TreatmentScheduleForm = ({
                             },
                             expandIcon: ({ expanded, onExpand, record }) => (
                               <Button
+                                key={`expand-btn-${
+                                  record.phaseId ||
+                                  record.statusId ||
+                                  Math.random()
+                                }`}
                                 type="text"
                                 icon={
                                   expanded ? (
@@ -2185,19 +2224,14 @@ const TreatmentScheduleForm = ({
                               key: "phaseName",
                               render: (text, record) => (
                                 <Space direction="vertical" size="small">
-                                  <Text
-                                    key="name"
-                                    strong
-                                    style={{ fontSize: "16px" }}
-                                  >
+                                  <Text strong style={{ fontSize: "16px" }}>
                                     {text}
                                   </Text>
-                                  <Text key="order" type="secondary">
+                                  <Text type="secondary">
                                     Thứ tự: {record.phaseOrder}
                                   </Text>
                                   {record.expectedDuration && (
                                     <Tag
-                                      key="duration"
                                       icon={<ClockCircleOutlined />}
                                       color="blue"
                                     >
@@ -2209,15 +2243,13 @@ const TreatmentScheduleForm = ({
                             },
                             {
                               title: "Thời gian",
+                              dataIndex: "dates",
                               key: "dates",
                               width: 200,
                               render: (_, record) => (
                                 <Space direction="vertical" size="small">
                                   {record.startDate && (
-                                    <Text
-                                      key="start"
-                                      style={{ fontSize: "12px" }}
-                                    >
+                                    <Text style={{ fontSize: "12px" }}>
                                       <CalendarOutlined /> Bắt đầu:{" "}
                                       {dayjs(record.startDate).format(
                                         "DD/MM/YYYY"
@@ -2225,10 +2257,7 @@ const TreatmentScheduleForm = ({
                                     </Text>
                                   )}
                                   {record.endDate && (
-                                    <Text
-                                      key="end"
-                                      style={{ fontSize: "12px" }}
-                                    >
+                                    <Text style={{ fontSize: "12px" }}>
                                       <CheckCircleOutlined /> Kết thúc:{" "}
                                       {dayjs(record.endDate).format(
                                         "DD/MM/YYYY"
@@ -2240,14 +2269,12 @@ const TreatmentScheduleForm = ({
                             },
                             {
                               title: "Thao tác",
+                              dataIndex: "actions",
                               key: "actions",
                               width: 120,
                               render: (_, record) => (
                                 <Space size="small">
-                                  <Tooltip
-                                    key="edit-tooltip"
-                                    title="Chỉnh sửa giai đoạn"
-                                  >
+                                  <Tooltip title="Chỉnh sửa giai đoạn">
                                     <Button
                                       size="small"
                                       icon={<EditOutlined />}
@@ -2257,7 +2284,6 @@ const TreatmentScheduleForm = ({
                                     />
                                   </Tooltip>
                                   <Popconfirm
-                                    key="delete-confirm"
                                     title="Xóa giai đoạn này?"
                                     description="Hành động này không thể hoàn tác."
                                     onConfirm={() =>
@@ -2432,19 +2458,30 @@ const TreatmentScheduleForm = ({
                         placeholder="Chọn ghi chú đặc biệt"
                         allowClear
                       >
-                        <Option value="morning_preferred">
+                        <Option
+                          key="morning_preferred"
+                          value="morning_preferred"
+                        >
                           Ưu tiên buổi sáng
                         </Option>
-                        <Option value="afternoon_preferred">
+                        <Option
+                          key="afternoon_preferred"
+                          value="afternoon_preferred"
+                        >
                           Ưu tiên buổi chiều
                         </Option>
-                        <Option value="weekend_available">
+                        <Option
+                          key="weekend_available"
+                          value="weekend_available"
+                        >
                           Có thể cuối tuần
                         </Option>
-                        <Option value="flexible_time">
+                        <Option key="flexible_time" value="flexible_time">
                           Thời gian linh hoạt
                         </Option>
-                        <Option value="urgent">Khẩn cấp</Option>
+                        <Option key="urgent" value="urgent">
+                          Khẩn cấp
+                        </Option>
                       </Select>
                     </Form.Item>
 
@@ -2537,7 +2574,11 @@ const TreatmentScheduleForm = ({
                               size="small"
                               items={subStepsData.subSteps.map(
                                 (subStep, index) => ({
-                                  key: `substep-timeline-${index}`,
+                                  key: `substep-timeline-${index}-${
+                                    subStep.title
+                                      ? subStep.title.replace(/\s+/g, "-")
+                                      : "step"
+                                  }-${Math.random().toString(36).substr(2, 5)}`,
                                   color:
                                     subStepsData.completedSubSteps.includes(
                                       index
@@ -2658,14 +2699,25 @@ const TreatmentScheduleForm = ({
                         dataSource={generatedSchedule}
                         pagination={false}
                         size="small"
-                        rowKey={(record) =>
-                          record.id ||
-                          `schedule-${record.phaseName || "unknown"}-${
-                            record.activity || "activity"
-                          }-${
-                            record.date || new Date().getTime()
-                          }-${Math.random().toString(36).substr(2, 9)}`
-                        }
+                        rowKey={(record) => {
+                          // Create unique key for schedule table
+                          const baseKey =
+                            record.id ||
+                            `schedule-${Math.random()
+                              .toString(36)
+                              .substr(2, 5)}`;
+                          const phaseKey = record.phaseName
+                            ? record.phaseName.replace(/\s+/g, "-")
+                            : "unknown";
+                          const activityKey = record.activity
+                            ? record.activity.replace(/\s+/g, "-")
+                            : "activity";
+                          const dateKey = record.date || new Date().getTime();
+                          const randomKey = Math.random()
+                            .toString(36)
+                            .substr(2, 9);
+                          return `${baseKey}-${phaseKey}-${activityKey}-${dateKey}-${randomKey}`;
+                        }}
                         scroll={{ y: 400 }}
                         loading={savingSchedule}
                       />
@@ -2778,11 +2830,21 @@ const TreatmentScheduleForm = ({
                   rules={[{ required: true, message: "Vui lòng chọn phòng" }]}
                 >
                   <Select>
-                    <Option value="Phòng khám">Phòng khám</Option>
-                    <Option value="Phòng siêu âm">Phòng siêu âm</Option>
-                    <Option value="Phòng xét nghiệm">Phòng xét nghiệm</Option>
-                    <Option value="Phòng thủ thuật">Phòng thủ thuật</Option>
-                    <Option value="Phòng lab">Phòng lab</Option>
+                    <Option key="room-exam" value="Phòng khám">
+                      Phòng khám
+                    </Option>
+                    <Option key="room-ultrasound" value="Phòng siêu âm">
+                      Phòng siêu âm
+                    </Option>
+                    <Option key="room-test" value="Phòng xét nghiệm">
+                      Phòng xét nghiệm
+                    </Option>
+                    <Option key="room-procedure" value="Phòng thủ thuật">
+                      Phòng thủ thuật
+                    </Option>
+                    <Option key="room-lab" value="Phòng lab">
+                      Phòng lab
+                    </Option>
                   </Select>
                 </Form.Item>
               </Col>
@@ -2793,12 +2855,24 @@ const TreatmentScheduleForm = ({
                   rules={[{ required: true, message: "Vui lòng chọn loại" }]}
                 >
                   <Select>
-                    <Option value="consultation">Tư vấn</Option>
-                    <Option value="test">Xét nghiệm</Option>
-                    <Option value="ultrasound">Siêu âm</Option>
-                    <Option value="injection">Tiêm thuốc</Option>
-                    <Option value="procedure">Thủ thuật</Option>
-                    <Option value="laboratory">Lab</Option>
+                    <Option key="type-consultation" value="consultation">
+                      Tư vấn
+                    </Option>
+                    <Option key="type-test" value="test">
+                      Xét nghiệm
+                    </Option>
+                    <Option key="type-ultrasound" value="ultrasound">
+                      Siêu âm
+                    </Option>
+                    <Option key="type-injection" value="injection">
+                      Tiêm thuốc
+                    </Option>
+                    <Option key="type-procedure" value="procedure">
+                      Thủ thuật
+                    </Option>
+                    <Option key="type-laboratory" value="laboratory">
+                      Lab
+                    </Option>
                   </Select>
                 </Form.Item>
               </Col>
@@ -2808,8 +2882,12 @@ const TreatmentScheduleForm = ({
               <Col span={12}>
                 <Form.Item label="Mức độ quan trọng" name="required">
                   <Select>
-                    <Option value={true}>Bắt buộc</Option>
-                    <Option value={false}>Tùy chọn</Option>
+                    <Option key="required-true" value={true}>
+                      Bắt buộc
+                    </Option>
+                    <Option key="required-false" value={false}>
+                      Tùy chọn
+                    </Option>
                   </Select>
                 </Form.Item>
               </Col>
@@ -3012,13 +3090,27 @@ const TreatmentScheduleForm = ({
                   ]}
                 >
                   <Select placeholder="Chọn loại hoạt động">
-                    <Option value="examination">Khám lâm sàng</Option>
-                    <Option value="test">Xét nghiệm</Option>
-                    <Option value="procedure">Thủ thuật</Option>
-                    <Option value="surgery">Phẫu thuật</Option>
-                    <Option value="medication">Dùng thuốc</Option>
-                    <Option value="consultation">Tư vấn</Option>
-                    <Option value="monitoring">Theo dõi</Option>
+                    <Option key="activity-examination" value="examination">
+                      Khám lâm sàng
+                    </Option>
+                    <Option key="activity-test" value="test">
+                      Xét nghiệm
+                    </Option>
+                    <Option key="activity-procedure" value="procedure">
+                      Thủ thuật
+                    </Option>
+                    <Option key="activity-surgery" value="surgery">
+                      Phẫu thuật
+                    </Option>
+                    <Option key="activity-medication" value="medication">
+                      Dùng thuốc
+                    </Option>
+                    <Option key="activity-consultation" value="consultation">
+                      Tư vấn
+                    </Option>
+                    <Option key="activity-monitoring" value="monitoring">
+                      Theo dõi
+                    </Option>
                   </Select>
                 </Form.Item>
               </Col>
@@ -3119,145 +3211,6 @@ const TreatmentScheduleForm = ({
             </Form.Item>
           </Form>
         )}
-      </Modal>
-
-      {/* Phase Management Modal */}
-      <Modal
-        title={editingPhase ? "Chỉnh sửa giai đoạn" : "Thêm giai đoạn mới"}
-        open={phaseModal}
-        onCancel={() => {
-          setPhaseModal(false);
-          setEditingPhase(null);
-          phaseForm.resetFields();
-        }}
-        footer={[
-          <Button key="cancel" onClick={() => setPhaseModal(false)}>
-            Hủy
-          </Button>,
-          <Button
-            key="save"
-            type="primary"
-            form="phaseForm"
-            htmlType="submit"
-            loading={loading}
-          >
-            {editingPhase ? "Cập nhật" : "Thêm giai đoạn"}
-          </Button>,
-        ]}
-        width={600}
-      >
-        <Form
-          form={phaseForm}
-          layout="vertical"
-          onFinish={editingPhase ? handleUpdatePhase : handleCreatePhase}
-        >
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                label="Tên giai đoạn"
-                name="phaseName"
-                rules={[
-                  { required: true, message: "Vui lòng nhập tên giai đoạn" },
-                ]}
-              >
-                <Input placeholder="VD: Kích thích buồng trứng" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                label="Thứ tự"
-                name="phaseOrder"
-                rules={[{ required: true, message: "Vui lòng nhập thứ tự" }]}
-              >
-                <InputNumber
-                  min={1}
-                  max={20}
-                  style={{ width: "100%" }}
-                  placeholder="1"
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item
-            label="Mô tả"
-            name="description"
-            rules={[
-              { required: true, message: "Vui lòng nhập mô tả giai đoạn" },
-            ]}
-          >
-            <Input.TextArea
-              rows={3}
-              placeholder="Mô tả chi tiết về giai đoạn điều trị này..."
-              maxLength={500}
-              showCount
-            />
-          </Form.Item>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                label="Thời gian dự kiến"
-                name="expectedDuration"
-                rules={[{ required: true, message: "Vui lòng nhập thời gian" }]}
-              >
-                <Input placeholder="VD: 5-7 ngày" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="Ngày bắt đầu" name="startDate">
-                <DatePicker
-                  style={{ width: "100%" }}
-                  placeholder="Chọn ngày bắt đầu"
-                  disabledDate={(current) =>
-                    current && current < dayjs().startOf("day")
-                  }
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item label="Ngày kết thúc" name="endDate">
-            <DatePicker
-              style={{ width: "100%" }}
-              placeholder="Chọn ngày kết thúc"
-              disabledDate={(current) =>
-                current && current < dayjs().startOf("day")
-              }
-            />
-          </Form.Item>
-
-          {editingPhase && (
-            <Alert
-              message="Thông tin giai đoạn"
-              description={
-                <div>
-                  <Text>ID: {editingPhase.phaseId}</Text>
-                  <br />
-                  <Text>Trạng thái hiện tại: </Text>
-                  <Tag
-                    color={getStatusColor(editingPhase.status)}
-                    icon={getStatusIcon(editingPhase.status)}
-                  >
-                    {getStatusDisplayName(editingPhase.status)}
-                  </Tag>
-                  <br />
-                  <Text>
-                    Tạo lúc:{" "}
-                    {editingPhase.createdDate
-                      ? dayjs(editingPhase.createdDate).format(
-                          "DD/MM/YYYY HH:mm"
-                        )
-                      : "N/A"}
-                  </Text>
-                </div>
-              }
-              type="info"
-              showIcon
-              style={{ marginBottom: 16 }}
-            />
-          )}
-        </Form>
       </Modal>
     </div>
   );
