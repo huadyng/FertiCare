@@ -2031,6 +2031,11 @@ const TreatmentPlanEditor = ({
         <Descriptions.Item label="Bác sĩ phụ trách">
           {doctorSpecialty || "-"}
         </Descriptions.Item>
+        <Descriptions.Item label="Loại điều trị">
+          <Tag color="blue">
+            {existingPlan.treatmentType || patientInfo?.treatmentType || "IUI"}
+          </Tag>
+        </Descriptions.Item>
       </Descriptions>
     );
   };
@@ -2051,9 +2056,19 @@ const TreatmentPlanEditor = ({
       {existingPlan && isReadOnly ? (
         <Card className="treatment-plan-main-card">
           <div className="treatment-plan-header">
-            <Title level={2} className="treatment-plan-title">
+            <Title
+              level={2}
+              className="treatment-plan-title"
+              style={{
+                color: "#52c41a",
+                marginBottom: 16,
+              }}
+            >
               <Space>
-                <MedicineBoxOutlined className="title-icon" />
+                <MedicineBoxOutlined
+                  className="title-icon"
+                  style={{ color: "#52c41a" }}
+                />
                 Phác Đồ Điều Trị Đã Tạo
               </Space>
             </Title>
@@ -2066,22 +2081,80 @@ const TreatmentPlanEditor = ({
               size="middle"
               style={{ marginBottom: 24 }}
             >
+              {console.log(
+                "🔍 [TreatmentPlanEditor] existingPlan:",
+                existingPlan
+              )}
               <Descriptions.Item label="Tên phác đồ">
-                {existingPlan.planName}
+                {existingPlan.planName &&
+                !existingPlan.planName.startsWith("Plan ")
+                  ? existingPlan.planName
+                  : `Phác đồ ${existingPlan.treatmentType || "IUI"} - ${
+                      patientInfo?.name || "Bệnh nhân"
+                    }`}
               </Descriptions.Item>
               <Descriptions.Item label="Loại điều trị">
-                {existingPlan.treatmentType}
+                <Tag color="blue">
+                  {existingPlan.treatmentType ||
+                    patientInfo?.treatmentType ||
+                    "IUI"}
+                </Tag>
               </Descriptions.Item>
               <Descriptions.Item label="Thời gian dự kiến">
                 {existingPlan.estimatedDurationDays ||
-                  existingPlan.estimatedDuration}{" "}
+                  existingPlan.estimatedDuration ||
+                  (existingPlan.treatmentType === "IVF"
+                    ? 28
+                    : existingPlan.treatmentType === "ICSI"
+                    ? 30
+                    : 21)}{" "}
                 ngày
               </Descriptions.Item>
               <Descriptions.Item label="Chi phí dự kiến">
-                {existingPlan.estimatedCost?.toLocaleString("vi-VN")} VNĐ
+                {existingPlan.estimatedCost > 0
+                  ? existingPlan.estimatedCost.toLocaleString("vi-VN")
+                  : existingPlan.treatmentType === "IVF"
+                  ? "50,000,000"
+                  : existingPlan.treatmentType === "ICSI"
+                  ? "60,000,000"
+                  : "15,000,000"}{" "}
+                VNĐ
+              </Descriptions.Item>
+              <Descriptions.Item label="Tỷ lệ thành công">
+                {(() => {
+                  const treatmentType =
+                    existingPlan.treatmentType ||
+                    patientInfo?.treatmentType ||
+                    "IUI";
+
+                  // Nếu có dữ liệu thực từ API
+                  if (
+                    existingPlan.successProbability > 0 ||
+                    existingPlan.successRate > 0
+                  ) {
+                    const rate =
+                      existingPlan.successProbability ||
+                      existingPlan.successRate;
+                    // Nếu rate > 1, có thể là dạng 65 thay vì 0.65
+                    return rate > 1
+                      ? `${rate}%`
+                      : `${(rate * 100).toFixed(0)}%`;
+                  }
+
+                  // Fallback theo loại điều trị
+                  const defaultRates = {
+                    IVF: "65%",
+                    ICSI: "70%",
+                    IUI: "45%",
+                  };
+
+                  return defaultRates[treatmentType] || "45%";
+                })()}
               </Descriptions.Item>
               <Descriptions.Item label="Ghi chú">
-                {existingPlan.notes || existingPlan.doctorNotes || "-"}
+                {existingPlan.notes ||
+                  existingPlan.doctorNotes ||
+                  `Phác đồ điều trị ${existingPlan.treatmentType} được thiết kế phù hợp với tình trạng bệnh nhân`}
               </Descriptions.Item>
             </Descriptions>
 
@@ -2156,12 +2229,6 @@ const TreatmentPlanEditor = ({
         </Card>
       ) : (
         <>
-          {console.log("🔍 [Render] Rendering edit mode:", {
-            isEditing,
-            hasExistingPlan: !!existingPlan,
-            hasSelectedTemplate: !!selectedTemplate,
-            isReadOnly,
-          })}
           <Card className="treatment-plan-main-card">
             <div className="treatment-plan-header">
               <Title
@@ -2169,17 +2236,31 @@ const TreatmentPlanEditor = ({
                 className={`treatment-plan-title ${
                   isEditing && existingPlan ? "edit-mode-title" : ""
                 }`}
+                style={{
+                  color: isEditing && existingPlan ? "#1890ff" : "#262626",
+                  marginBottom: 16,
+                }}
               >
                 <Space>
-                  <MedicineBoxOutlined className="title-icon" />
+                  <MedicineBoxOutlined
+                    className="title-icon"
+                    style={{
+                      color: isEditing && existingPlan ? "#1890ff" : "#52c41a",
+                    }}
+                  />
                   {isEditing && existingPlan
                     ? "Chỉnh Sửa Phác Đồ Điều Trị"
                     : "Lập Phác Đồ Điều Trị Cá Nhân Hóa"}
                   {isEditing && existingPlan && (
                     <Tag
-                      color="orange"
+                      color="blue"
                       icon={<EditOutlined />}
                       className="edit-mode-indicator"
+                      style={{
+                        backgroundColor: "#e6f7ff",
+                        borderColor: "#1890ff",
+                        color: "#1890ff",
+                      }}
                     >
                       Đang chỉnh sửa
                     </Tag>
@@ -2205,29 +2286,6 @@ const TreatmentPlanEditor = ({
                 </Form.Item>
 
                 {/* Template Details with Real-time Updates */}
-                {console.log("🔍 [Render] Checking selectedTemplate:", {
-                  hasSelectedTemplate: !!selectedTemplate,
-                  templateName: selectedTemplate?.name,
-                  templateType: selectedTemplate?.type,
-                  hasPhases: !!selectedTemplate?.phases,
-                  phasesLength: selectedTemplate?.phases?.length,
-                  isReadOnly,
-                  isEditing,
-                })}
-                {templateLoadedFromAPI &&
-                  selectedTemplate &&
-                  selectedTemplate.name &&
-                  selectedTemplate.type &&
-                  selectedTemplate.phases && (
-                    <div className="template-details-card">
-                      <strong>🔍 DEBUG: Template should be visible here</strong>
-                      <p>Template Name: {selectedTemplate.name}</p>
-                      <p>Template Type: {selectedTemplate.type}</p>
-                      <p>
-                        Phases Count: {selectedTemplate.phases?.length || 0}
-                      </p>
-                    </div>
-                  )}
                 {templateLoadedFromAPI &&
                   selectedTemplate &&
                   selectedTemplate.name &&

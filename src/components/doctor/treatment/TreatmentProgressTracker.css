@@ -1,0 +1,89 @@
+.treatment-progress-tracker {
+  padding: 20px;
+}
+
+.treatment-progress-tracker .ant-card {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.treatment-progress-tracker .ant-statistic {
+  text-align: center;
+}
+
+.treatment-progress-tracker .ant-statistic-content {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.treatment-progress-tracker .ant-progress-line {
+  height: 12px;
+}
+
+.treatment-progress-tracker .ant-table-thead > tr > th {
+  background: rgba(255, 126, 179, 0.05);
+  border-bottom: 2px solid rgba(255, 126, 179, 0.1);
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.treatment-progress-tracker .ant-table-tbody > tr:hover {
+  background: rgba(255, 126, 179, 0.05);
+}
+
+.treatment-progress-tracker .ant-tag {
+  border-radius: 6px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.treatment-progress-tracker .ant-timeline-item-content {
+  margin-left: 16px;
+}
+
+.treatment-progress-tracker .ant-descriptions-item-label {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.treatment-progress-tracker .ant-alert {
+  border-radius: 8px;
+}
+
+.treatment-progress-tracker .ant-modal-header {
+  border-radius: 12px 12px 0 0;
+}
+
+.treatment-progress-tracker .ant-modal-content {
+  border-radius: 12px;
+}
+
+/* Animation for status updates */
+.treatment-progress-tracker .status-updating {
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .treatment-progress-tracker {
+    padding: 10px;
+  }
+
+  .treatment-progress-tracker .ant-col {
+    margin-bottom: 16px;
+  }
+}

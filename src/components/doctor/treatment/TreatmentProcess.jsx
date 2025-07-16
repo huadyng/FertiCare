@@ -42,6 +42,7 @@ import ExaminationForm from "./ExaminationForm";
 import TreatmentPlanEditor from "./TreatmentPlanEditor";
 import TreatmentScheduleForm from "./TreatmentScheduleForm";
 import PatientScheduleView from "./PatientScheduleView";
+import TreatmentProgressTracker from "./TreatmentProgressTracker";
 
 import { treatmentStateManager } from "../../../utils/treatmentStateManager";
 import { UserContext } from "../../../context/UserContext";
@@ -1091,7 +1092,7 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
       title: "Theo dõi tiến trình",
       description: "Cập nhật và theo dõi các buổi điều trị",
       icon: <PlayCircleOutlined />,
-      component: "TreatmentProgress",
+      component: TreatmentProgressTracker,
       color: "#ff9cbd",
     },
     {

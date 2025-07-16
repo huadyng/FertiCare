@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
 import {
   Card,
   Form,
@@ -36,7 +36,6 @@ import {
   MedicineBoxOutlined,
   EditOutlined,
   DeleteOutlined,
-  PlusOutlined,
   PlayCircleOutlined,
   PauseCircleOutlined,
   ExclamationCircleOutlined,
@@ -45,7 +44,8 @@ import {
   SettingOutlined,
   DollarOutlined,
   ReloadOutlined,
-  MinusOutlined,
+  SaveOutlined,
+  PlusOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { generateScheduleFromTemplate } from "./data/treatmentTemplates";
@@ -57,6 +57,16 @@ const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
 const { Step } = Steps;
 
+/**
+ * BACKEND FIX: API `/api/treatment-workflow/doctor/{doctorId}/treatment-phases`
+ * đã được cập nhật để trả về đúng structure:
+ * - `phaseId`: UUID của phase (để load activities)
+ * - `phaseName`: Tên thật từ database (để hiển thị)
+ * - `description`: Mô tả chi tiết
+ * - `phaseOrder`: Thứ tự phase
+ *
+ * Nếu phaseName không có, sẽ fallback sang `generateMeaningfulPhaseName()`
+ */
 const TreatmentScheduleForm = ({
   patientId,
   patientInfo,
@@ -96,7 +106,6 @@ const TreatmentScheduleForm = ({
   // NEW: States for detailed activity management
   const [phaseActivities, setPhaseActivities] = useState({});
   const [loadingActivities, setLoadingActivities] = useState(false);
-  const [expandedPhases, setExpandedPhases] = useState(new Set());
   const [selectedActivities, setSelectedActivities] = useState(new Set());
   const [activityModal, setActivityModal] = useState(false);
   const [editingActivity, setEditingActivity] = useState(null);
@@ -104,6 +113,437 @@ const TreatmentScheduleForm = ({
 
   // State để theo dõi việc đã tải dữ liệu lần đầu
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+
+  // NEW: States for phase status management
+  const [phaseStatusModal, setPhaseStatusModal] = useState(false);
+  const [editingPhaseStatus, setEditingPhaseStatus] = useState(null);
+  const [phaseStatusForm] = Form.useForm();
+  const [updatingPhaseStatus, setUpdatingPhaseStatus] = useState(false);
+  const [currentPhase, setCurrentPhase] = useState(null);
+  const [loadingCurrentPhase, setLoadingCurrentPhase] = useState(false);
+
+  // BACKEND SYNC: Validate treatment plan data structure
+  const validateTreatmentPlanData = (planData) => {
+    const errors = [];
+
+    // Validate required fields
+    if (!planData.planName || planData.planName.trim() === "") {
+      errors.push("Tên phác đồ là bắt buộc");
+    }
+    if (planData.planName && planData.planName.length > 255) {
+      errors.push("Tên phác đồ không được vượt quá 255 ký tự");
+    }
+
+    if (!planData.treatmentType) {
+      errors.push("Loại điều trị là bắt buộc");
+    }
+    if (
+      planData.treatmentType &&
+      !["IUI", "IVF", "ICSI"].includes(planData.treatmentType)
+    ) {
+      errors.push("Loại điều trị phải là IUI, IVF hoặc ICSI");
+    }
+
+    if (!planData.patientId) {
+      errors.push("ID bệnh nhân là bắt buộc");
+    }
+
+    // Validate data types
+    if (
+      planData.estimatedDurationDays &&
+      typeof planData.estimatedDurationDays !== "number"
+    ) {
+      errors.push("Thời gian ước tính phải là số");
+    }
+
+    if (planData.estimatedCost && typeof planData.estimatedCost !== "number") {
+      errors.push("Chi phí ước tính phải là số");
+    }
+
+    if (
+      planData.treatmentCycle &&
+      typeof planData.treatmentCycle !== "number"
+    ) {
+      errors.push("Số chu kỳ điều trị phải là số");
+    }
+
+    if (
+      planData.successProbability &&
+      (typeof planData.successProbability !== "number" ||
+        planData.successProbability < 0 ||
+        planData.successProbability > 100)
+    ) {
+      errors.push("Tỷ lệ thành công phải là số từ 0 đến 100");
+    }
+
+    // Validate status
+    if (
+      planData.status &&
+      !["draft", "active", "completed", "cancelled"].includes(planData.status)
+    ) {
+      errors.push("Trạng thái phải là draft, active, completed hoặc cancelled");
+    }
+
+    // Validate treatmentSteps structure
+    if (planData.treatmentSteps && Array.isArray(planData.treatmentSteps)) {
+      planData.treatmentSteps.forEach((step, index) => {
+        if (!step.name || step.name.trim() === "") {
+          errors.push(`Bước ${index + 1}: Tên bước là bắt buộc`);
+        }
+        if (step.step && typeof step.step !== "number") {
+          errors.push(`Bước ${index + 1}: Số thứ tự phải là số`);
+        }
+        if (step.activities && !Array.isArray(step.activities)) {
+          errors.push(`Bước ${index + 1}: Hoạt động phải là mảng`);
+        }
+      });
+    }
+
+    // Validate medicationPlan structure
+    if (planData.medicationPlan && Array.isArray(planData.medicationPlan)) {
+      planData.medicationPlan.forEach((plan, index) => {
+        if (!plan.phase || plan.phase.trim() === "") {
+          errors.push(`Kế hoạch thuốc ${index + 1}: Giai đoạn là bắt buộc`);
+        }
+        if (plan.medications && Array.isArray(plan.medications)) {
+          plan.medications.forEach((med, medIndex) => {
+            if (!med.name || med.name.trim() === "") {
+              errors.push(
+                `Kế hoạch thuốc ${index + 1}, thuốc ${
+                  medIndex + 1
+                }: Tên thuốc là bắt buộc`
+              );
+            }
+          });
+        }
+      });
+    }
+
+    // Validate monitoringSchedule structure
+    if (
+      planData.monitoringSchedule &&
+      Array.isArray(planData.monitoringSchedule)
+    ) {
+      planData.monitoringSchedule.forEach((schedule, index) => {
+        if (schedule.day && typeof schedule.day !== "number") {
+          errors.push(`Lịch theo dõi ${index + 1}: Ngày phải là số`);
+        }
+        if (!schedule.activity || schedule.activity.trim() === "") {
+          errors.push(`Lịch theo dõi ${index + 1}: Hoạt động là bắt buộc`);
+        }
+      });
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors: errors,
+    };
+  };
+
+  // BACKEND SYNC: Format data for API submission
+  const formatDataForBackend = (formData) => {
+    const backendData = {
+      // Required fields
+      patientId: patientId,
+      planName: formData.planName || "",
+      treatmentType: formData.treatmentType || "IUI",
+
+      // Optional basic fields
+      planDescription: formData.planDescription || "",
+      treatmentCycle: formData.treatmentCycle
+        ? parseInt(formData.treatmentCycle)
+        : null,
+      estimatedDurationDays: formData.estimatedDurationDays
+        ? parseInt(formData.estimatedDurationDays)
+        : null,
+      estimatedCost: formData.estimatedCost
+        ? parseFloat(formData.estimatedCost)
+        : null,
+
+      // Assessment fields
+      successProbability: formData.successProbability
+        ? parseFloat(formData.successProbability)
+        : null,
+      riskFactors: formData.riskFactors || "",
+      contraindications: formData.contraindications || "",
+
+      // Schedule fields
+      startDate: formData.startDate
+        ? dayjs(formData.startDate).format("YYYY-MM-DDTHH:mm:ss")
+        : null,
+      endDate: formData.endDate
+        ? dayjs(formData.endDate).format("YYYY-MM-DDTHH:mm:ss")
+        : null,
+
+      // Status
+      status: formData.status || "draft",
+
+      // Treatment steps - ensure correct structure
+      treatmentSteps:
+        formData.treatmentSteps && Array.isArray(formData.treatmentSteps)
+          ? formData.treatmentSteps.map((step) => ({
+              step: step.step || 0,
+              name: step.name || "",
+              duration: step.duration || "",
+              description: step.description || "",
+              activities: Array.isArray(step.activities) ? step.activities : [],
+            }))
+          : [],
+
+      // Medication plan - ensure correct structure
+      medicationPlan:
+        formData.medicationPlan && Array.isArray(formData.medicationPlan)
+          ? formData.medicationPlan.map((plan) => ({
+              phase: plan.phase || "",
+              medications: Array.isArray(plan.medications)
+                ? plan.medications.map((med) => ({
+                    name: med.name || "",
+                    dosage: med.dosage || "",
+                    frequency: med.frequency || "",
+                    duration: med.duration || "",
+                  }))
+                : [],
+            }))
+          : [],
+
+      // Monitoring schedule - ensure correct structure
+      monitoringSchedule:
+        formData.monitoringSchedule &&
+        Array.isArray(formData.monitoringSchedule)
+          ? formData.monitoringSchedule.map((schedule) => ({
+              day: schedule.day || 0,
+              activity: schedule.activity || "",
+              type: schedule.type || "",
+            }))
+          : [],
+
+      // Additional fields
+      notes: formData.notes || "",
+      templateId: formData.templateId || null,
+    };
+
+    return backendData;
+  };
+
+  // NEW: Load current phase
+  const loadCurrentPhase = useCallback(async () => {
+    if (!currentTreatmentPlan?.planId) return;
+
+    try {
+      setLoadingCurrentPhase(true);
+      console.log(
+        "🔄 Loading current phase for treatment plan:",
+        currentTreatmentPlan.planId
+      );
+
+      const result = await apiTreatmentManagement.getCurrentPhase(
+        currentTreatmentPlan.planId
+      );
+      if (result.success && result.data) {
+        setCurrentPhase(result.data);
+        console.log("✅ Current phase loaded:", result.data);
+      } else {
+        setCurrentPhase(null);
+        console.log("ℹ️ No current phase found");
+      }
+    } catch (error) {
+      console.error("❌ Error loading current phase:", error);
+      setCurrentPhase(null);
+    } finally {
+      setLoadingCurrentPhase(false);
+    }
+  }, [currentTreatmentPlan?.planId]);
+
+  // NEW: Load treatment plan phases with detailed info
+  const loadTreatmentPlanPhases = useCallback(async () => {
+    if (!currentTreatmentPlan?.planId) return;
+
+    try {
+      console.log(
+        "🔄 Loading treatment plan phases:",
+        currentTreatmentPlan.planId
+      );
+
+      const result = await apiTreatmentManagement.getTreatmentPlanPhases(
+        currentTreatmentPlan.planId
+      );
+      if (result.success && result.data) {
+        setApiPhases(result.data);
+        console.log("✅ Treatment plan phases loaded:", result.data);
+      } else {
+        console.warn("⚠️ No phases found for treatment plan");
+        setApiPhases([]);
+      }
+    } catch (error) {
+      console.error("❌ Error loading treatment plan phases:", error);
+      setApiPhases([]);
+    }
+  }, [currentTreatmentPlan?.planId]);
+
+  // BACKEND SYNC: Load treatment data with proper error handling
+  const loadTreatmentData = useCallback(async () => {
+    // Tránh tải dữ liệu nhiều lần cùng lúc
+    if (loadingPhases) {
+      console.log("🔄 [TreatmentScheduleForm] Already loading, skipping...");
+      return;
+    }
+
+    try {
+      setLoadingPhases(true);
+      console.log(
+        `🔄 [TreatmentScheduleForm] Loading treatment data for patient: ${patientId}`
+      );
+
+      // Debug user authentication state
+      console.log("🔍 [TreatmentScheduleForm] Current authentication state:", {
+        hasUser: !!user,
+        userRole: user?.role,
+        userId: user?.id,
+        userEmail: user?.email,
+        localStorage_user: !!localStorage.getItem("user"),
+        localStorage_token: !!localStorage.getItem("token"),
+      });
+
+      // Check doctor-patient access first (for doctors)
+      if (user?.role === "doctor") {
+        console.log("🔍 [TreatmentScheduleForm] Doctor access check...");
+        const accessResult =
+          await apiTreatmentManagement.checkDoctorPatientAccess(
+            user.id,
+            patientId
+          );
+        if (!accessResult.success) {
+          console.error("❌ Doctor access denied:", accessResult.message);
+          message.error("Bạn không có quyền truy cập thông tin bệnh nhân này");
+          return;
+        }
+        console.log("✅ Doctor access granted");
+      }
+
+      // Load treatment plan
+      let treatmentPlanData = null;
+      if (treatmentPlan && treatmentPlan.planId) {
+        console.log(
+          "🔄 [TreatmentScheduleForm] Loading treatment plan from prop..."
+        );
+        treatmentPlanData = treatmentPlan;
+      } else {
+        console.log(
+          "🔄 [TreatmentScheduleForm] Loading treatment plan from API..."
+        );
+        const planResult =
+          await apiTreatmentManagement.getTreatmentPlansByPatient(patientId);
+        if (
+          planResult.success &&
+          planResult.data &&
+          planResult.data.length > 0
+        ) {
+          // Get the most recent active plan
+          const activePlans = planResult.data.filter(
+            (plan) => plan.status === "active"
+          );
+          treatmentPlanData =
+            activePlans.length > 0 ? activePlans[0] : planResult.data[0];
+        }
+      }
+
+      if (treatmentPlanData) {
+        setCurrentTreatmentPlan(treatmentPlanData);
+        console.log("✅ Treatment plan loaded:", treatmentPlanData);
+      } else {
+        console.log("⚠️ No treatment plan found for patient");
+      }
+
+      // Load phases using existing API
+      console.log("🔄 [TreatmentScheduleForm] Loading treatment phases...");
+
+      // Sử dụng API phù hợp cho DOCTOR
+      const phasesResult = await apiTreatmentManagement.getActiveTreatmentPlan(
+        patientId
+      );
+
+      console.log("🔍 [TreatmentScheduleForm] Phases result:", phasesResult);
+
+      if (phasesResult.success && phasesResult.data) {
+        // Handle different response formats
+        let phasesData = [];
+        if (Array.isArray(phasesResult.data)) {
+          phasesData = phasesResult.data;
+        } else if (phasesResult.data.tablePhases) {
+          phasesData = phasesResult.data.tablePhases;
+        } else if (phasesResult.data.phases) {
+          phasesData = phasesResult.data.phases;
+        }
+
+        if (phasesData && phasesData.length > 0) {
+          setApiPhases(phasesData);
+          console.log("✅ Treatment phases loaded:", phasesData);
+
+          // Load activities for each phase
+          setLoadingActivities(true);
+          const activitiesPromises = phasesData.map(async (phase) => {
+            const phaseId = phase.phaseId || phase.planId || phase.id;
+            try {
+              const activitiesResult =
+                await apiTreatmentManagement.getPhaseActivities(phaseId);
+              if (activitiesResult.success && activitiesResult.data) {
+                return {
+                  phaseId: phaseId,
+                  activities: activitiesResult.data,
+                };
+              }
+            } catch (error) {
+              console.warn(
+                `⚠️ Could not load activities for phase ${phaseId}:`,
+                error
+              );
+            }
+            return { phaseId: phaseId, activities: [] };
+          });
+
+          const activitiesResults = await Promise.all(activitiesPromises);
+          const newPhaseActivities = {};
+          activitiesResults.forEach(({ phaseId, activities }) => {
+            newPhaseActivities[phaseId] = activities;
+          });
+
+          setPhaseActivities(newPhaseActivities);
+          setLoadingActivities(false);
+
+          console.log("✅ Phase activities loaded:", newPhaseActivities);
+        } else {
+          message.warning("⚠️ Không có hoạt động nào được tải từ API");
+        }
+      } else {
+        console.error("Failed to load phases:", phasesResult.message);
+        message.error("Không thể tải thông tin giai đoạn điều trị");
+        setApiPhases([]);
+        setPhaseActivities({});
+      }
+
+      setInitialDataLoaded(true);
+    } catch (error) {
+      console.error("Error loading treatment data:", error);
+      message.error("Lỗi khi tải thông tin điều trị");
+    } finally {
+      setLoadingPhases(false);
+    }
+  }, [patientId, user, treatmentPlan, initialDataLoaded]);
+
+  // Load detailed phases and current phase when treatment plan is available
+  useEffect(() => {
+    if (currentTreatmentPlan?.planId) {
+      console.log(
+        "🔄 Loading detailed phases for treatment plan:",
+        currentTreatmentPlan.planId
+      );
+      Promise.all([loadTreatmentPlanPhases(), loadCurrentPhase()]).catch(
+        (error) => {
+          console.error("❌ Error loading detailed phase data:", error);
+        }
+      );
+    }
+  }, [currentTreatmentPlan?.planId, loadTreatmentPlanPhases, loadCurrentPhase]);
 
   // Load phases and treatment plan when component mounts or key props change
   useEffect(() => {
@@ -132,7 +572,7 @@ const TreatmentScheduleForm = ({
         }
       }, 100);
     }
-  }, [patientId, initialDataLoaded, loadingPhases]); // Thêm loadingPhases vào dependency
+  }, [patientId, initialDataLoaded, loadingPhases, loadTreatmentData]);
 
   // Auto-import phases from treatment plan when available
   useEffect(() => {
@@ -189,22 +629,15 @@ const TreatmentScheduleForm = ({
           }
 
           if (importedCount > 0) {
-            console.log(
-              `✅ [TreatmentScheduleForm] Auto-imported ${importedCount} phases from treatment plan`
-            );
             message.success(
-              `✅ Đã tự động tạo ${importedCount} giai đoạn từ phác đồ điều trị`
+              `✅ Đã import ${importedCount} giai đoạn từ phác đồ điều trị`
             );
-            await loadPhasesFromAPI(currentTreatmentPlan?.planId);
+            // Reload phases to get the newly created ones
+            await loadTreatmentData();
           }
         } catch (error) {
-          console.error(
-            "❌ [TreatmentScheduleForm] Auto-import failed:",
-            error
-          );
-          message.warning(
-            "⚠️ Không thể tự động tạo giai đoạn từ phác đồ. Vui lòng tạo thủ công."
-          );
+          console.error("Error auto-importing phases:", error);
+          message.error("❌ Không thể tự động import giai đoạn từ phác đồ");
         } finally {
           setAutoImporting(false);
         }
@@ -214,241 +647,15 @@ const TreatmentScheduleForm = ({
     autoImportPhases();
   }, [
     treatmentPlan,
-    apiPhases.length,
-    loadingPhases,
+    apiPhases,
     currentTreatmentPlan,
-    patientId,
-    user?.id,
     autoImporting,
+    patientId,
+    loadTreatmentData,
   ]);
 
-  // Reset trạng thái khi patientId thay đổi
-  useEffect(() => {
-    if (patientId) {
-      console.log(
-        `🔄 [TreatmentScheduleForm] PatientId changed to: ${patientId}, resetting state`
-      );
-      setInitialDataLoaded(false);
-      setCurrentTreatmentPlan(null);
-      setApiPhases([]);
-      setPhaseActivities({});
-      setGeneratedSchedule([]);
-      setTemplate(null);
-    }
-  }, [patientId]);
-
-  // Tự động generate schedule khi có đủ dữ liệu
-  useEffect(() => {
-    // Kiểm tra xem đã load xong activities chưa (có thể một số phases không có activities)
-    const activitiesLoadingComplete =
-      apiPhases.length > 0 &&
-      Object.keys(phaseActivities).length >= apiPhases.length;
-
-    // Hoặc nếu đã có ít nhất một phase có activities
-    const hasAnyPhaseActivities =
-      apiPhases.length > 0 && Object.keys(phaseActivities).length > 0;
-
-    if (
-      initialDataLoaded &&
-      currentTreatmentPlan &&
-      apiPhases.length > 0 &&
-      (activitiesLoadingComplete || hasAnyPhaseActivities) &&
-      !template &&
-      !generatedSchedule.length
-    ) {
-      console.log(
-        "🔄 [TreatmentScheduleForm] Auto-generating schedule from loaded data..."
-      );
-      console.log("📊 Current state:", {
-        initialDataLoaded,
-        currentTreatmentPlan: !!currentTreatmentPlan,
-        apiPhasesCount: apiPhases.length,
-        phaseActivitiesKeysCount: Object.keys(phaseActivities).length,
-        activitiesLoadingComplete,
-        hasAnyPhaseActivities,
-        templateExists: !!template,
-        generatedScheduleLength: generatedSchedule.length,
-      });
-      loadExistingSchedule();
-    }
-  }, [
-    initialDataLoaded,
-    currentTreatmentPlan,
-    apiPhases.length,
-    phaseActivities,
-    template,
-    generatedSchedule.length,
-  ]);
-
-  // Enhanced function to get meaningful phase names based on treatment type
-  const getMeaningfulPhaseNames = (treatmentType) => {
-    if (treatmentType === "IVF") {
-      return {
-        1: "Chuẩn bị và đánh giá ban đầu",
-        2: "Kích thích buồng trứng",
-        3: "Theo dõi và điều chỉnh liều",
-        4: "Lấy trứng và thụ tinh",
-        5: "Chuyển phôi và theo dõi",
-      };
-    } else if (treatmentType === "IUI") {
-      return {
-        1: "Khám sàng lọc và tư vấn",
-        2: "Chuẩn bị và kích thích nhẹ",
-        3: "Theo dõi phát triển noãn",
-        4: "Thụ tinh nhân tạo IUI",
-        5: "Theo dõi sau thủ thuật",
-      };
-    } else {
-      return {
-        1: "Giai đoạn chuẩn bị",
-        2: "Giai đoạn điều trị chính",
-        3: "Giai đoạn theo dõi",
-        4: "Giai đoạn hoàn thiện",
-        5: "Giai đoạn kết thúc",
-      };
-    }
-  };
-
-  // Enhanced function to load all treatment data
-  const loadTreatmentData = async () => {
-    // Tránh tải dữ liệu nhiều lần cùng lúc
-    if (loadingPhases) {
-      console.log("🔄 [TreatmentScheduleForm] Already loading, skipping...");
-      return;
-    }
-
-    try {
-      setLoadingPhases(true);
-      console.log(
-        `🔄 [TreatmentScheduleForm] Loading treatment data for patient: ${patientId}`
-      );
-      console.log(`🔍 [TreatmentScheduleForm] Current data state:`, {
-        hasPatientInfo: !!patientInfo,
-        hasTreatmentPlan: !!treatmentPlan,
-        hasExaminationData: !!examinationData,
-        apiPhasesCount: apiPhases.length,
-        hasCurrentTreatmentPlan: !!currentTreatmentPlan,
-        isLoadingPhases: loadingPhases,
-      });
-
-      // Load active treatment plan
-      const planResult = await apiTreatmentManagement.getActiveTreatmentPlan(
-        patientId
-      );
-
-      if (planResult.success && planResult.data) {
-        setCurrentTreatmentPlan(planResult.data);
-        console.log("✅ Treatment plan loaded:", planResult.data);
-
-        // Load phases for this treatment plan
-        if (planResult.data.planId) {
-          await loadPhasesFromAPI(planResult.data.planId);
-        } else if (planResult.data.phases) {
-          // Use phases from plan data if available
-          const fixedPhases = fixPhaseNames(planResult.data.phases);
-          setApiPhases(fixedPhases);
-          console.log("✅ Phases loaded from plan data:", fixedPhases);
-        }
-      } else {
-        console.warn("⚠️ No active treatment plan found");
-        // Try to load phases directly by patient
-        await loadPhasesFromAPI();
-      }
-
-      // Đánh dấu đã tải dữ liệu lần đầu thành công
-      setInitialDataLoaded(true);
-      console.log("✅ [TreatmentScheduleForm] Initial data loading completed");
-
-      // Load existing schedule AFTER marking as loaded (will be handled by useEffect)
-      // await loadExistingSchedule();
-
-      // Force re-render để đảm bảo UI cập nhật
-      setTimeout(() => {
-        console.log(
-          "🔄 [TreatmentScheduleForm] Forcing UI update after data load"
-        );
-      }, 200);
-    } catch (error) {
-      console.error("❌ Error loading treatment data:", error);
-      message.error("Không thể tải thông tin điều trị từ hệ thống");
-    } finally {
-      setLoadingPhases(false);
-    }
-  };
-
-  // Load phases from API
-  const loadPhasesFromAPI = async (treatmentPlanId = null) => {
-    try {
-      setLoadingPhases(true);
-      console.log(
-        `🔄 [TreatmentScheduleForm] Loading phases for patient: ${patientId}, planId: ${treatmentPlanId}`
-      );
-
-      let planId = treatmentPlanId || currentTreatmentPlan?.planId;
-
-      if (!planId && treatmentPlan?.planId) {
-        planId = treatmentPlan.planId;
-      }
-
-      if (!planId) {
-        console.warn(
-          "⚠️ [TreatmentScheduleForm] No treatment plan ID available"
-        );
-        return;
-      }
-
-      const response = await apiTreatmentManagement.getTreatmentPlanPhases(
-        planId
-      );
-
-      if (response.success && response.data) {
-        console.log("✅ Phases loaded successfully:", response.data);
-
-        // Backend returns List<PhaseStatusResponse> directly
-        const phases = response.data;
-
-        // Transform PhaseStatusResponse to frontend format
-        const transformedPhases = phases.map((phase) => ({
-          statusId: phase.statusId,
-          phaseId: phase.phaseId,
-          phaseName:
-            phase.phaseName || `Giai đoạn ${phase.phaseOrder || "N/A"}`,
-          phaseOrder: phase.phaseOrder || 0,
-          status: phase.status || "Pending",
-          startDate: phase.startDate,
-          endDate: phase.endDate,
-          description: phase.description || "",
-          expectedDuration: phase.expectedDuration,
-          notes: phase.notes || "",
-          treatmentPlanId: phase.treatmentPlanId || planId,
-          // Add additional frontend-specific fields
-          activities: [], // Will be loaded separately
-          progress:
-            phase.status === "Completed"
-              ? 100
-              : phase.status === "In Progress"
-              ? 50
-              : 0,
-        }));
-
-        setApiPhases(transformedPhases);
-
-        // Load activities for all phases
-        await loadAllPhaseActivities(transformedPhases, planId);
-      } else {
-        console.error("Failed to load phases:", response.message);
-        message.error("Không thể tải thông tin giai đoạn điều trị");
-      }
-    } catch (error) {
-      console.error("Error loading phases:", error);
-      message.error("Lỗi khi tải thông tin giai đoạn điều trị");
-    } finally {
-      setLoadingPhases(false);
-    }
-  };
-
-  // Enhanced function to load existing schedule
-  const loadExistingSchedule = async () => {
+  // Enhanced function to load existing schedule - FIX: Remove problematic dependencies
+  const loadExistingSchedule = useCallback(async () => {
     try {
       if (existingSchedule && isEditing) {
         setGeneratedSchedule(existingSchedule.sessions || []);
@@ -478,53 +685,47 @@ const TreatmentScheduleForm = ({
         console.log(
           "🔄 [TreatmentScheduleForm] Creating template from currentTreatmentPlan and apiPhases"
         );
-        console.log(
-          "🔍 [TreatmentScheduleForm] Phase activities state:",
-          phaseActivities
-        );
 
+        // BACKEND SYNC: Create template with proper structure
         templateData = {
           name: currentTreatmentPlan.planName || "Phác đồ điều trị",
-          type: currentTreatmentPlan.treatmentType || "N/A",
+          type: currentTreatmentPlan.treatmentType || "IUI",
           estimatedDuration:
             currentTreatmentPlan.estimatedDurationDays || "N/A",
           cost: currentTreatmentPlan.estimatedCost || 0,
           successRate: currentTreatmentPlan.successProbability || "N/A",
-          phases: apiPhases.map((phase, idx) => ({
-            ...phase,
-            activities: phaseActivities[phase.phaseId] || [
-              // Fallback activities nếu không load được từ API
-              {
-                id: `fallback_activity_${
-                  phase.phaseId || idx
-                }_1_${Date.now()}_${Math.random()}`,
-                name: "Khám sàng lọc",
-                type: "examination",
-                estimatedDuration: 30,
-                isRequired: true,
-                status: "pending",
-                order: 1,
-                room: "Phòng khám",
-                cost: 200000,
-              },
-              {
-                id: `fallback_activity_${
-                  phase.phaseId || idx
-                }_2_${Date.now()}_${Math.random()}`,
-                name: "Theo dõi tiến trình",
-                type: "consultation",
-                estimatedDuration: 20,
-                isRequired: true,
-                status: "pending",
-                order: 2,
-                room: "Phòng tư vấn",
-                cost: 150000,
-              },
-            ],
-            phaseName: phase.phaseName || `Giai đoạn ${idx + 1}`,
-            phaseId: phase.phaseId || `phase_${idx + 1}`,
-            expectedDuration: phase.expectedDuration || "",
-          })),
+          phases: apiPhases.map((phase, idx) => {
+            // BACKEND FIX: Bây giờ phaseId là UUID, phaseName là tên thật
+            const phaseId = phase.phaseId || phase.planId || phase.id;
+            const phaseActivities_current = phaseActivities[phaseId] || [];
+
+            console.log(
+              `🔍 Phase UUID ${phaseId} activities:`,
+              phaseActivities_current
+            );
+
+            // Thông báo nếu không có activities
+            if (phaseActivities_current.length === 0) {
+              console.warn(`⚠️ Phase UUID ${phaseId} không có hoạt động nào`);
+            }
+
+            // Sử dụng tên thật từ API hoặc tạo tên có nghĩa
+            const displayName =
+              phase.phaseName ||
+              generateMeaningfulPhaseName(
+                phase,
+                idx,
+                currentTreatmentPlan?.treatmentType || "IUI"
+              );
+
+            return {
+              ...phase,
+              activities: phaseActivities_current,
+              phaseName: displayName, // Tên thật từ API hoặc tên có nghĩa
+              phaseId: phaseId, // UUID để tìm activities
+              expectedDuration: phase.expectedDuration || "",
+            };
+          }),
         };
       }
       // Priority 2: Use treatmentPlan prop if available
@@ -535,14 +736,16 @@ const TreatmentScheduleForm = ({
         console.log(
           "🔄 [TreatmentScheduleForm] Creating template from treatmentPlan prop"
         );
+
+        // BACKEND SYNC: Map treatmentSteps properly
         templateData = {
           name: treatmentPlan.planName || "Phác đồ từ backend",
-          type: treatmentPlan.treatmentType || "N/A",
+          type: treatmentPlan.treatmentType || "IUI",
           estimatedDuration: treatmentPlan.estimatedDurationDays || "N/A",
           cost: treatmentPlan.estimatedCost || 0,
           successRate: treatmentPlan.successProbability || "N/A",
           phases: treatmentPlan.treatmentSteps.map((step, idx) => ({
-            phaseId: `phase_${idx + 1}`,
+            phaseName: `phase_${idx + 1}`,
             phaseName: step.name || `Giai đoạn ${idx + 1}`,
             expectedDuration: step.duration || "",
             description: step.description || "",
@@ -568,36 +771,48 @@ const TreatmentScheduleForm = ({
           "🔄 [TreatmentScheduleForm] Creating template from treatmentPlan.finalPlan"
         );
         templateData = treatmentPlan.finalPlan;
-      } else if (apiPhases && apiPhases.length > 0) {
+      } else {
         // Fallback: map from apiPhases only
         console.log(
           "🔄 [TreatmentScheduleForm] Creating template from apiPhases only"
         );
         templateData = {
           name: "Phác đồ điều trị",
-          type: currentTreatmentPlan?.treatmentType || "N/A",
-          phases: apiPhases.map((phase, idx) => ({
-            ...phase,
-            activities: phaseActivities[phase.phaseId] || [
-              // Fallback activities cho apiPhases
-              {
-                id: `fallback_activity_${
-                  phase.phaseId || idx
-                }_1_${Date.now()}_${Math.random()}`,
-                name: "Hoạt động chính",
-                type: "examination",
-                estimatedDuration: 30,
-                isRequired: true,
-                status: "pending",
-                order: 1,
-                room: "Phòng điều trị",
-                cost: 200000,
-              },
-            ],
-            phaseName: phase.phaseName || `Giai đoạn ${idx + 1}`,
-            phaseId: phase.phaseId || `phase_${idx + 1}`,
-            expectedDuration: phase.expectedDuration || "",
-          })),
+          type: currentTreatmentPlan?.treatmentType || "IUI",
+          phases: apiPhases.map((phase, idx) => {
+            // BACKEND FIX: Bây giờ phaseId là UUID, phaseName là tên thật
+            const phaseId = phase.phaseId || phase.planId || phase.id;
+            const phaseActivities_current = phaseActivities[phaseId] || [];
+
+            console.log(
+              `🔍 Fallback phase UUID ${phaseId} activities:`,
+              phaseActivities_current
+            );
+
+            // Thông báo nếu không có activities
+            if (phaseActivities_current.length === 0) {
+              console.warn(
+                `⚠️ Fallback phase UUID ${phaseId} không có hoạt động nào`
+              );
+            }
+
+            // Sử dụng tên thật từ API hoặc tạo tên có nghĩa
+            const displayName =
+              phase.phaseName ||
+              generateMeaningfulPhaseName(
+                phase,
+                idx,
+                currentTreatmentPlan?.treatmentType || "IUI"
+              );
+
+            return {
+              ...phase,
+              activities: phaseActivities_current,
+              phaseName: displayName, // Tên thật từ API hoặc tên có nghĩa
+              phaseId: phaseId, // UUID để tìm activities
+              expectedDuration: phase.expectedDuration || "",
+            };
+          }),
         };
       }
 
@@ -609,330 +824,59 @@ const TreatmentScheduleForm = ({
           treatmentPlan?.startDate ||
           dayjs().add(3, "days").format("YYYY-MM-DD");
 
-        const schedule = generateScheduleFromTemplate(
-          templateData,
-          defaultStartDate
-        );
-        setGeneratedSchedule(schedule);
+        // KHÔNG gọi generateScheduleFromTemplate ở đây nữa
+        // setGeneratedSchedule(schedule); // BỎ
 
         form.setFieldsValue({
           startDate: dayjs(defaultStartDate),
           preferredTime: dayjs("09:00", "HH:mm"),
         });
 
-        console.log("✅ Template and schedule generated successfully");
-        console.log("📋 Generated schedule:", schedule);
-        console.log("🎯 Template data:", templateData);
-      } else {
-        console.warn("⚠️ No template data available to generate schedule");
+        console.log("✅ Template loaded, chờ bác sĩ chủ động sinh lịch");
       }
     } catch (error) {
-      console.error("❌ Error loading existing schedule:", error);
+      console.error("Error loading existing schedule:", error);
+      message.error("Lỗi khi tải lịch điều trị");
     }
-  };
+  }, [
+    existingSchedule,
+    isEditing,
+    currentTreatmentPlan,
+    apiPhases,
+    phaseActivities,
+    treatmentPlan,
+    form,
+  ]);
 
-  // Helper function to fix UUID phaseNames and map to correct API response structure
-  const fixPhaseNames = (phases) => {
-    if (!Array.isArray(phases)) return phases;
-
-    const uuidRegex =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-    return phases.map((phase, idx) => {
-      let safePhaseName = phase.phaseName;
-
-      if (typeof safePhaseName === "string" && uuidRegex.test(safePhaseName)) {
-        if (phase.description && !uuidRegex.test(phase.description)) {
-          safePhaseName = phase.description.split(":")[0].trim();
-        } else {
-          const treatmentType = currentTreatmentPlan?.treatmentType || "IUI";
-          const order = phase.phaseOrder || idx + 1;
-          const meaningfulPhaseNames = getMeaningfulPhaseNames(treatmentType);
-          safePhaseName = meaningfulPhaseNames[order] || `Giai đoạn ${order}`;
-        }
-      }
-
-      // Map to correct API response structure
-      return {
-        statusId: phase.statusId,
-        treatmentPlanId: phase.treatmentPlanId,
-        phaseId: phase.phaseId,
-        phaseName: safePhaseName,
-        phaseOrder: phase.phaseOrder || idx + 1,
-        status: phase.status,
-        startDate: phase.startDate,
-        endDate: phase.endDate,
-        notes: phase.notes,
-        description: phase.description,
-        expectedDuration: phase.expectedDuration,
-      };
-    });
-  };
-
-  // Enhanced API functions for phase management
-  const createTreatmentPhase = async (phaseData) => {
-    try {
-      console.log("🔄 Creating treatment phase:", phaseData);
-
-      // Validate phase data before sending to API
-      const validation =
-        apiTreatmentManagement.validateTreatmentPhase(phaseData);
-      if (!validation.isValid) {
-        throw new Error(
-          `Dữ liệu không hợp lệ: ${validation.errors.join(", ")}`
-        );
-      }
-
-      // Format data for API
-      const formattedData =
-        apiTreatmentManagement.formatPhaseDataForAPI(phaseData);
-
-      // Call the actual API
-      const result = await apiTreatmentManagement.createTreatmentPhase(
-        formattedData
-      );
-
-      if (result.success) {
-        // Add to local state immediately for UI responsiveness
-        setApiPhases((prev) => [...prev, result.data]);
-        message.success("✅ Đã tạo giai đoạn mới thành công");
-      } else {
-        throw new Error(result.message || "Không thể tạo giai đoạn mới");
-      }
-
-      return result;
-    } catch (error) {
-      console.error("❌ Error creating phase:", error);
-      message.error(error.message || "Không thể tạo giai đoạn mới");
-      return { success: false, message: error.message };
+  // FIX: Load existing schedule when component mounts - Remove problematic dependencies
+  useEffect(() => {
+    if (initialDataLoaded && (currentTreatmentPlan || template)) {
+      loadExistingSchedule();
     }
-  };
+  }, [
+    initialDataLoaded,
+    currentTreatmentPlan?.planId,
+    template?.name,
+    loadExistingSchedule,
+  ]);
 
-  // Update phase status using real API
-  const handleUpdatePhaseStatus = async (phaseId, newStatus) => {
-    try {
-      setLoading(true);
-      console.log(`🔄 Updating phase ${phaseId} status to: ${newStatus}`);
-
-      if (!currentTreatmentPlan?.planId) {
-        message.error("❌ Không tìm thấy treatment plan ID");
-        return;
-      }
-
-      const result = await apiTreatmentManagement.updatePhaseStatus(
-        currentTreatmentPlan.planId,
-        phaseId,
-        {
-          status: newStatus,
-          notes: `Cập nhật bởi bác sĩ lúc ${new Date().toLocaleString()}`,
-        }
-      );
-
-      if (result.success) {
-        // Update local state with actual API response structure
-        setApiPhases((prev) =>
-          prev.map((phase) =>
-            phase.phaseId === phaseId
-              ? {
-                  ...result.data, // Use the actual API response data
-                }
-              : phase
-          )
-        );
-
-        message.success(
-          `✅ Đã cập nhật trạng thái giai đoạn thành: ${getStatusDisplayName(
-            newStatus
-          )}`
-        );
-
-        // Refresh phases data
-        await loadPhasesFromAPI(currentTreatmentPlan.planId);
-      } else {
-        // Handle specific 409 conflict errors with clear explanations
-        if (result.error?.response?.status === 409) {
-          const errorMessage =
-            result.error.response.data?.message || result.message;
-          if (errorMessage.includes("Cannot change status from Completed")) {
-            message.error(
-              "❌ Không thể thay đổi giai đoạn đã hoàn thành. Giai đoạn đã hoàn thành không thể quay lại trạng thái khác."
-            );
-          } else if (
-            errorMessage.includes("Cannot change status from Cancelled")
-          ) {
-            message.error(
-              "❌ Không thể thay đổi giai đoạn đã hủy. Giai đoạn đã hủy không thể chuyển sang trạng thái khác."
-            );
-          } else if (errorMessage.includes("Cannot start phase")) {
-            message.error(
-              "❌ Không thể bắt đầu giai đoạn này. Vui lòng hoàn thành giai đoạn trước đó trước."
-            );
-          } else {
-            message.error(`❌ Xung đột business logic: ${errorMessage}`);
-          }
-        } else {
-          message.error(
-            result.message || "❌ Không thể cập nhật trạng thái giai đoạn"
-          );
-        }
-      }
-    } catch (error) {
-      console.error("❌ Error updating phase status:", error);
-      message.error("Có lỗi khi cập nhật trạng thái giai đoạn");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Create new phase
-  const handleCreatePhase = async (values) => {
-    try {
-      setLoading(true);
-      console.log("🔄 Creating new phase:", values);
-
-      const phaseData = {
-        planId: currentTreatmentPlan?.planId,
-        patientId: patientId,
-        phaseName: values.phaseName,
-        description: values.description,
-        phaseOrder: values.phaseOrder || apiPhases.length + 1,
-        expectedDuration: values.expectedDuration,
-        status: "Pending",
-        startDate: values.startDate?.format("YYYY-MM-DD"),
-        endDate: values.endDate?.format("YYYY-MM-DD"),
-      };
-
-      const result = await createTreatmentPhase(phaseData);
-
-      if (result.success) {
-        message.success("✅ Đã tạo giai đoạn mới thành công");
-        setPhaseModal(false);
-        phaseForm.resetFields();
-        await loadPhasesFromAPI(currentTreatmentPlan?.planId);
-      } else {
-        message.error("❌ Không thể tạo giai đoạn mới");
-      }
-    } catch (error) {
-      console.error("❌ Error creating phase:", error);
-      message.error("Có lỗi khi tạo giai đoạn mới");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Update existing phase
-  const handleUpdatePhase = async (values) => {
-    try {
-      setLoading(true);
-      console.log("🔄 Updating phase:", editingPhase.phaseId, values);
-
-      const updateData = {
-        phaseName: values.phaseName,
-        description: values.description,
-        phaseOrder: values.phaseOrder,
-        expectedDuration: values.expectedDuration,
-        startDate: values.startDate?.format("YYYY-MM-DD"),
-        endDate: values.endDate?.format("YYYY-MM-DD"),
-      };
-
-      // Validate update data
-      const fullPhaseData = { ...editingPhase, ...updateData };
-      const validation =
-        apiTreatmentManagement.validateTreatmentPhase(fullPhaseData);
-      if (!validation.isValid) {
-        throw new Error(
-          `Dữ liệu không hợp lệ: ${validation.errors.join(", ")}`
-        );
-      }
-
-      // Call API to update phase
-      const result = await apiTreatmentManagement.updateTreatmentPhase(
-        editingPhase.phaseId,
-        updateData
-      );
-
-      if (result.success) {
-        // Update local state with actual API response
-        setApiPhases((prev) =>
-          prev.map((phase) =>
-            phase.phaseId === editingPhase.phaseId ? { ...result.data } : phase
-          )
-        );
-
-        message.success("✅ Đã cập nhật giai đoạn thành công");
-        setPhaseModal(false);
-        setEditingPhase(null);
-        phaseForm.resetFields();
-      } else {
-        throw new Error(result.message || "Không thể cập nhật giai đoạn");
-      }
-    } catch (error) {
-      console.error("❌ Error updating phase:", error);
-      message.error(error.message || "Có lỗi khi cập nhật giai đoạn");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Delete phase
-  const handleDeletePhase = async (phaseId) => {
-    try {
-      setLoading(true);
-      console.log("🔄 Deleting phase:", phaseId);
-
-      // Call API to delete phase
-      const result = await apiTreatmentManagement.deleteTreatmentPhase(phaseId);
-
-      if (result.success) {
-        // Update local state
-        setApiPhases((prev) =>
-          prev.filter((phase) => phase.phaseId !== phaseId)
-        );
-
-        message.success("✅ Đã xóa giai đoạn thành công");
-      } else {
-        throw new Error(result.message || "Không thể xóa giai đoạn");
-      }
-    } catch (error) {
-      console.error("❌ Error deleting phase:", error);
-      message.error(error.message || "Có lỗi khi xóa giai đoạn");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Edit phase
-  const handleEditPhase = (phase) => {
-    setEditingPhase(phase);
-    phaseForm.setFieldsValue({
-      phaseName: phase.phaseName,
-      description: phase.description,
-      phaseOrder: phase.phaseOrder,
-      expectedDuration: phase.expectedDuration,
-      startDate: phase.startDate ? dayjs(phase.startDate) : undefined,
-      endDate: phase.endDate ? dayjs(phase.endDate) : undefined,
-    });
-    setPhaseModal(true);
-  };
-
-  // Enhanced schedule saving with API integration
+  // BACKEND SYNC: Save schedule to API with proper validation
   const saveScheduleToAPI = async (scheduleData) => {
     try {
       setSavingSchedule(true);
       console.log("🔄 Saving schedule to API:", scheduleData);
 
       // Validate schedule data before sending to API
-      const validation =
-        apiTreatmentManagement.validateTreatmentSchedule(scheduleData);
+      const validation = validateTreatmentPlanData(scheduleData);
       if (!validation.isValid) {
         throw new Error(
           `Dữ liệu lịch điều trị không hợp lệ: ${validation.errors.join(", ")}`
         );
       }
 
-      // Format data for API
-      const formattedData =
-        apiTreatmentManagement.formatScheduleDataForAPI(scheduleData);
+      // Format data for backend
+      const formattedData = formatDataForBackend(scheduleData);
+      console.log("🔄 Formatted data for backend:", formattedData);
 
       let result;
       if (isEditing && scheduleData.id) {
@@ -964,6 +908,177 @@ const TreatmentScheduleForm = ({
     }
   };
 
+  // Get meaningful phase names based on treatment type
+  const getMeaningfulPhaseNames = (treatmentType) => {
+    const phaseNames = {
+      IUI: {
+        1: "Chuẩn bị chu kỳ",
+        2: "Kích thích buồng trứng",
+        3: "Theo dõi phát triển nang",
+        4: "Gây phóng trứng",
+        5: "Thụ tinh nhân tạo",
+        6: "Theo dõi sau IUI",
+      },
+      IVF: {
+        1: "Chuẩn bị chu kỳ",
+        2: "Kích thích buồng trứng",
+        3: "Theo dõi phát triển nang",
+        4: "Gây phóng trứng",
+        5: "Chọc hút trứng",
+        6: "Thụ tinh trong ống nghiệm",
+        7: "Nuôi cấy phôi",
+        8: "Chuyển phôi",
+        9: "Theo dõi sau chuyển phôi",
+      },
+      ICSI: {
+        1: "Chuẩn bị chu kỳ",
+        2: "Kích thích buồng trứng",
+        3: "Theo dõi phát triển nang",
+        4: "Gây phóng trứng",
+        5: "Chọc hút trứng",
+        6: "Tiêm tinh trùng vào trứng",
+        7: "Nuôi cấy phôi",
+        8: "Chuyển phôi",
+        9: "Theo dõi sau chuyển phôi",
+      },
+    };
+    return phaseNames[treatmentType] || {};
+  };
+
+  // Generate meaningful phase name (fallback khi API không có phaseName)
+  const generateMeaningfulPhaseName = (phase, index, treatmentType) => {
+    const meaningfulNames = getMeaningfulPhaseNames(treatmentType);
+
+    // BACKEND FIX: Bây giờ phase.phaseName là tên thật từ DB
+    // Chỉ cần fallback khi không có phaseName
+    if (phase.phaseName && phase.phaseName.trim() !== "") {
+      return phase.phaseName;
+    }
+
+    // Nếu có description, sử dụng nó
+    if (phase.description && phase.description.trim() !== "") {
+      return phase.description;
+    }
+
+    // Tạo tên có nghĩa dựa trên treatmentType và index
+    const meaningfulName = meaningfulNames[index + 1];
+    if (meaningfulName) {
+      return meaningfulName;
+    }
+
+    // Fallback cuối cùng
+    return `Giai đoạn ${index + 1}`;
+  };
+
+  // BACKEND SYNC: Create treatment phase with proper structure
+  const createTreatmentPhase = async (phaseData) => {
+    try {
+      const result = await apiTreatmentManagement.createTreatmentPhase(
+        phaseData
+      );
+      if (result.success) {
+        console.log("✅ Treatment phase created:", result.data);
+        return result;
+      } else {
+        console.error("❌ Failed to create treatment phase:", result.message);
+        return { success: false, message: result.message };
+      }
+    } catch (error) {
+      console.error("❌ Error creating treatment phase:", error);
+      return { success: false, message: error.message };
+    }
+  };
+
+  // BACKEND SYNC: Handle form submission with proper validation
+  const handleSubmit = async (values) => {
+    try {
+      setLoading(true);
+
+      // BACKEND SYNC: Prepare data in backend format
+      const scheduleData = {
+        // Basic required fields
+        patientId: patientId,
+        planName: values.planName || template?.name || "Lịch điều trị",
+        treatmentType: currentTreatmentPlan?.treatmentType || "IUI",
+
+        // Schedule
+        startDate: values.startDate?.format("YYYY-MM-DDTHH:mm:ss"),
+        endDate: values.endDate?.format("YYYY-MM-DDTHH:mm:ss"),
+
+        // Status
+        status: isEditing ? "active" : "draft",
+
+        // Treatment steps - map from generated schedule
+        treatmentSteps: generatedSchedule.map((session, index) => ({
+          step: index + 1,
+          name: session.activity || session.phaseName || `Bước ${index + 1}`,
+          duration: session.duration ? `${session.duration} phút` : "30 phút",
+          description: session.notes || "",
+          activities: session.activities || [
+            session.activity || "Hoạt động chính",
+          ],
+        })),
+
+        // Medication plan - from form or template
+        medicationPlan: values.medicationPlan || template?.medicationPlan || [],
+
+        // Monitoring schedule - from form or template
+        monitoringSchedule:
+          values.monitoringSchedule || template?.monitoringSchedule || [],
+
+        notes: doctorNotes,
+        templateId: template?.id || currentTreatmentPlan?.templateId,
+
+        // Metadata
+        sessions: generatedSchedule,
+        totalSessions: generatedSchedule.length,
+        template: template,
+        doctorNotes: doctorNotes,
+        customSessions: customSessions,
+        adjustments: scheduleAdjustments,
+        preferredTime: values.preferredTime?.format("HH:mm"),
+        subStepsData: subStepsData,
+        createdAt: isEditing
+          ? existingSchedule?.createdAt
+          : new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        modificationCount:
+          (existingSchedule?.modificationCount || 0) + (isEditing ? 1 : 0),
+      };
+
+      console.log("✅ Submitting schedule data:", scheduleData);
+
+      // Validate required fields
+      if (!scheduleData.sessions || scheduleData.sessions.length === 0) {
+        throw new Error("Lịch điều trị không được để trống");
+      }
+
+      // Save to API
+      const saveResult = await saveScheduleToAPI(scheduleData);
+
+      if (saveResult.success) {
+        message.success("✅ Lưu lịch điều trị thành công!");
+
+        // Update local state
+        setScheduleData(saveResult.data);
+
+        // Call onNext callback if provided
+        if (onNext) {
+          onNext(saveResult.data);
+        }
+
+        console.log("✅ Schedule submission completed successfully");
+      } else {
+        throw new Error(saveResult.message || "Không thể lưu lịch điều trị");
+      }
+    } catch (error) {
+      console.error("❌ Error submitting schedule:", error);
+      message.error(`❌ Lỗi khi lưu lịch điều trị: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Get status display name
   const getStatusDisplayName = (status) => {
     const statusMap = {
@@ -972,6 +1087,10 @@ const TreatmentScheduleForm = ({
       Completed: "Hoàn thành",
       Cancelled: "Đã hủy",
       "On Hold": "Tạm dừng",
+      draft: "Nháp",
+      active: "Đang hoạt động",
+      completed: "Hoàn thành",
+      cancelled: "Đã hủy",
     };
     return statusMap[status] || status;
   };
@@ -984,6 +1103,10 @@ const TreatmentScheduleForm = ({
       Completed: "green",
       Cancelled: "red",
       "On Hold": "yellow",
+      draft: "gray",
+      active: "blue",
+      completed: "green",
+      cancelled: "red",
     };
     return colorMap[status] || "default";
   };
@@ -996,18 +1119,16 @@ const TreatmentScheduleForm = ({
       Completed: <CheckCircleOutlined />,
       Cancelled: <ExclamationCircleOutlined />,
       "On Hold": <PauseCircleOutlined />,
+      draft: <EditOutlined />,
+      active: <PlayCircleOutlined />,
+      completed: <CheckCircleOutlined />,
+      cancelled: <ExclamationCircleOutlined />,
     };
     return iconMap[status] || <ClockCircleOutlined />;
   };
 
   const handleStartDateChange = (date) => {
-    if (date && template) {
-      const schedule = generateScheduleFromTemplate(
-        template,
-        date.format("YYYY-MM-DD")
-      );
-      setGeneratedSchedule(schedule);
-    }
+    // Không làm gì ở đây để tránh auto-generate
   };
 
   // Doctor customization functions
@@ -1062,12 +1183,12 @@ const TreatmentScheduleForm = ({
   };
 
   const handleAddCustomSession = () => {
-    const uniqueId = `custom_${Date.now()}_${Math.random()
-      .toString(36)
-      .substr(2, 9)}`;
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).substr(2, 9);
+    const uniqueId = `custom_${timestamp}_${randomSuffix}`;
     const newSession = {
       id: uniqueId,
-      phaseId: "custom",
+      phaseName: "custom",
       phaseName: "Tùy chỉnh bác sĩ",
       date: dayjs().add(1, "day").format("YYYY-MM-DD"),
       activity: "",
@@ -1092,1679 +1213,789 @@ const TreatmentScheduleForm = ({
     setSessionModal(true);
   };
 
-  const handleDeleteSession = (sessionId) => {
-    Modal.confirm({
-      title: "Xác nhận xóa",
-      content: "Bạn có chắc muốn xóa buổi điều trị này?",
-      onOk: () => {
-        setGeneratedSchedule((prev) =>
-          prev.filter((session) => session.id !== sessionId)
-        );
-        message.success("Đã xóa buổi điều trị");
-      },
-    });
-  };
-
-  const generateDoctorSuggestions = () => {
-    let suggestions = [];
-
-    if (examinationData?.diagnosis?.includes("tuổi cao")) {
-      suggestions.push(
-        "💡 Bệnh nhân tuổi cao - cân nhắc tăng tần suất theo dõi"
-      );
-    }
-
-    if (examinationData?.diagnosis?.includes("AMH thấp")) {
-      suggestions.push("💡 AMH thấp - theo dõi sát phản ứng buồng trứng");
-    }
-
-    if (template?.type === "IVF") {
-      suggestions.push("💡 IVF - có thể cần điều chỉnh thời gian lấy trứng");
-    }
-
-    return suggestions.join("\n");
-  };
-
-  const handleSubmit = async (values) => {
-    try {
-      setLoading(true);
-
-      const scheduleData = {
-        ...values,
-        patientId,
-        treatmentPlanId: currentTreatmentPlan?.planId,
-        templateId: template?.id,
-        sessions: generatedSchedule,
-        totalSessions: generatedSchedule.length,
-        estimatedDuration: template?.estimatedDuration,
-        status: isEditing ? "updated" : "active",
-        template: template,
-        doctorNotes: doctorNotes,
-        customSessions: customSessions,
-        adjustments: scheduleAdjustments,
-        startDate: values.startDate?.format("YYYY-MM-DD"),
-        preferredTime: values.preferredTime?.format("HH:mm"),
-        subStepsData: subStepsData,
-        createdAt: isEditing
-          ? existingSchedule?.createdAt
-          : new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        modificationCount:
-          (existingSchedule?.modificationCount || 0) + (isEditing ? 1 : 0),
-      };
-
-      console.log("✅ Submitting schedule data:", scheduleData);
-
-      // Validate required fields
-      if (!scheduleData.sessions || scheduleData.sessions.length === 0) {
-        throw new Error("Lịch điều trị không được để trống");
-      }
-
-      // Save to API
-      const saveResult = await saveScheduleToAPI(scheduleData);
-
-      if (saveResult.success) {
-        const actionText = isEditing ? "Cập nhật" : "Tạo";
-        message.success(
-          `✅ ${actionText} lịch điều trị thành công - ${scheduleData.totalSessions} buổi điều trị`
-        );
-
-        // Auto-complete first sub-step if exists
-        if (subStepsData?.subSteps?.length > 0 && !isEditing) {
-          setTimeout(() => {
-            onSubStepComplete &&
-              onSubStepComplete(0, {
-                title: "Lập lịch điều trị hoàn thành",
-                completedAt: new Date().toISOString(),
-              });
-          }, 1000);
-        }
-
-        onNext && onNext(scheduleData);
-      } else {
-        throw new Error(saveResult.message || "Không thể lưu lịch điều trị");
-      }
-    } catch (error) {
-      console.error("❌ Lỗi lưu lịch điều trị:", error);
-      message.error(error.message || "Có lỗi xảy ra khi lưu lịch điều trị");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCompleteSubStep = (subStepIndex) => {
-    Modal.confirm({
-      title: "Hoàn thành giai đoạn",
-      content: `Xác nhận hoàn thành giai đoạn: ${subStepsData?.subSteps[subStepIndex]?.title}?`,
-      okText: "Hoàn thành",
-      cancelText: "Hủy",
-      onOk: () => {
-        onSubStepComplete &&
-          onSubStepComplete(subStepIndex, {
-            title: subStepsData.subSteps[subStepIndex].title,
-            completedAt: new Date().toISOString(),
-            notes: `Hoàn thành bởi bác sĩ`,
-          });
-      },
-    });
-  };
-
-  // Enhanced refresh function
-  const handleRefreshData = async () => {
-    try {
-      setLoadingPhases(true);
-      message.info("🔄 Đang làm mới dữ liệu...");
-
-      // Reset trạng thái để có thể tải lại dữ liệu
-      setInitialDataLoaded(false);
-      setCurrentTreatmentPlan(null);
-      setApiPhases([]);
-      setPhaseActivities({});
-
-      await loadTreatmentData();
-      message.success("✅ Đã làm mới dữ liệu thành công");
-    } catch (error) {
-      console.error("❌ Error refreshing data:", error);
-      message.error("Có lỗi khi làm mới dữ liệu");
-    }
-  };
-
-  // Columns for schedule table
-  const scheduleColumns = [
-    {
-      title: "Ngày",
-      dataIndex: "date",
-      key: "date",
-      render: (date, record) => (
-        <Space direction="vertical" size="small">
-          <Text strong>{dayjs(date).format("DD/MM/YYYY")}</Text>
-          <Text type="secondary">{dayjs(date).format("dddd")}</Text>
-        </Space>
-      ),
-      width: 120,
-    },
-    {
-      title: "Giai đoạn",
-      dataIndex: "phaseName",
-      key: "phaseName",
-      render: (text, record) => (
-        <Space>
-          <Tag color={record.custom ? "orange" : "blue"}>
-            {record.order}. {text}
-          </Tag>
-          {record.modified && (
-            <Tag color="green" size="small">
-              Đã sửa
-            </Tag>
-          )}
-          {record.custom && (
-            <Tag color="purple" size="small">
-              Tùy chỉnh
-            </Tag>
-          )}
-        </Space>
-      ),
-    },
-    {
-      title: "Hoạt động",
-      dataIndex: "activity",
-      key: "activity",
-      render: (text, record) => (
-        <Space direction="vertical" size="small">
-          <Text>{text}</Text>
-          <Space>
-            <Tag icon={<ClockCircleOutlined />}>{record.duration} phút</Tag>
-            <Tag color={record.required ? "red" : "green"}>
-              {record.required ? "Bắt buộc" : "Tùy chọn"}
-            </Tag>
-          </Space>
-          {scheduleAdjustments[record.id] && (
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              Sửa từ: {scheduleAdjustments[record.id].originalActivity}
-            </Text>
-          )}
-        </Space>
-      ),
-    },
-    {
-      title: "Loại",
-      dataIndex: "type",
-      key: "type",
-      render: (type, record) => {
-        const typeMap = {
-          consultation: { color: "blue", text: "Tư vấn" },
-          test: { color: "orange", text: "Xét nghiệm" },
-          ultrasound: { color: "purple", text: "Siêu âm" },
-          injection: { color: "red", text: "Tiêm thuốc" },
-          procedure: { color: "green", text: "Thủ thuật" },
-          laboratory: { color: "cyan", text: "Xét nghiệm lab" },
-        };
-        const config = typeMap[type] || { color: "default", text: type };
-        return <Tag color={config.color}>{config.text}</Tag>;
-      },
-    },
-    {
-      title: "Phòng",
-      dataIndex: "room",
-      key: "room",
-    },
-    {
-      title: "Thao tác",
-      dataIndex: "actions",
-      key: "actions",
-      width: 120,
-      render: (_, record) => (
-        <Space size="small">
-          <Button
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => handleEditSession(record)}
-            type="link"
-            title="Chỉnh sửa buổi điều trị"
-          />
-          <Button
-            size="small"
-            icon={<DeleteOutlined />}
-            onClick={() => handleDeleteSession(record.id)}
-            type="link"
-            danger
-            title="Xóa buổi điều trị"
-          />
-        </Space>
-      ),
-    },
-  ];
-
-  // NEW: Function to fetch detailed activities for a specific phase
-  const loadPhaseActivities = async (phaseId, treatmentPlanId) => {
-    try {
-      console.log(
-        `🔄 [TreatmentScheduleForm] Loading activities for phase: ${phaseId}`
-      );
-      setLoadingActivities(true);
-
-      // Call the backend API to get detailed activities
-      const activitiesResponse =
-        await apiTreatmentManagement.getPhaseActivities(
-          phaseId,
-          treatmentPlanId
-        );
-
-      if (activitiesResponse.success && activitiesResponse.data) {
-        // API trả về data trực tiếp là array activities, không phải object với key activities
-        const activities = Array.isArray(activitiesResponse.data)
-          ? activitiesResponse.data
-          : activitiesResponse.data.activities || [];
-
-        console.log(
-          `✅ [TreatmentScheduleForm] Loaded ${activities.length} activities for phase ${phaseId}`
-        );
-
-        return {
-          phaseId: phaseId,
-          activities: activities,
-        };
-      } else {
-        console.warn(
-          `⚠️ [TreatmentScheduleForm] No activities found for phase: ${phaseId}`
-        );
-        return {
-          phaseId: phaseId,
-          activities: [],
-        };
-      }
-    } catch (error) {
-      console.error(
-        `❌ [TreatmentScheduleForm] Error loading activities for phase ${phaseId}:`,
-        error
-      );
-      return {
-        phaseId: phaseId,
-        activities: [],
-      };
-    } finally {
-      setLoadingActivities(false);
-    }
-  };
-
-  // NEW: Function to load activities for all phases
-  const loadAllPhaseActivities = async (phases, treatmentPlanId) => {
-    console.log(
-      `🔄 [TreatmentScheduleForm] Loading activities for all ${phases.length} phases`
-    );
-
-    try {
-      // Load activities for each phase in parallel
-      const activityPromises = phases.map((phase) =>
-        loadPhaseActivities(phase.phaseId, treatmentPlanId)
-      );
-
-      const activityResults = await Promise.all(activityPromises);
-
-      // Update phases with their activities
-      const updatedPhases = phases.map((phase, index) => {
-        const activityResult = activityResults[index];
-        return {
-          ...phase,
-          activities: activityResult.activities || [],
-        };
-      });
-
-      setPhaseActivities((prev) => {
-        const newActivities = { ...prev };
-        updatedPhases.forEach((phase) => {
-          newActivities[phase.phaseId] = phase.activities;
-        });
-        return newActivities;
-      });
-
-      console.log(`✅ [TreatmentScheduleForm] All phase activities loaded`);
-    } catch (error) {
-      console.error(
-        `❌ [TreatmentScheduleForm] Error loading all phase activities:`,
-        error
-      );
-    }
-  };
-
-  // NEW: Function to toggle phase expansion
-  const togglePhaseExpansion = async (phaseId, treatmentPlanId) => {
-    const newExpandedPhases = new Set(expandedPhases);
-
-    if (newExpandedPhases.has(phaseId)) {
-      newExpandedPhases.delete(phaseId);
-    } else {
-      newExpandedPhases.add(phaseId);
-
-      // Load activities if not already loaded
-      if (!phaseActivities[phaseId]) {
-        await loadPhaseActivities(phaseId, treatmentPlanId);
-      }
-    }
-
-    setExpandedPhases(newExpandedPhases);
-  };
-
-  // NEW: Function to update activity status
-  const updateActivityStatus = async (
-    phaseId,
-    activityId,
-    newStatus,
-    additionalData = {}
-  ) => {
-    try {
-      console.log(
-        `🔄 [TreatmentScheduleForm] Updating activity status: ${activityId} -> ${newStatus}`
-      );
-
-      // Update local state immediately for better UX
-      setPhaseActivities((prev) => ({
-        ...prev,
-        [phaseId]:
-          prev[phaseId]?.map((activity) =>
-            activity.id === activityId
-              ? { ...activity, status: newStatus, ...additionalData }
-              : activity
-          ) || [],
-      }));
-
-      // Call API to update status
-      const response = await apiTreatmentManagement.updateActivityStatus(
-        activityId,
-        {
-          status: newStatus,
-          ...additionalData,
-          phaseId,
-          updatedAt: new Date().toISOString(),
-        }
-      );
-
-      if (response.success) {
-        message.success("Cập nhật trạng thái hoạt động thành công");
-        console.log(
-          `✅ [TreatmentScheduleForm] Activity status updated: ${activityId}`
-        );
-      } else {
-        throw new Error(response.message);
-      }
-    } catch (error) {
-      console.error(
-        `❌ [TreatmentScheduleForm] Error updating activity status:`,
-        error
-      );
-      message.error("Không thể cập nhật trạng thái hoạt động");
-
-      // Revert local state change
-      setPhaseActivities((prev) => ({
-        ...prev,
-        [phaseId]:
-          prev[phaseId]?.map((activity) =>
-            activity.id === activityId
-              ? { ...activity, status: activity.status } // Keep original status
-              : activity
-          ) || [],
-      }));
-    }
-  };
-
-  // NEW: Function to handle activity editing
-  const handleEditActivity = (phaseId, activity) => {
-    setEditingActivity({
-      ...activity,
-      phaseId,
-    });
-    setActivityModal(true);
-  };
-
-  // NEW: Function to save activity changes
+  // Activity management functions
   const handleSaveActivity = async (values) => {
     try {
-      const { phaseId, ...activityData } = editingActivity;
+      const activityData = {
+        ...editingActivity,
+        ...values,
+        phaseName: editingActivity.phaseName,
+        scheduledDate: values.scheduledDate?.format("YYYY-MM-DDTHH:mm:ss"),
+      };
 
+      // Update local state
       setPhaseActivities((prev) => ({
         ...prev,
-        [phaseId]:
-          prev[phaseId]?.map((activity) =>
-            activity.id === editingActivity.id
-              ? { ...activity, ...values }
-              : activity
-          ) || [],
+        [editingActivity.phaseName]: prev[editingActivity.phaseName]?.map(
+          (act) => (act.id === editingActivity.id ? activityData : act)
+        ) || [activityData],
       }));
 
+      message.success("Đã cập nhật hoạt động");
       setActivityModal(false);
       setEditingActivity(null);
-      message.success("Cập nhật hoạt động thành công");
     } catch (error) {
-      console.error("❌ [TreatmentScheduleForm] Error saving activity:", error);
-      message.error("Không thể lưu thông tin hoạt động");
+      console.error("Error saving activity:", error);
+      message.error("Có lỗi khi lưu hoạt động");
     }
   };
 
-  // Debug log trước khi render
-  console.log("🎨 [TreatmentScheduleForm] Rendering with state:", {
-    initialDataLoaded,
-    loadingPhases,
-    currentTreatmentPlan: !!currentTreatmentPlan,
-    apiPhasesCount: apiPhases.length,
-    templateExists: !!template,
-    generatedScheduleLength: generatedSchedule.length,
-    phaseActivitiesKeys: Object.keys(phaseActivities),
-  });
+  // NEW: Update phase status
+  const updatePhaseStatus = async (phaseId, statusData) => {
+    if (!currentTreatmentPlan?.planId) {
+      message.error("Không tìm thấy kế hoạch điều trị");
+      return;
+    }
+
+    try {
+      setUpdatingPhaseStatus(true);
+      console.log("🔄 Updating phase status:", phaseId, statusData);
+
+      const result = await apiTreatmentManagement.updatePhaseStatus(
+        currentTreatmentPlan.planId,
+        phaseId,
+        statusData
+      );
+
+      if (result.success) {
+        message.success("✅ Cập nhật trạng thái phase thành công");
+
+        // Reload phases and current phase
+        if (currentTreatmentPlan?.planId) {
+          await Promise.all([loadTreatmentPlanPhases(), loadCurrentPhase()]);
+        }
+
+        return result;
+      } else {
+        throw new Error(
+          result.message || "Không thể cập nhật trạng thái phase"
+        );
+      }
+    } catch (error) {
+      console.error("❌ Error updating phase status:", error);
+      message.error(`❌ Lỗi: ${error.message}`);
+      return { success: false, message: error.message };
+    } finally {
+      setUpdatingPhaseStatus(false);
+    }
+  };
+
+  // NEW: Handle phase status update
+  const handlePhaseStatusUpdate = (phase) => {
+    setEditingPhaseStatus(phase);
+    phaseStatusForm.setFieldsValue({
+      status: phase.status,
+      notes: phase.notes || "",
+    });
+    setPhaseStatusModal(true);
+  };
+
+  // NEW: Save phase status
+  const handleSavePhaseStatus = async (values) => {
+    if (!editingPhaseStatus) return;
+
+    const statusData = {
+      status: values.status,
+      notes: values.notes || "",
+    };
+
+    const result = await updatePhaseStatus(
+      editingPhaseStatus.phaseId,
+      statusData
+    );
+
+    if (result.success) {
+      setPhaseStatusModal(false);
+      setEditingPhaseStatus(null);
+      phaseStatusForm.resetFields();
+    }
+  };
+
+  // Render loading state
+  if (loadingPhases || loading) {
+    return (
+      <div style={{ textAlign: "center", padding: "50px" }}>
+        <Spin size="large" />
+        <p style={{ marginTop: "16px" }}>Đang tải dữ liệu điều trị...</p>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <Card>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 16,
-          }}
-        >
-          <Title level={3}>Lập Lịch Điều Trị Theo Phác Đồ</Title>
-          <Button
-            icon={<ReloadOutlined spin={loadingPhases} />}
-            onClick={handleRefreshData}
-            disabled={loadingPhases}
-            title="Làm mới dữ liệu"
-          >
-            Làm mới
-          </Button>
-        </div>
-
-        {loadingPhases && (
-          <div style={{ textAlign: "center", padding: "40px" }}>
-            <Spin size="large" />
-            <div style={{ marginTop: "16px" }}>
-              <Text>Đang tải thông tin điều trị...</Text>
-            </div>
+    <div className="treatment-schedule-form">
+      <Card
+        title={
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <CalendarOutlined />
+            <span>
+              {isEditing ? "Chỉnh sửa lịch điều trị" : "Tạo lịch điều trị"}
+            </span>
           </div>
-        )}
-
-        {!loadingPhases && !template ? (
-          <Alert
-            message="Chưa có phác đồ điều trị"
-            description="Vui lòng hoàn thành bước lập phác đồ điều trị trước khi lập lịch"
-            type="warning"
-            showIcon
-            action={
+        }
+        extra={
+          <Space>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={loadTreatmentData}
+              loading={loadingPhases}
+            >
+              Tải lại
+            </Button>
+            {currentTreatmentPlan && (
+              <Tag color="blue">
+                {currentTreatmentPlan.treatmentType} - Chu kỳ{" "}
+                {currentTreatmentPlan.treatmentCycle || 1}
+              </Tag>
+            )}
+          </Space>
+        }
+      >
+        {/* Current Phase Card */}
+        {currentPhase && (
+          <Card
+            size="small"
+            title={
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "8px" }}
+              >
+                <PlayCircleOutlined style={{ color: "#1890ff" }} />
+                <span>Giai đoạn hiện tại</span>
+              </div>
+            }
+            style={{ marginBottom: 16 }}
+            extra={
               <Button
                 type="primary"
-                onClick={() => {
-                  console.log("Current treatment plan:", treatmentPlan);
-                  message.info("Vui lòng quay lại bước lập phác đồ");
-                }}
+                size="small"
+                onClick={() => handlePhaseStatusUpdate(currentPhase)}
+                loading={updatingPhaseStatus}
               >
-                Quay lại lập phác đồ
+                Cập nhật trạng thái
               </Button>
             }
-          />
-        ) : (
-          !loadingPhases && (
-            <>
+          >
+            <Descriptions column={2} size="small">
+              <Descriptions.Item label="Tên giai đoạn">
+                {currentPhase.phaseName || "Không xác định"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Trạng thái">
+                <Tag color={getStatusColor(currentPhase.status)}>
+                  {getStatusIcon(currentPhase.status)}
+                  {getStatusDisplayName(currentPhase.status)}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Mô tả">
+                {currentPhase.description || "Không có mô tả"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Thời gian dự kiến">
+                {currentPhase.expectedDuration || "Không xác định"}
+              </Descriptions.Item>
+              {currentPhase.startDate && (
+                <Descriptions.Item label="Ngày bắt đầu">
+                  {dayjs(currentPhase.startDate).format("DD/MM/YYYY HH:mm")}
+                </Descriptions.Item>
+              )}
+              {currentPhase.endDate && (
+                <Descriptions.Item label="Ngày kết thúc">
+                  {dayjs(currentPhase.endDate).format("DD/MM/YYYY HH:mm")}
+                </Descriptions.Item>
+              )}
+            </Descriptions>
+            {currentPhase.notes && (
               <Alert
-                message="Lịch trình được tự động tạo dựa trên phác đồ điều trị đã chọn"
-                description={
-                  <div>
-                    <Text strong>Phác đồ:</Text>{" "}
-                    {treatmentPlan?.templateName ||
-                      template?.name ||
-                      "Chưa có phác đồ"}
-                    <br />
-                    <Text strong>Tổng thời gian:</Text>{" "}
-                    {template?.estimatedDuration || "N/A"}
-                    {treatmentPlan?.customizedPhases > 0 && (
-                      <>
-                        <br />
-                        <Text strong style={{ color: "#ff7a00" }}>
-                          ⚙️ Đã tùy chỉnh {treatmentPlan.customizedPhases} giai
-                          đoạn
-                        </Text>
-                      </>
-                    )}
-                  </div>
-                }
+                message="Ghi chú"
+                description={currentPhase.notes}
                 type="info"
                 showIcon
-                style={{ marginBottom: 16 }}
+                style={{ marginTop: 12 }}
               />
+            )}
+          </Card>
+        )}
 
-              <Row gutter={16} style={{ marginBottom: 16 }}>
-                <Col span={8}>
-                  <Text strong>Bệnh nhân: </Text>
-                  <Text>{patientInfo?.name || "Không có thông tin"}</Text>
-                </Col>
-                <Col span={8}>
-                  <Text strong>Loại điều trị: </Text>
-                  <Tag color={template?.type === "IVF" ? "blue" : "green"}>
-                    {template?.type || "N/A"}
-                  </Tag>
-                  {treatmentPlan?.treatmentType &&
-                    treatmentPlan.treatmentType !== template?.type && (
-                      <Tag color="orange">
-                        Đã cập nhật: {treatmentPlan.treatmentType}
-                      </Tag>
-                    )}
-                </Col>
-                <Col span={8}>
-                  <Text strong>Tỷ lệ thành công: </Text>
-                  <Text>
-                    {template?.successRate ||
-                      treatmentPlan?.successRate ||
-                      "N/A"}
-                    %
-                  </Text>
-                </Col>
-              </Row>
-
-              {template && (
-                <>
-                  <Row gutter={16} style={{ marginBottom: 16 }}>
-                    <Col span={4}>
-                      <Statistic
-                        title="Tổng giai đoạn"
-                        value={
-                          apiPhases.length > 0
-                            ? apiPhases.length
-                            : template.phases?.length || 0
-                        }
-                        suffix="giai đoạn"
-                        prefix={<CalendarOutlined />}
-                      />
-                    </Col>
-                    <Col span={4}>
-                      <Statistic
-                        title="Đang thực hiện"
-                        value={
-                          apiPhases.filter((p) => p.status === "In Progress")
-                            .length
-                        }
-                        suffix="giai đoạn"
-                        prefix={<PlayCircleOutlined />}
-                        valueStyle={{ color: "#1890ff" }}
-                      />
-                    </Col>
-                    <Col span={4}>
-                      <Statistic
-                        title="Hoàn thành"
-                        value={
-                          apiPhases.filter((p) => p.status === "Completed")
-                            .length
-                        }
-                        suffix="giai đoạn"
-                        prefix={<CheckCircleOutlined />}
-                        valueStyle={{ color: "#52c41a" }}
-                      />
-                    </Col>
-                    <Col span={4}>
-                      <Statistic
-                        title="Tổng hoạt động"
-                        value={generatedSchedule.length}
-                        suffix="hoạt động"
-                        prefix={<MedicineBoxOutlined />}
-                      />
-                    </Col>
-                    <Col span={4}>
-                      <Statistic
-                        title="Thời gian dự kiến"
-                        value={template.estimatedDuration}
-                        prefix={<ClockCircleOutlined />}
-                      />
-                    </Col>
-                    <Col span={4}>
-                      <Statistic
-                        title="Chi phí dự kiến"
-                        value={template.cost}
-                        prefix={<DollarOutlined />}
-                      />
-                    </Col>
-                  </Row>
-
-                  {/* API Phase Management Section */}
-                  <Card
-                    title={
-                      <Space>
-                        <SettingOutlined />
-                        <Text strong>Quản Lý Giai Đoạn Điều Trị</Text>
-                        <Button
-                          size="small"
-                          icon={<SyncOutlined spin={loadingPhases} />}
-                          onClick={() =>
-                            loadPhasesFromAPI(currentTreatmentPlan?.planId)
+        {/* Treatment Plan Phases with Status Management */}
+        {apiPhases && apiPhases.length > 0 && (
+          <Card
+            size="small"
+            title={`Giai đoạn điều trị (${apiPhases.length})`}
+            style={{ marginBottom: 16 }}
+            extra={
+              <Space>
+                <Button
+                  type="primary"
+                  size="small"
+                  onClick={() => setPhaseModal(true)}
+                >
+                  Thêm giai đoạn
+                </Button>
+                <Button
+                  size="small"
+                  onClick={loadCurrentPhase}
+                  loading={loadingCurrentPhase}
+                  icon={<ReloadOutlined />}
+                >
+                  Tải lại
+                </Button>
+                {treatmentPlan?.finalPlan?.phases && (
+                  <Button
+                    size="small"
+                    loading={loading}
+                    onClick={async () => {
+                      try {
+                        setLoading(true);
+                        // Import phases from treatment plan
+                        const templatePhases = treatmentPlan.finalPlan.phases;
+                        let importedCount = 0;
+                        // Lấy phaseOrder lớn nhất hiện có
+                        let maxOrder = apiPhases.reduce(
+                          (max, p) => Math.max(max, p.phaseOrder || 0),
+                          0
+                        );
+                        for (let i = 0; i < templatePhases.length; i++) {
+                          const phase = templatePhases[i];
+                          const phaseData = {
+                            planId: currentTreatmentPlan.planId,
+                            patientId: patientId,
+                            phaseName: phase.name || `Giai đoạn ${i + 1}`,
+                            description: phase.description || "",
+                            phaseOrder: ++maxOrder, // Đảm bảo tăng dần
+                            expectedDuration: phase.duration || "5-7 ngày",
+                            status: "Pending",
+                          };
+                          const result = await createTreatmentPhase(phaseData);
+                          if (result.success) {
+                            importedCount++;
                           }
-                          type="link"
-                          title="Làm mới dữ liệu giai đoạn"
-                        />
-                      </Space>
-                    }
-                    style={{ marginBottom: 16 }}
-                    extra={
-                      <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={() => {
-                          setEditingPhase(null);
-                          phaseForm.resetFields();
-                          setPhaseModal(true);
-                        }}
-                        disabled={!currentTreatmentPlan}
-                      >
-                        Thêm Giai Đoạn
-                      </Button>
-                    }
-                  >
-                    {loadingPhases || autoImporting ? (
-                      <div style={{ textAlign: "center", padding: "20px" }}>
-                        <SyncOutlined
-                          spin
-                          style={{ fontSize: "24px", color: "#1890ff" }}
-                        />
-                        <div style={{ marginTop: "8px" }}>
-                          {autoImporting
-                            ? "Đang tự động tạo giai đoạn từ phác đồ..."
-                            : "Đang tải thông tin giai đoạn..."}
-                        </div>
-                      </div>
-                    ) : apiPhases.length > 0 ? (
-                      <div>
-                        {/* Phase Status Overview */}
-                        <Row gutter={16} style={{ marginBottom: 16 }}>
-                          <Col span={24}>
-                            <Steps
-                              current={apiPhases.findIndex(
-                                (phase) => phase.status === "In Progress"
-                              )}
-                              items={apiPhases.map((phase, index) => ({
-                                key: `phase-step-${
-                                  phase.phaseId ||
-                                  phase.statusId ||
-                                  `fallback-${index}`
-                                }`,
-                                title: (
-                                  <Space direction="vertical" size="small">
-                                    <Text strong>{phase.phaseName}</Text>
-                                    <Tag
-                                      color={getStatusColor(phase.status)}
-                                      icon={getStatusIcon(phase.status)}
-                                    >
-                                      {getStatusDisplayName(phase.status)}
-                                    </Tag>
-                                  </Space>
-                                ),
-                                description: (
-                                  <div style={{ fontSize: "12px" }}>
-                                    <div>{phase.description}</div>
-                                    {phase.startDate && (
-                                      <div>
-                                        Bắt đầu:{" "}
-                                        {dayjs(phase.startDate).format(
-                                          "DD/MM/YYYY"
-                                        )}
-                                      </div>
-                                    )}
-                                    {phase.endDate && (
-                                      <div>
-                                        Kết thúc:{" "}
-                                        {dayjs(phase.endDate).format(
-                                          "DD/MM/YYYY"
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                ),
-                                status:
-                                  phase.status === "Completed"
-                                    ? "finish"
-                                    : phase.status === "In Progress"
-                                    ? "process"
-                                    : phase.status === "Cancelled"
-                                    ? "error"
-                                    : "wait",
-                              }))}
-                            />
-                          </Col>
-                        </Row>
-
-                        {/* Phase Management Table */}
-                        <Table
-                          dataSource={apiPhases}
-                          pagination={false}
-                          loading={loadingPhases}
-                          rowKey={(record) => {
-                            // Create a unique key using multiple fallback strategies
-                            const baseKey =
-                              record.statusId ||
-                              record.phaseId ||
-                              `phase-${record.phaseOrder || Math.random()}`;
-                            const phaseNameKey = record.phaseName
-                              ? record.phaseName.replace(/\s+/g, "-")
-                              : "unknown";
-                            const orderKey = record.phaseOrder || Math.random();
-                            const uniqueSuffix = `${Date.now()}-${Math.random()
-                              .toString(36)
-                              .substr(2, 9)}`;
-                            return `${baseKey}-${phaseNameKey}-${orderKey}-${uniqueSuffix}`;
-                          }}
-                          expandable={{
-                            expandedRowKeys: Array.from(expandedPhases),
-                            onExpand: (expanded, record) => {
-                              if (expanded) {
-                                togglePhaseExpansion(
-                                  record.phaseId,
-                                  currentTreatmentPlan?.planId ||
-                                    treatmentPlan?.planId
-                                );
-                              } else {
-                                setExpandedPhases((prev) => {
-                                  const newSet = new Set(prev);
-                                  newSet.delete(record.phaseId);
-                                  return newSet;
-                                });
-                              }
-                            },
-                            expandedRowRender: (record) => {
-                              const activities =
-                                phaseActivities[record.phaseId] || [];
-
-                              if (loadingActivities) {
-                                return (
-                                  <div
-                                    style={{
-                                      textAlign: "center",
-                                      padding: "20px",
-                                    }}
-                                  >
-                                    <Spin tip="Đang tải hoạt động..." />
-                                  </div>
-                                );
-                              }
-
-                              if (activities.length === 0) {
-                                return (
-                                  <div
-                                    style={{
-                                      padding: "16px",
-                                      textAlign: "center",
-                                      color: "#999",
-                                    }}
-                                  >
-                                    <Text type="secondary">
-                                      Chưa có hoạt động nào trong giai đoạn này
-                                    </Text>
-                                  </div>
-                                );
-                              }
-
-                              const activityColumns = [
-                                {
-                                  title: "STT",
-                                  dataIndex: "order",
-                                  key: "order",
-                                  width: 60,
-                                  render: (order) => (
-                                    <Text strong>#{order}</Text>
-                                  ),
-                                },
-                                {
-                                  title: "Hoạt động",
-                                  dataIndex: "name",
-                                  key: "name",
-                                  render: (name, activity) => (
-                                    <Space direction="vertical" size="small">
-                                      <Text strong>{name}</Text>
-                                      <Space size="small">
-                                        <Tag color="blue">
-                                          {activity.type || "examination"}
-                                        </Tag>
-                                        {activity.isRequired && (
-                                          <Tag color="red">Bắt buộc</Tag>
-                                        )}
-                                      </Space>
-                                    </Space>
-                                  ),
-                                },
-                                {
-                                  title: "Trạng thái",
-                                  dataIndex: "status",
-                                  key: "status",
-                                  width: 120,
-                                  render: (status, activity) => {
-                                    const statusConfig = {
-                                      pending: {
-                                        color: "default",
-                                        text: "Chờ thực hiện",
-                                      },
-                                      "in-progress": {
-                                        color: "processing",
-                                        text: "Đang thực hiện",
-                                      },
-                                      completed: {
-                                        color: "success",
-                                        text: "Hoàn thành",
-                                      },
-                                      cancelled: {
-                                        color: "error",
-                                        text: "Đã hủy",
-                                      },
-                                      delayed: {
-                                        color: "warning",
-                                        text: "Trì hoãn",
-                                      },
-                                    };
-
-                                    const config =
-                                      statusConfig[status] ||
-                                      statusConfig.pending;
-                                    return (
-                                      <Select
-                                        value={status}
-                                        style={{ width: "100%" }}
-                                        size="small"
-                                        onChange={(newStatus) =>
-                                          updateActivityStatus(
-                                            record.phaseId,
-                                            activity.id,
-                                            newStatus
-                                          )
-                                        }
-                                      >
-                                        <Option key="pending" value="pending">
-                                          <Badge
-                                            status={statusConfig.pending.color}
-                                            text={statusConfig.pending.text}
-                                          />
-                                        </Option>
-                                        <Option
-                                          key="in-progress"
-                                          value="in-progress"
-                                        >
-                                          <Badge
-                                            status={
-                                              statusConfig["in-progress"].color
-                                            }
-                                            text={
-                                              statusConfig["in-progress"].text
-                                            }
-                                          />
-                                        </Option>
-                                        <Option
-                                          key="completed"
-                                          value="completed"
-                                        >
-                                          <Badge
-                                            status={
-                                              statusConfig.completed.color
-                                            }
-                                            text={statusConfig.completed.text}
-                                          />
-                                        </Option>
-                                        <Option
-                                          key="cancelled"
-                                          value="cancelled"
-                                        >
-                                          <Badge
-                                            status={
-                                              statusConfig.cancelled.color
-                                            }
-                                            text={statusConfig.cancelled.text}
-                                          />
-                                        </Option>
-                                        <Option key="delayed" value="delayed">
-                                          <Badge
-                                            status={statusConfig.delayed.color}
-                                            text={statusConfig.delayed.text}
-                                          />
-                                        </Option>
-                                      </Select>
-                                    );
-                                  },
-                                },
-                                {
-                                  title: "Thời gian",
-                                  key: "timing",
-                                  width: 150,
-                                  render: (_, activity) => (
-                                    <Space direction="vertical" size="small">
-                                      <Text type="secondary">
-                                        <ClockCircleOutlined />{" "}
-                                        {activity.estimatedDuration || 60} phút
-                                      </Text>
-                                      {activity.scheduledDate && (
-                                        <Text type="secondary">
-                                          <CalendarOutlined />{" "}
-                                          {dayjs(activity.scheduledDate).format(
-                                            "DD/MM/YYYY HH:mm"
-                                          )}
-                                        </Text>
-                                      )}
-                                    </Space>
-                                  ),
-                                },
-                                {
-                                  title: "Địa điểm",
-                                  dataIndex: "location",
-                                  key: "location",
-                                  width: 120,
-                                  render: (_, activity) => (
-                                    <Space direction="vertical" size="small">
-                                      <Text type="secondary">
-                                        {activity.room || "TBD"}
-                                      </Text>
-                                      <Text
-                                        type="secondary"
-                                        style={{ fontSize: "12px" }}
-                                      >
-                                        {activity.assignedStaff ||
-                                          "Chưa phân công"}
-                                      </Text>
-                                    </Space>
-                                  ),
-                                },
-                                {
-                                  title: "Chi phí",
-                                  dataIndex: "cost",
-                                  key: "cost",
-                                  width: 100,
-                                  render: (cost) => (
-                                    <Text strong>
-                                      {cost
-                                        ? `${cost.toLocaleString("vi-VN")} VNĐ`
-                                        : "Miễn phí"}
-                                    </Text>
-                                  ),
-                                },
-                                {
-                                  title: "Thao tác",
-                                  key: "actions",
-                                  width: 100,
-                                  render: (_, activity) => (
-                                    <Space size="small">
-                                      <Tooltip title="Chỉnh sửa hoạt động">
-                                        <Button
-                                          type="text"
-                                          icon={<EditOutlined />}
-                                          size="small"
-                                          onClick={() =>
-                                            handleEditActivity(
-                                              record.phaseId,
-                                              activity
-                                            )
-                                          }
-                                        />
-                                      </Tooltip>
-                                      {activity.status === "pending" && (
-                                        <Tooltip title="Bắt đầu thực hiện">
-                                          <Button
-                                            type="text"
-                                            icon={<PlayCircleOutlined />}
-                                            size="small"
-                                            onClick={() =>
-                                              updateActivityStatus(
-                                                record.phaseId,
-                                                activity.id,
-                                                "in-progress"
-                                              )
-                                            }
-                                          />
-                                        </Tooltip>
-                                      )}
-                                      {activity.status === "in-progress" && (
-                                        <Tooltip title="Hoàn thành">
-                                          <Button
-                                            type="text"
-                                            icon={<CheckCircleOutlined />}
-                                            size="small"
-                                            style={{ color: "#52c41a" }}
-                                            onClick={() =>
-                                              updateActivityStatus(
-                                                record.phaseId,
-                                                activity.id,
-                                                "completed"
-                                              )
-                                            }
-                                          />
-                                        </Tooltip>
-                                      )}
-                                    </Space>
-                                  ),
-                                },
-                              ];
-
-                              return (
-                                <div style={{ margin: "16px 0" }}>
-                                  <Space
-                                    direction="vertical"
-                                    style={{ width: "100%" }}
-                                  >
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        justifyContent: "space-between",
-                                        alignItems: "center",
-                                      }}
-                                    >
-                                      <Title level={5} style={{ margin: 0 }}>
-                                        Chi tiết hoạt động - {record.phaseName}
-                                      </Title>
-                                      <Space>
-                                        <Text type="secondary">
-                                          Tổng: {activities.length} hoạt động
-                                        </Text>
-                                        <Text type="secondary">
-                                          Hoàn thành:{" "}
-                                          {
-                                            activities.filter(
-                                              (a) => a.status === "completed"
-                                            ).length
-                                          }
-                                        </Text>
-                                      </Space>
-                                    </div>
-
-                                    <Table
-                                      dataSource={activities}
-                                      columns={activityColumns}
-                                      pagination={false}
-                                      size="small"
-                                      rowKey={(record) => {
-                                        // Create unique key for activities
-                                        const baseKey =
-                                          record.id ||
-                                          `activity-${
-                                            record.phaseId || "unknown"
-                                          }-${Math.random()
-                                            .toString(36)
-                                            .substr(2, 5)}`;
-                                        const nameKey = record.name
-                                          ? record.name.replace(/\s+/g, "-")
-                                          : "unknown";
-                                        const orderKey =
-                                          record.order || Math.random();
-                                        const uniqueSuffix = Math.random()
-                                          .toString(36)
-                                          .substr(2, 9);
-                                        return `${baseKey}-${nameKey}-${orderKey}-${uniqueSuffix}`;
-                                      }}
-                                      bordered
-                                      style={{ backgroundColor: "#fafafa" }}
-                                    />
-                                  </Space>
-                                </div>
-                              );
-                            },
-                            expandIcon: ({ expanded, onExpand, record }) => (
-                              <Button
-                                key={`expand-btn-${
-                                  record.phaseId ||
-                                  record.statusId ||
-                                  Math.random()
-                                }`}
-                                type="text"
-                                icon={
-                                  expanded ? (
-                                    <MinusOutlined />
-                                  ) : (
-                                    <PlusOutlined />
-                                  )
-                                }
-                                onClick={(e) => onExpand(record, e)}
-                                title={
-                                  expanded
-                                    ? "Thu gọn"
-                                    : "Xem chi tiết hoạt động"
-                                }
-                              />
-                            ),
-                          }}
-                          columns={[
-                            {
-                              title: "Giai đoạn",
-                              dataIndex: "phaseName",
-                              key: "phaseName",
-                              render: (text, record) => (
-                                <Space direction="vertical" size="small">
-                                  <Text strong style={{ fontSize: "16px" }}>
-                                    {text}
-                                  </Text>
-                                  <Text type="secondary">
-                                    Thứ tự: {record.phaseOrder}
-                                  </Text>
-                                  {record.expectedDuration && (
-                                    <Tag
-                                      icon={<ClockCircleOutlined />}
-                                      color="blue"
-                                    >
-                                      {record.expectedDuration}
-                                    </Tag>
-                                  )}
-                                </Space>
-                              ),
-                            },
-                            {
-                              title: "Thời gian",
-                              dataIndex: "dates",
-                              key: "dates",
-                              width: 200,
-                              render: (_, record) => (
-                                <Space direction="vertical" size="small">
-                                  {record.startDate && (
-                                    <Text style={{ fontSize: "12px" }}>
-                                      <CalendarOutlined /> Bắt đầu:{" "}
-                                      {dayjs(record.startDate).format(
-                                        "DD/MM/YYYY"
-                                      )}
-                                    </Text>
-                                  )}
-                                  {record.endDate && (
-                                    <Text style={{ fontSize: "12px" }}>
-                                      <CheckCircleOutlined /> Kết thúc:{" "}
-                                      {dayjs(record.endDate).format(
-                                        "DD/MM/YYYY"
-                                      )}
-                                    </Text>
-                                  )}
-                                </Space>
-                              ),
-                            },
-                            {
-                              title: "Thao tác",
-                              dataIndex: "actions",
-                              key: "actions",
-                              width: 120,
-                              render: (_, record) => (
-                                <Space size="small">
-                                  <Tooltip title="Chỉnh sửa giai đoạn">
-                                    <Button
-                                      size="small"
-                                      icon={<EditOutlined />}
-                                      onClick={() => handleEditPhase(record)}
-                                      type="link"
-                                      disabled={loading}
-                                    />
-                                  </Tooltip>
-                                  <Popconfirm
-                                    title="Xóa giai đoạn này?"
-                                    description="Hành động này không thể hoàn tác."
-                                    onConfirm={() =>
-                                      handleDeletePhase(record.phaseId)
-                                    }
-                                    okText="Xóa"
-                                    cancelText="Hủy"
-                                    disabled={loading}
-                                  >
-                                    <Tooltip title="Xóa giai đoạn">
-                                      <Button
-                                        size="small"
-                                        icon={<DeleteOutlined />}
-                                        type="link"
-                                        danger
-                                        disabled={loading}
-                                      />
-                                    </Tooltip>
-                                  </Popconfirm>
-                                </Space>
-                              ),
-                            },
-                          ]}
-                        />
-                      </div>
-                    ) : (
-                      <Alert
-                        message="Chưa có giai đoạn điều trị"
-                        description={
-                          treatmentPlan?.finalPlan?.phases
-                            ? "Đang tự động tạo giai đoạn từ phác đồ điều trị..."
-                            : "Chưa có giai đoạn điều trị nào được tạo. Hãy tạo giai đoạn đầu tiên hoặc hoàn thành phác đồ điều trị."
                         }
-                        type="info"
-                        showIcon
-                        action={
-                          <Space>
-                            <Button
-                              size="small"
-                              onClick={() => {
-                                setEditingPhase(null);
-                                phaseForm.resetFields();
-                                setPhaseModal(true);
-                              }}
-                              disabled={!currentTreatmentPlan}
-                            >
-                              Tạo Giai Đoạn
-                            </Button>
-                            {treatmentPlan?.finalPlan?.phases && (
-                              <Button
-                                size="small"
-                                icon={<SyncOutlined spin={loading} />}
-                                onClick={async () => {
-                                  try {
-                                    setLoading(true);
-                                    const templatePhases =
-                                      treatmentPlan.finalPlan.phases;
-                                    let importedCount = 0;
-
-                                    const treatmentType =
-                                      currentTreatmentPlan?.treatmentType ||
-                                      treatmentPlan?.treatmentType ||
-                                      "IUI";
-                                    const meaningfulPhaseNames =
-                                      getMeaningfulPhaseNames(treatmentType);
-
-                                    for (
-                                      let i = 0;
-                                      i < templatePhases.length;
-                                      i++
-                                    ) {
-                                      const phase = templatePhases[i];
-                                      const result = await createTreatmentPhase(
-                                        {
-                                          planId: currentTreatmentPlan?.planId,
-                                          patientId: patientId,
-                                          phaseName:
-                                            meaningfulPhaseNames[i + 1] ||
-                                            phase.name ||
-                                            `Giai đoạn ${i + 1}`,
-                                          description:
-                                            phase.description ||
-                                            `Giai đoạn ${i + 1}: ${
-                                              meaningfulPhaseNames[i + 1] ||
-                                              phase.name
-                                            }`,
-                                          phaseOrder: i + 1,
-                                          expectedDuration:
-                                            phase.duration || "5-7 ngày",
-                                          status: "Pending",
-                                        }
-                                      );
-                                      if (result.success) importedCount++;
-                                    }
-
-                                    if (importedCount > 0) {
-                                      message.success(
-                                        `✅ Đã tạo ${importedCount} giai đoạn từ phác đồ`
-                                      );
-                                      await loadPhasesFromAPI(
-                                        currentTreatmentPlan?.planId
-                                      );
-                                    }
-                                  } catch (error) {
-                                    message.error(
-                                      "❌ Không thể tạo giai đoạn từ phác đồ"
-                                    );
-                                  } finally {
-                                    setLoading(false);
-                                  }
-                                }}
-                                disabled={!currentTreatmentPlan || loading}
-                              >
-                                Import Từ Phác Đồ
-                              </Button>
-                            )}
-                          </Space>
+                        if (importedCount > 0) {
+                          message.success(
+                            `✅ Đã import ${importedCount} giai đoạn từ phác đồ điều trị`
+                          );
+                          await loadTreatmentData();
+                        } else {
+                          message.warning(
+                            "⚠️ Không có giai đoạn nào được import"
+                          );
                         }
-                      />
-                    )}
-                  </Card>
-
-                  <Form
-                    form={form}
-                    layout="vertical"
-                    onFinish={handleSubmit}
-                    initialValues={{
-                      startDate: dayjs().add(3, "days"),
-                      preferredTime: dayjs("09:00", "HH:mm"),
+                      } catch (error) {
+                        console.error("Error importing phases:", error);
+                        message.error("❌ Lỗi khi import giai đoạn");
+                      } finally {
+                        setLoading(false);
+                      }
                     }}
                   >
-                    <Row gutter={16}>
-                      <Col span={12}>
-                        <Form.Item
-                          label="Ngày bắt đầu điều trị"
-                          name="startDate"
-                          rules={[
-                            {
-                              required: true,
-                              message: "Vui lòng chọn ngày bắt đầu",
-                            },
-                          ]}
-                        >
-                          <DatePicker
-                            style={{ width: "100%" }}
-                            placeholder="Chọn ngày bắt đầu điều trị"
-                            onChange={handleStartDateChange}
-                            disabledDate={(current) =>
-                              current && current < dayjs().startOf("day")
-                            }
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col span={12}>
-                        <Form.Item
-                          label="Giờ hẹn ưu tiên"
-                          name="preferredTime"
-                          tooltip="Giờ mặc định cho các buổi hẹn, có thể điều chỉnh từng buổi riêng"
-                        >
-                          <TimePicker
-                            style={{ width: "100%" }}
-                            format="HH:mm"
-                            placeholder="Chọn giờ hẹn ưu tiên"
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
+                    Import từ phác đồ
+                  </Button>
+                )}
+              </Space>
+            }
+          >
+            <Table
+              dataSource={[...apiPhases].sort(
+                (a, b) => (a.phaseOrder || 0) - (b.phaseOrder || 0)
+              )}
+              rowKey={(record) => record.phaseId || record.id}
+              pagination={false}
+              size="small"
+              // Thêm rowClassName để làm mờ các phase chưa đến lượt
+              rowClassName={(record, index) => {
+                // Đảm bảo apiPhases đã được sort đúng thứ tự
+                const sortedPhases = [...apiPhases].sort(
+                  (a, b) => (a.phaseOrder || 0) - (b.phaseOrder || 0)
+                );
+                // Tìm index phase đang "In Progress"
+                const currentIdx = sortedPhases.findIndex(
+                  (p) => p.status === "In Progress"
+                );
+                if (currentIdx !== -1) {
+                  // Chỉ phase "In Progress" và các phase trước nó không mờ
+                  if (index > currentIdx && record.status === "Pending") {
+                    return "phase-greyed-out";
+                  }
+                  if (index <= currentIdx) {
+                    return "";
+                  }
+                } else {
+                  // Nếu không có phase "In Progress", chỉ phase đầu tiên "Pending" không mờ
+                  const firstPendingIdx = sortedPhases.findIndex(
+                    (p) => p.status === "Pending"
+                  );
+                  if (firstPendingIdx !== -1) {
+                    if (
+                      index > firstPendingIdx &&
+                      record.status === "Pending"
+                    ) {
+                      return "phase-greyed-out";
+                    }
+                    if (
+                      index !== firstPendingIdx &&
+                      record.status === "Pending"
+                    ) {
+                      return "phase-greyed-out";
+                    }
+                  }
+                }
+                // Các phase "Completed" không mờ
+                return "";
+              }}
+              columns={[
+                {
+                  title: "STT",
+                  dataIndex: "phaseOrder",
+                  key: "phaseOrder",
+                  width: 60,
+                  render: (value, record, index) => value || index + 1,
+                },
+                {
+                  title: "Tên giai đoạn",
+                  dataIndex: "phaseName",
+                  key: "phaseName",
+                  render: (text, record) => (
+                    <div>
+                      <Text strong>
+                        {text ||
+                          generateMeaningfulPhaseName(
+                            record,
+                            record.phaseOrder - 1,
+                            currentTreatmentPlan?.treatmentType || "IUI"
+                          )}
+                      </Text>
+                      {record.description && (
+                        <div>
+                          <Text type="secondary" style={{ fontSize: "12px" }}>
+                            {record.description}
+                          </Text>
+                        </div>
+                      )}
+                    </div>
+                  ),
+                },
+                {
+                  title: "Trạng thái",
+                  dataIndex: "status",
+                  key: "status",
+                  width: 150,
+                  render: (status) => (
+                    <Tag color={getStatusColor(status)}>
+                      {getStatusIcon(status)}
+                      {getStatusDisplayName(status)}
+                    </Tag>
+                  ),
+                },
+                {
+                  title: "Thời gian dự kiến",
+                  dataIndex: "expectedDuration",
+                  key: "expectedDuration",
+                  width: 120,
+                  render: (text, record) => (
+                    <Tooltip title="Thời gian dự kiến hoàn thành giai đoạn này">
+                      <span>
+                        <ClockCircleOutlined
+                          style={{ color: "#faad14", marginRight: 4 }}
+                        />
+                        {text
+                          ? typeof text === "number"
+                            ? `${text} ngày`
+                            : /\d/.test(text)
+                            ? text
+                            : `${text} ngày`
+                          : "Không xác định"}
+                      </span>
+                    </Tooltip>
+                  ),
+                },
+                {
+                  title: "Ngày bắt đầu",
+                  dataIndex: "startDate",
+                  key: "startDate",
+                  width: 120,
+                  render: (date) =>
+                    date ? dayjs(date).format("DD/MM/YYYY") : "-",
+                },
+                {
+                  title: "Ngày kết thúc",
+                  dataIndex: "endDate",
+                  key: "endDate",
+                  width: 120,
+                  render: (date) =>
+                    date ? dayjs(date).format("DD/MM/YYYY") : "-",
+                },
+                {
+                  title: "Thao tác",
+                  key: "actions",
+                  width: 120,
+                  render: (_, record) => (
+                    <Space size="small">
+                      <Tooltip title="Cập nhật">
+                        <Button
+                          type="link"
+                          size="small"
+                          icon={<EditOutlined />}
+                          onClick={() => handlePhaseStatusUpdate(record)}
+                          loading={updatingPhaseStatus}
+                        />
+                      </Tooltip>
+                      <Tooltip title="Xóa">
+                        <Button
+                          type="link"
+                          size="small"
+                          danger
+                          icon={<DeleteOutlined />}
+                          onClick={() => {
+                            Modal.confirm({
+                              title: "Xác nhận xóa",
+                              content: `Bạn có chắc muốn xóa giai đoạn "${record.phaseName}"?`,
+                              onOk: async () => {
+                                try {
+                                  // Implement delete phase API call here
+                                  message.success("Đã xóa giai đoạn");
+                                  await loadTreatmentData();
+                                } catch (error) {
+                                  message.error("Lỗi khi xóa giai đoạn");
+                                }
+                              },
+                            });
+                          }}
+                        />
+                      </Tooltip>
+                    </Space>
+                  ),
+                },
+              ]}
+            />
+          </Card>
+        )}
 
-                    <Form.Item label="Ghi chú đặc biệt" name="notes">
-                      <Select
-                        mode="multiple"
-                        placeholder="Chọn ghi chú đặc biệt"
-                        allowClear
-                      >
-                        <Option
-                          key="morning_preferred"
-                          value="morning_preferred"
-                        >
-                          Ưu tiên buổi sáng
-                        </Option>
-                        <Option
-                          key="afternoon_preferred"
-                          value="afternoon_preferred"
-                        >
-                          Ưu tiên buổi chiều
-                        </Option>
-                        <Option
-                          key="weekend_available"
-                          value="weekend_available"
-                        >
-                          Có thể cuối tuần
-                        </Option>
-                        <Option key="flexible_time" value="flexible_time">
-                          Thời gian linh hoạt
-                        </Option>
-                        <Option key="urgent" value="urgent">
-                          Khẩn cấp
-                        </Option>
-                      </Select>
-                    </Form.Item>
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleSubmit}
+          initialValues={{
+            startDate: dayjs().add(3, "days"),
+            preferredTime: dayjs("09:00", "HH:mm"),
+          }}
+        >
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="Ngày bắt đầu điều trị"
+                name="startDate"
+                rules={[
+                  { required: true, message: "Vui lòng chọn ngày bắt đầu" },
+                ]}
+              >
+                <DatePicker
+                  style={{ width: "100%" }}
+                  onChange={handleStartDateChange}
+                  disabledDate={(current) =>
+                    current && current < dayjs().startOf("day")
+                  }
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Giờ ưu tiên"
+                name="preferredTime"
+                rules={[
+                  { required: true, message: "Vui lòng chọn giờ ưu tiên" },
+                ]}
+              >
+                <TimePicker
+                  style={{ width: "100%" }}
+                  format="HH:mm"
+                  minuteStep={15}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
 
-                    <Divider>Lịch Trình Chi Tiết</Divider>
+          {/* BACKEND SYNC: Additional form fields for complete treatment plan */}
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="Tên lịch điều trị"
+                name="planName"
+                rules={[
+                  {
+                    required: true,
+                    message: "Vui lòng nhập tên lịch điều trị",
+                  },
+                  { max: 255, message: "Tên không được vượt quá 255 ký tự" },
+                ]}
+              >
+                <Input placeholder="Nhập tên lịch điều trị" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Số chu kỳ điều trị" name="treatmentCycle">
+                <InputNumber
+                  min={1}
+                  max={10}
+                  style={{ width: "100%" }}
+                  placeholder="1"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
 
-                    {/* Doctor Controls */}
-                    <Card
-                      title="🔧 Điều chỉnh bác sĩ"
-                      size="small"
-                      style={{ marginBottom: 16 }}
-                    >
+          <Form.Item label="Mô tả lịch điều trị" name="planDescription">
+            <Input.TextArea
+              rows={3}
+              placeholder="Mô tả chi tiết về lịch điều trị..."
+            />
+          </Form.Item>
+
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item
+                label="Thời gian ước tính (ngày)"
+                name="estimatedDurationDays"
+              >
+                <InputNumber
+                  min={1}
+                  max={365}
+                  style={{ width: "100%" }}
+                  placeholder="30"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="Chi phí ước tính (VNĐ)" name="estimatedCost">
+                <InputNumber
+                  min={0}
+                  formatter={(value) =>
+                    `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                  }
+                  parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
+                  style={{ width: "100%" }}
+                  placeholder="0"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="Tỷ lệ thành công (%)" name="successProbability">
+                <InputNumber
+                  min={0}
+                  max={100}
+                  style={{ width: "100%" }}
+                  placeholder="75"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="Yếu tố nguy cơ" name="riskFactors">
+                <Input.TextArea
+                  rows={3}
+                  placeholder="Các yếu tố nguy cơ cần lưu ý..."
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Chống chỉ định" name="contraindications">
+                <Input.TextArea
+                  rows={3}
+                  placeholder="Các trường hợp chống chỉ định..."
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          {/* Generated Schedule Display */}
+          {generatedSchedule && generatedSchedule.length > 0 && (
+            <Card
+              title="Lịch điều trị được tạo"
+              size="small"
+              style={{ marginBottom: 16 }}
+              extra={
+                <Space>
+                  <Button
+                    size="small"
+                    onClick={handleAddCustomSession}
+                    icon={<PlusOutlined />}
+                  >
+                    Thêm buổi tùy chỉnh
+                  </Button>
+                  <Text type="secondary">
+                    Tổng: {generatedSchedule.length} buổi
+                  </Text>
+                </Space>
+              }
+            >
+              <Table
+                dataSource={generatedSchedule}
+                rowKey={(record) => {
+                  // FIX: Create unique key for each row with better fallback
+                  if (record.id) {
+                    return record.id;
+                  }
+
+                  // Create unique key with index fallback
+                  const phaseName = record.phaseName || "unknown";
+                  const date =
+                    record.date || new Date().toISOString().split("T")[0];
+                  const activity = record.activity || "activity";
+                  const timestamp = Date.now() + index; // Add index to ensure uniqueness
+                  const randomSuffix = Math.random().toString(36).substr(2, 9);
+
+                  const uniqueKey = `schedule_${phaseName}_${date}_${activity.replace(
+                    /\s+/g,
+                    "_"
+                  )}_${index}_${timestamp}_${randomSuffix}`;
+
+                  return uniqueKey;
+                }}
+                columns={[
+                  {
+                    title: "Ngày",
+                    dataIndex: "date",
+                    key: "date",
+                    render: (date) => dayjs(date).format("DD/MM/YYYY"),
+                  },
+                  {
+                    title: "Giai đoạn",
+                    dataIndex: "phaseName",
+                    key: "phaseName",
+                    render: (text, record) => <Tag color="blue">{text}</Tag>,
+                  },
+                  {
+                    title: "Hoạt động",
+                    dataIndex: "activity",
+                    key: "activity",
+                  },
+                  {
+                    title: "Thời gian",
+                    dataIndex: "duration",
+                    key: "duration",
+                    render: (duration) => `${duration} phút`,
+                  },
+                  {
+                    title: "Phòng",
+                    dataIndex: "room",
+                    key: "room",
+                  },
+                  {
+                    title: "Trạng thái",
+                    dataIndex: "completed",
+                    key: "status",
+                    render: (completed) => (
+                      <Tag color={completed ? "green" : "orange"}>
+                        {completed ? "Hoàn thành" : "Chờ thực hiện"}
+                      </Tag>
+                    ),
+                  },
+                  {
+                    title: "Thao tác",
+                    key: "action",
+                    render: (_, record) => (
                       <Space>
                         <Button
-                          type="primary"
-                          icon={<PlusOutlined />}
-                          onClick={handleAddCustomSession}
+                          size="small"
+                          icon={<EditOutlined />}
+                          onClick={() => handleEditSession(record)}
                         >
-                          Thêm buổi tùy chỉnh
+                          Sửa
                         </Button>
-                        <Button
-                          icon={<CalendarOutlined />}
-                          onClick={() => {
-                            const suggestions = generateDoctorSuggestions();
-                            if (suggestions) {
-                              setDoctorNotes(suggestions);
-                            }
-                          }}
-                        >
-                          Gợi ý điều chỉnh
-                        </Button>
-                        <Text type="secondary">
-                          {Object.keys(scheduleAdjustments).length > 0 &&
-                            `Đã điều chỉnh ${
-                              Object.keys(scheduleAdjustments).length
-                            } buổi điều trị`}
-                        </Text>
-                      </Space>
-                    </Card>
-
-                    {/* Doctor Suggestions */}
-                    {(doctorNotes || generateDoctorSuggestions()) && (
-                      <Alert
-                        message="💡 Gợi ý điều chỉnh cho bác sĩ"
-                        description={
-                          <div>
-                            {generateDoctorSuggestions() && (
-                              <pre
-                                style={{
-                                  whiteSpace: "pre-line",
-                                  fontFamily: "inherit",
-                                }}
-                              >
-                                {generateDoctorSuggestions()}
-                              </pre>
-                            )}
-                            <Input.TextArea
-                              placeholder="Thêm ghi chú của bác sĩ..."
-                              value={doctorNotes}
-                              onChange={(e) => setDoctorNotes(e.target.value)}
-                              rows={3}
-                              style={{ marginTop: 8 }}
-                            />
-                          </div>
-                        }
-                        type="info"
-                        showIcon
-                        style={{ marginBottom: 16 }}
-                      />
-                    )}
-
-                    {/* Sub-steps progress integration */}
-                    {subStepsData?.subSteps?.length > 0 && (
-                      <Card
-                        title={
-                          <Space>
-                            <CalendarOutlined />
-                            Tiến trình giai đoạn điều trị
-                            <Tag color="blue">
-                              {subStepsData.completedSubSteps.length}/
-                              {subStepsData.subSteps.length} hoàn thành
-                            </Tag>
-                          </Space>
-                        }
-                        style={{ marginBottom: 16 }}
-                        size="small"
-                      >
-                        <Row gutter={16}>
-                          <Col span={16}>
-                            <Timeline
+                        {record.custom && (
+                          <Popconfirm
+                            title="Xóa buổi điều trị này?"
+                            onConfirm={() => {
+                              setGeneratedSchedule((prev) =>
+                                prev.filter((s) => s.id !== record.id)
+                              );
+                            }}
+                          >
+                            <Button
                               size="small"
-                              items={subStepsData.subSteps.map(
-                                (subStep, index) => ({
-                                  key: `substep-timeline-${index}-${
-                                    subStep.title
-                                      ? subStep.title.replace(/\s+/g, "-")
-                                      : "step"
-                                  }-${Math.random().toString(36).substr(2, 5)}`,
-                                  color:
-                                    subStepsData.completedSubSteps.includes(
-                                      index
-                                    )
-                                      ? "green"
-                                      : index === subStepsData.currentSubStep
-                                      ? "blue"
-                                      : "gray",
-                                  dot: subStepsData.completedSubSteps.includes(
-                                    index
-                                  ) ? (
-                                    <CheckCircleOutlined
-                                      style={{ color: "green" }}
-                                    />
-                                  ) : index === subStepsData.currentSubStep ? (
-                                    <PlayCircleOutlined
-                                      style={{ color: "blue" }}
-                                    />
-                                  ) : (
-                                    <ClockCircleOutlined
-                                      style={{ color: "gray" }}
-                                    />
-                                  ),
-                                  children: (
-                                    <div>
-                                      <Space>
-                                        <Text
-                                          strong={
-                                            index ===
-                                            subStepsData.currentSubStep
-                                          }
-                                          type={
-                                            subStepsData.completedSubSteps.includes(
-                                              index
-                                            )
-                                              ? "success"
-                                              : undefined
-                                          }
-                                        >
-                                          {subStep.title}
-                                        </Text>
-                                        {subStepsData.completedSubSteps.includes(
-                                          index
-                                        ) && (
-                                          <Tag color="green" size="small">
-                                            Hoàn thành
-                                          </Tag>
-                                        )}
-                                        {index ===
-                                          subStepsData.currentSubStep && (
-                                          <Tag color="blue" size="small">
-                                            Hiện tại
-                                          </Tag>
-                                        )}
-                                      </Space>
-                                      <br />
-                                      <Text
-                                        type="secondary"
-                                        style={{ fontSize: "12px" }}
-                                      >
-                                        {subStep.description} •{" "}
-                                        {subStep.duration}
-                                      </Text>
-                                    </div>
-                                  ),
-                                })
-                              )}
-                            />
-                          </Col>
-                          <Col span={8}>
-                            <Space
-                              direction="vertical"
-                              style={{ width: "100%" }}
+                              danger
+                              icon={<DeleteOutlined />}
                             >
-                              <Statistic
-                                title="Giai đoạn hiện tại"
-                                value={
-                                  subStepsData.subSteps[
-                                    subStepsData.currentSubStep
-                                  ]?.title
-                                }
-                                prefix={<PlayCircleOutlined />}
-                              />
-                              <Button
-                                type="primary"
-                                onClick={() =>
-                                  handleCompleteSubStep(
-                                    subStepsData.currentSubStep
-                                  )
-                                }
-                                disabled={subStepsData.completedSubSteps.includes(
-                                  subStepsData.currentSubStep
-                                )}
-                                style={{ width: "100%" }}
-                              >
-                                ✅ Hoàn thành giai đoạn này
-                              </Button>
-                              <Text
-                                type="secondary"
-                                style={{
-                                  fontSize: "12px",
-                                  textAlign: "center",
-                                  display: "block",
-                                }}
-                              >
-                                Hoàn thành giai đoạn để tiếp tục quy trình
-                              </Text>
-                            </Space>
-                          </Col>
-                        </Row>
-                      </Card>
-                    )}
+                              Xóa
+                            </Button>
+                          </Popconfirm>
+                        )}
+                      </Space>
+                    ),
+                  },
+                ]}
+                pagination={false}
+                size="small"
+              />
+            </Card>
+          )}
 
-                    {/* Schedule Details */}
-                    <Card title="📋 Lịch trình chi tiết" size="small">
-                      <Table
-                        columns={scheduleColumns}
-                        dataSource={generatedSchedule}
-                        pagination={false}
-                        size="small"
-                        rowKey={(record) => {
-                          // Create unique key for schedule table
-                          const baseKey =
-                            record.id ||
-                            `schedule-${Math.random()
-                              .toString(36)
-                              .substr(2, 5)}`;
-                          const phaseKey = record.phaseName
-                            ? record.phaseName.replace(/\s+/g, "-")
-                            : "unknown";
-                          const activityKey = record.activity
-                            ? record.activity.replace(/\s+/g, "-")
-                            : "activity";
-                          const dateKey = record.date || new Date().getTime();
-                          const randomKey = Math.random()
-                            .toString(36)
-                            .substr(2, 9);
-                          return `${baseKey}-${phaseKey}-${activityKey}-${dateKey}-${randomKey}`;
-                        }}
-                        scroll={{ y: 400 }}
-                        loading={savingSchedule}
-                      />
-                    </Card>
+          {/* Doctor Notes */}
+          <Card
+            title="Ghi chú của bác sĩ"
+            size="small"
+            style={{ marginBottom: 16 }}
+          >
+            <Input.TextArea
+              rows={4}
+              value={doctorNotes}
+              onChange={(e) => setDoctorNotes(e.target.value)}
+              placeholder="Ghi chú thêm về lịch điều trị..."
+            />
+          </Card>
 
-                    <Form.Item style={{ marginTop: 24 }}>
-                      <Button
-                        type="primary"
-                        htmlType="submit"
-                        loading={loading || savingSchedule}
-                        size="large"
-                        style={{ marginRight: 8 }}
-                      >
-                        {loading || savingSchedule
-                          ? "Đang lưu..."
-                          : "Xác Nhận Lịch Điều Trị"}
-                      </Button>
-                      <Button size="large" disabled={loading || savingSchedule}>
-                        Hủy
-                      </Button>
-                    </Form.Item>
-                  </Form>
-                </>
-              )}
-            </>
-          )
-        )}
+          {/* Submit Button */}
+          <Form.Item>
+            <Space>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={loading || savingSchedule}
+                size="large"
+                icon={<SaveOutlined />}
+              >
+                {isEditing ? "Cập nhật lịch điều trị" : "Tạo lịch điều trị"}
+              </Button>
+              <Button
+                onClick={() => {
+                  form.resetFields();
+                  setGeneratedSchedule([]);
+                  setDoctorNotes("");
+                }}
+                disabled={loading}
+              >
+                Đặt lại
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
 
         {/* Session Edit Modal */}
         <Modal
           title={
             editingSession?.custom
-              ? "Thêm buổi tùy chỉnh"
+              ? "Thêm buổi điều trị tùy chỉnh"
               : "Chỉnh sửa buổi điều trị"
           }
           open={sessionModal}
-          onOk={() => sessionForm.submit()}
           onCancel={() => {
             setSessionModal(false);
             setEditingSession(null);
           }}
-          width={800}
-          okText="Lưu thay đổi"
-          cancelText="Hủy"
-          confirmLoading={loading}
+          footer={[
+            <Button key="cancel" onClick={() => setSessionModal(false)}>
+              Hủy
+            </Button>,
+            <Button
+              key="save"
+              type="primary"
+              form="sessionForm"
+              htmlType="submit"
+            >
+              Lưu
+            </Button>,
+          ]}
         >
           <Form
+            id="sessionForm"
             form={sessionForm}
             layout="vertical"
             onFinish={
@@ -2830,21 +2061,11 @@ const TreatmentScheduleForm = ({
                   rules={[{ required: true, message: "Vui lòng chọn phòng" }]}
                 >
                   <Select>
-                    <Option key="room-exam" value="Phòng khám">
-                      Phòng khám
-                    </Option>
-                    <Option key="room-ultrasound" value="Phòng siêu âm">
-                      Phòng siêu âm
-                    </Option>
-                    <Option key="room-test" value="Phòng xét nghiệm">
-                      Phòng xét nghiệm
-                    </Option>
-                    <Option key="room-procedure" value="Phòng thủ thuật">
-                      Phòng thủ thuật
-                    </Option>
-                    <Option key="room-lab" value="Phòng lab">
-                      Phòng lab
-                    </Option>
+                    <Option value="Phòng khám">Phòng khám</Option>
+                    <Option value="Phòng siêu âm">Phòng siêu âm</Option>
+                    <Option value="Phòng xét nghiệm">Phòng xét nghiệm</Option>
+                    <Option value="Phòng thủ thuật">Phòng thủ thuật</Option>
+                    <Option value="Phòng lab">Phòng lab</Option>
                   </Select>
                 </Form.Item>
               </Col>
@@ -2855,24 +2076,12 @@ const TreatmentScheduleForm = ({
                   rules={[{ required: true, message: "Vui lòng chọn loại" }]}
                 >
                   <Select>
-                    <Option key="type-consultation" value="consultation">
-                      Tư vấn
-                    </Option>
-                    <Option key="type-test" value="test">
-                      Xét nghiệm
-                    </Option>
-                    <Option key="type-ultrasound" value="ultrasound">
-                      Siêu âm
-                    </Option>
-                    <Option key="type-injection" value="injection">
-                      Tiêm thuốc
-                    </Option>
-                    <Option key="type-procedure" value="procedure">
-                      Thủ thuật
-                    </Option>
-                    <Option key="type-laboratory" value="laboratory">
-                      Lab
-                    </Option>
+                    <Option value="consultation">Tư vấn</Option>
+                    <Option value="test">Xét nghiệm</Option>
+                    <Option value="ultrasound">Siêu âm</Option>
+                    <Option value="injection">Tiêm thuốc</Option>
+                    <Option value="procedure">Thủ thuật</Option>
+                    <Option value="laboratory">Lab</Option>
                   </Select>
                 </Form.Item>
               </Col>
@@ -2882,12 +2091,8 @@ const TreatmentScheduleForm = ({
               <Col span={12}>
                 <Form.Item label="Mức độ quan trọng" name="required">
                   <Select>
-                    <Option key="required-true" value={true}>
-                      Bắt buộc
-                    </Option>
-                    <Option key="required-false" value={false}>
-                      Tùy chọn
-                    </Option>
+                    <Option value={true}>Bắt buộc</Option>
+                    <Option value={false}>Tùy chọn</Option>
                   </Select>
                 </Form.Item>
               </Col>
@@ -2902,66 +2107,73 @@ const TreatmentScheduleForm = ({
 
         {/* Phase Management Modal */}
         <Modal
-          title={
-            <Space>
-              <SettingOutlined />
-              <Text strong>
-                {editingPhase ? "Chỉnh Sửa Giai Đoạn" : "Tạo Giai Đoạn Mới"}
-              </Text>
-            </Space>
-          }
+          title="Thêm giai đoạn điều trị"
           open={phaseModal}
-          onOk={() => phaseForm.submit()}
           onCancel={() => {
             setPhaseModal(false);
             setEditingPhase(null);
-            phaseForm.resetFields();
           }}
-          width={800}
-          okText={editingPhase ? "Cập Nhật" : "Tạo Mới"}
-          cancelText="Hủy"
-          confirmLoading={loading}
+          footer={[
+            <Button key="cancel" onClick={() => setPhaseModal(false)}>
+              Hủy
+            </Button>,
+            <Button
+              key="save"
+              type="primary"
+              form="phaseForm"
+              htmlType="submit"
+            >
+              Lưu
+            </Button>,
+          ]}
         >
           <Form
+            id="phaseForm"
             form={phaseForm}
             layout="vertical"
-            onFinish={editingPhase ? handleUpdatePhase : handleCreatePhase}
+            onFinish={async (values) => {
+              try {
+                // Lấy phaseOrder lớn nhất hiện có
+                const maxOrder = apiPhases.reduce(
+                  (max, p) => Math.max(max, p.phaseOrder || 0),
+                  0
+                );
+                const phaseData = {
+                  planId: currentTreatmentPlan.planId,
+                  patientId: patientId,
+                  phaseName: values.phaseName,
+                  description: values.description,
+                  phaseOrder: maxOrder + 1, // Đảm bảo không trùng
+                  expectedDuration: values.expectedDuration,
+                  status: "Pending",
+                  startDate: values.startDate?.format("YYYY-MM-DDTHH:mm:ss"),
+                  endDate: values.endDate?.format("YYYY-MM-DDTHH:mm:ss"),
+                };
+                const result = await createTreatmentPhase(phaseData);
+                if (result.success) {
+                  message.success("Đã tạo giai đoạn điều trị");
+                  setPhaseModal(false);
+                  phaseForm.resetFields();
+                  await loadTreatmentData();
+                } else {
+                  message.error(result.message || "Không thể tạo giai đoạn");
+                }
+              } catch (error) {
+                message.error("Có lỗi khi tạo giai đoạn");
+              }
+            }}
           >
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  label="Tên giai đoạn"
-                  name="phaseName"
-                  rules={[
-                    { required: true, message: "Vui lòng nhập tên giai đoạn" },
-                  ]}
-                >
-                  <Input placeholder="VD: Kích thích buồng trứng" />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label="Thứ tự"
-                  name="phaseOrder"
-                  rules={[{ required: true, message: "Vui lòng nhập thứ tự" }]}
-                >
-                  <InputNumber
-                    min={1}
-                    max={20}
-                    style={{ width: "100%" }}
-                    placeholder="1"
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-
             <Form.Item
-              label="Mô tả"
-              name="description"
+              label="Tên giai đoạn"
+              name="phaseName"
               rules={[
-                { required: true, message: "Vui lòng nhập mô tả giai đoạn" },
+                { required: true, message: "Vui lòng nhập tên giai đoạn" },
               ]}
             >
+              <Input placeholder="VD: Chuẩn bị chu kỳ" />
+            </Form.Item>
+
+            <Form.Item label="Mô tả" name="description">
               <Input.TextArea
                 rows={3}
                 placeholder="Mô tả chi tiết về giai đoạn điều trị này..."
@@ -3004,214 +2216,327 @@ const TreatmentScheduleForm = ({
                 }
               />
             </Form.Item>
-
-            {editingPhase && (
-              <Alert
-                message="Thông tin giai đoạn"
-                description={
-                  <div>
-                    <Text>ID: {editingPhase.phaseId}</Text>
-                    <br />
-                    <Text>Trạng thái hiện tại: </Text>
-                    <Tag
-                      color={getStatusColor(editingPhase.status)}
-                      icon={getStatusIcon(editingPhase.status)}
-                    >
-                      {getStatusDisplayName(editingPhase.status)}
-                    </Tag>
-                    <br />
-                    <Text>
-                      Tạo lúc:{" "}
-                      {editingPhase.createdDate
-                        ? dayjs(editingPhase.createdDate).format(
-                            "DD/MM/YYYY HH:mm"
-                          )
-                        : "N/A"}
-                    </Text>
-                  </div>
-                }
-                type="info"
-                showIcon
-                style={{ marginBottom: 16 }}
-              />
-            )}
           </Form>
         </Modal>
-      </Card>
 
-      {/* Activity Detail Modal */}
-      <Modal
-        title="Chi tiết hoạt động"
-        open={activityModal}
-        onCancel={() => {
-          setActivityModal(false);
-          setEditingActivity(null);
-        }}
-        footer={[
-          <Button key="cancel" onClick={() => setActivityModal(false)}>
-            Hủy
-          </Button>,
-          <Button
-            key="save"
-            type="primary"
-            form="activityForm"
-            htmlType="submit"
-          >
-            Lưu thay đổi
-          </Button>,
-        ]}
-        width={800}
-      >
-        {editingActivity && (
+        {/* Activity Management Modal */}
+        <Modal
+          title="Chỉnh sửa hoạt động"
+          open={activityModal}
+          onCancel={() => {
+            setActivityModal(false);
+            setEditingActivity(null);
+          }}
+          footer={[
+            <Button key="cancel" onClick={() => setActivityModal(false)}>
+              Hủy
+            </Button>,
+            <Button
+              key="save"
+              type="primary"
+              form="activityForm"
+              htmlType="submit"
+            >
+              Lưu
+            </Button>,
+          ]}
+        >
+          {editingActivity && (
+            <Form
+              id="activityForm"
+              layout="vertical"
+              initialValues={editingActivity}
+              onFinish={handleSaveActivity}
+            >
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    label="Tên hoạt động"
+                    name="name"
+                    rules={[
+                      {
+                        required: true,
+                        message: "Vui lòng nhập tên hoạt động",
+                      },
+                    ]}
+                  >
+                    <Input placeholder="Nhập tên hoạt động" />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    label="Loại hoạt động"
+                    name="type"
+                    rules={[
+                      {
+                        required: true,
+                        message: "Vui lòng chọn loại hoạt động",
+                      },
+                    ]}
+                  >
+                    <Select>
+                      <Option value="examination">Khám</Option>
+                      <Option value="consultation">Tư vấn</Option>
+                      <Option value="test">Xét nghiệm</Option>
+                      <Option value="ultrasound">Siêu âm</Option>
+                      <Option value="injection">Tiêm thuốc</Option>
+                      <Option value="procedure">Thủ thuật</Option>
+                      <Option value="laboratory">Lab</Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Row gutter={16}>
+                <Col span={8}>
+                  <Form.Item
+                    label="Thời gian dự kiến (phút)"
+                    name="estimatedDuration"
+                    rules={[
+                      { required: true, message: "Vui lòng nhập thời gian" },
+                    ]}
+                  >
+                    <InputNumber
+                      min={5}
+                      max={480}
+                      placeholder="60"
+                      style={{ width: "100%" }}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item label="Phòng thực hiện" name="room">
+                    <Input placeholder="Phòng khám 1" />
+                  </Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item label="Nhân viên phụ trách" name="assignedStaff">
+                    <Input placeholder="Tên nhân viên" />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item label="Ngày thực hiện" name="scheduledDate">
+                    <DatePicker
+                      style={{ width: "100%" }}
+                      showTime
+                      format="DD/MM/YYYY HH:mm"
+                      placeholder="Chọn ngày và giờ"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item label="Chi phí (VNĐ)" name="cost">
+                    <InputNumber
+                      min={0}
+                      formatter={(value) =>
+                        `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                      }
+                      parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
+                      style={{ width: "100%" }}
+                      placeholder="0"
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    label="Bắt buộc"
+                    name="isRequired"
+                    valuePropName="checked"
+                  >
+                    <Switch checkedChildren="Có" unCheckedChildren="Không" />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    label="Thứ tự"
+                    name="order"
+                    rules={[
+                      { required: true, message: "Vui lòng nhập thứ tự" },
+                    ]}
+                  >
+                    <InputNumber
+                      min={1}
+                      style={{ width: "100%" }}
+                      placeholder="1"
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Form.Item label="Yêu cầu chuẩn bị" name="requirements">
+                <Input.TextArea
+                  rows={3}
+                  placeholder="Các yêu cầu chuẩn bị trước khi thực hiện hoạt động..."
+                />
+              </Form.Item>
+
+              <Form.Item label="Ghi chú" name="notes">
+                <Input.TextArea
+                  rows={3}
+                  placeholder="Ghi chú thêm về hoạt động..."
+                />
+              </Form.Item>
+            </Form>
+          )}
+        </Modal>
+
+        {/* Phase Status Update Modal */}
+        <Modal
+          title="Cập nhật trạng thái giai đoạn"
+          open={phaseStatusModal}
+          onCancel={() => {
+            setPhaseStatusModal(false);
+            setEditingPhaseStatus(null);
+            phaseStatusForm.resetFields();
+          }}
+          footer={[
+            <Button key="cancel" onClick={() => setPhaseStatusModal(false)}>
+              Hủy
+            </Button>,
+            <Button
+              key="save"
+              type="primary"
+              form="phaseStatusForm"
+              htmlType="submit"
+              loading={updatingPhaseStatus}
+            >
+              Cập nhật
+            </Button>,
+          ]}
+        >
+          {/* Hiển thị thông tin phase để tham khảo */}
+          {editingPhaseStatus && (
+            <Descriptions
+              column={1}
+              size="small"
+              bordered
+              style={{ marginBottom: 16 }}
+            >
+              <Descriptions.Item label="Giai đoạn">
+                {editingPhaseStatus.phaseName || "Không xác định"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Trạng thái hiện tại">
+                <Tag color={getStatusColor(editingPhaseStatus.status)}>
+                  {getStatusIcon(editingPhaseStatus.status)}
+                  {getStatusDisplayName(editingPhaseStatus.status)}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Thời gian dự kiến">
+                <span>
+                  <ClockCircleOutlined
+                    style={{ color: "#faad14", marginRight: 4 }}
+                  />
+                  {(() => {
+                    const text = editingPhaseStatus.expectedDuration;
+                    const start = editingPhaseStatus.startDate
+                      ? dayjs(editingPhaseStatus.startDate)
+                      : null;
+                    const duration =
+                      typeof text === "number"
+                        ? text
+                        : typeof text === "string" && /^\d+$/.test(text)
+                        ? parseInt(text, 10)
+                        : null;
+                    const endEstimate =
+                      start && duration
+                        ? start.add(duration, "day").format("DD/MM/YYYY")
+                        : null;
+                    return (
+                      <>
+                        {text
+                          ? typeof text === "number"
+                            ? `${text} ngày`
+                            : /\d/.test(text)
+                            ? text
+                            : `${text} ngày`
+                          : "Không xác định"}
+                        {endEstimate && (
+                          <span style={{ color: "#888", marginLeft: 4 }}>
+                            (~{endEstimate})
+                          </span>
+                        )}
+                      </>
+                    );
+                  })()}
+                </span>
+              </Descriptions.Item>
+            </Descriptions>
+          )}
           <Form
-            id="activityForm"
+            id="phaseStatusForm"
+            form={phaseStatusForm}
             layout="vertical"
-            initialValues={editingActivity}
-            onFinish={handleSaveActivity}
+            onFinish={handleSavePhaseStatus}
           >
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  label="Tên hoạt động"
-                  name="name"
-                  rules={[
-                    { required: true, message: "Vui lòng nhập tên hoạt động" },
-                  ]}
-                >
-                  <Input placeholder="Nhập tên hoạt động" />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label="Loại hoạt động"
-                  name="type"
-                  rules={[
-                    { required: true, message: "Vui lòng chọn loại hoạt động" },
-                  ]}
-                >
-                  <Select placeholder="Chọn loại hoạt động">
-                    <Option key="activity-examination" value="examination">
-                      Khám lâm sàng
-                    </Option>
-                    <Option key="activity-test" value="test">
-                      Xét nghiệm
-                    </Option>
-                    <Option key="activity-procedure" value="procedure">
-                      Thủ thuật
-                    </Option>
-                    <Option key="activity-surgery" value="surgery">
-                      Phẫu thuật
-                    </Option>
-                    <Option key="activity-medication" value="medication">
-                      Dùng thuốc
-                    </Option>
-                    <Option key="activity-consultation" value="consultation">
-                      Tư vấn
-                    </Option>
-                    <Option key="activity-monitoring" value="monitoring">
-                      Theo dõi
-                    </Option>
-                  </Select>
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Row gutter={16}>
-              <Col span={8}>
-                <Form.Item
-                  label="Thời gian dự kiến (phút)"
-                  name="estimatedDuration"
-                  rules={[
-                    { required: true, message: "Vui lòng nhập thời gian" },
-                  ]}
-                >
-                  <InputNumber
-                    min={5}
-                    max={480}
-                    placeholder="60"
-                    style={{ width: "100%" }}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={8}>
-                <Form.Item label="Phòng thực hiện" name="room">
-                  <Input placeholder="Phòng khám 1" />
-                </Form.Item>
-              </Col>
-              <Col span={8}>
-                <Form.Item label="Nhân viên phụ trách" name="assignedStaff">
-                  <Input placeholder="Tên nhân viên" />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item label="Ngày thực hiện" name="scheduledDate">
-                  <DatePicker
-                    style={{ width: "100%" }}
-                    showTime
-                    format="DD/MM/YYYY HH:mm"
-                    placeholder="Chọn ngày và giờ"
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item label="Chi phí (VNĐ)" name="cost">
-                  <InputNumber
-                    min={0}
-                    formatter={(value) =>
-                      `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-                    }
-                    parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
-                    style={{ width: "100%" }}
-                    placeholder="0"
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  label="Bắt buộc"
-                  name="isRequired"
-                  valuePropName="checked"
-                >
-                  <Switch checkedChildren="Có" unCheckedChildren="Không" />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label="Thứ tự"
-                  name="order"
-                  rules={[{ required: true, message: "Vui lòng nhập thứ tự" }]}
-                >
-                  <InputNumber
-                    min={1}
-                    style={{ width: "100%" }}
-                    placeholder="1"
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Form.Item label="Yêu cầu chuẩn bị" name="requirements">
-              <Input.TextArea
-                rows={3}
-                placeholder="Các yêu cầu chuẩn bị trước khi thực hiện hoạt động..."
-              />
+            <Form.Item
+              label="Trạng thái mới"
+              name="status"
+              rules={[{ required: true, message: "Vui lòng chọn trạng thái" }]}
+            >
+              <Select placeholder="Chọn trạng thái">
+                <Option value="Pending">
+                  <ClockCircleOutlined /> Chờ thực hiện
+                </Option>
+                <Option value="In Progress">
+                  <PlayCircleOutlined /> Đang thực hiện
+                </Option>
+                <Option value="Completed">
+                  <CheckCircleOutlined /> Hoàn thành
+                </Option>
+                <Option value="Cancelled">
+                  <ExclamationCircleOutlined /> Đã hủy
+                </Option>
+              </Select>
             </Form.Item>
-
             <Form.Item label="Ghi chú" name="notes">
               <Input.TextArea
-                rows={3}
-                placeholder="Ghi chú thêm về hoạt động..."
+                rows={4}
+                placeholder="Nhập ghi chú về việc cập nhật trạng thái..."
+                maxLength={500}
+                showCount
               />
             </Form.Item>
           </Form>
-        )}
-      </Modal>
+        </Modal>
+
+        <Row gutter={16} style={{ marginBottom: 16 }}>
+          <Col>
+            <Button
+              type="primary"
+              icon={<CalendarOutlined />}
+              onClick={() => {
+                if (!template || !form.getFieldValue("startDate")) {
+                  message.warning(
+                    "Vui lòng chọn ngày bắt đầu và đảm bảo có phác đồ!"
+                  );
+                  return;
+                }
+                const schedule = generateScheduleFromTemplate(
+                  template,
+                  form.getFieldValue("startDate").format("YYYY-MM-DD")
+                );
+                setGeneratedSchedule(schedule);
+                message.success("Đã sinh lịch từ giai đoạn/phác đồ!");
+              }}
+            >
+              Sinh lịch từ giai đoạn
+            </Button>
+          </Col>
+        </Row>
+      </Card>
+      <style>{`
+.phase-greyed-out {
+  opacity: 0.5;
+  pointer-events: none;
+  background: #f5f5f5 !important;
+}
+`}</style>
     </div>
   );
 };

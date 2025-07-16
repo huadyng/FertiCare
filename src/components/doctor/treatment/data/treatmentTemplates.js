@@ -479,7 +479,7 @@ export const generateScheduleFromTemplate = (template, startDate) => {
 
   template.phases.forEach((phase, phaseIndex) => {
     (Array.isArray(phase.activities) ? phase.activities : []).forEach(
-      (activity) => {
+      (activity, activityIndex) => {
         let activityDate = new Date(currentDate);
         // Nếu activity.day không hợp lệ thì bỏ qua hoặc lấy mặc định là 1
         let dayOffset = 0;
@@ -493,16 +493,30 @@ export const generateScheduleFromTemplate = (template, startDate) => {
         } catch {
           dateStr = "";
         }
+
+        // FIX: Generate unique ID with better fallback
+        const phaseId = phase.id || phase.phaseId || `phase_${phaseIndex}`;
+        const activityDay = activity.day || activityIndex + 1;
+        const timestamp = Date.now() + activityIndex; // Add small offset to ensure uniqueness
+        const randomSuffix = Math.random().toString(36).substr(2, 6);
+        const uniqueId = `${phaseId}_${activityDay}_${timestamp}_${randomSuffix}`;
+
         schedule.push({
-          id: `${phase.id}_${activity.day}`,
-          phaseId: phase.id,
-          phaseName: phase.name,
+          id: uniqueId,
+          phaseId: phaseId,
+          phaseName:
+            phase.name || phase.phaseName || `Giai đoạn ${phaseIndex + 1}`,
           date: dateStr,
-          activity: activity.name,
-          type: activity.type,
-          duration: activity.duration,
-          room: activity.room,
-          required: activity.required,
+          activity: activity.name || "Hoạt động",
+          type: activity.type || "consultation",
+          duration: activity.duration || activity.estimatedDuration || 30,
+          room: activity.room || "Phòng khám",
+          required:
+            activity.required !== undefined
+              ? activity.required
+              : activity.isRequired !== undefined
+              ? activity.isRequired
+              : true,
           completed: false,
           order: phaseIndex + 1,
         });
