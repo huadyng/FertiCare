@@ -61,9 +61,20 @@ const { Option } = Select;
 const { Panel } = Collapse;
 const { TextArea } = Input;
 
-// Hàm chuyển đổi template từ backend sang định dạng frontend
-function chuyenDoiTemplateTuBackendSangFE(templateBE) {
+function convertTemplate(templateBE) {
   if (!templateBE) return null;
+
+  const medicationMap = {};
+  (templateBE.medicationPlan || []).forEach((plan) => {
+    medicationMap[plan.phase] = (plan.medications || []).map((med) => ({
+      name: med.name,
+      dosage: med.dosage,
+      frequency: med.frequency,
+      duration: med.duration,
+      route: med.route || "Oral",
+    }));
+  });
+
   return {
     id: templateBE.templateId,
     name: templateBE.name,
@@ -73,37 +84,26 @@ function chuyenDoiTemplateTuBackendSangFE(templateBE) {
     planDescription: templateBE.planDescription,
     estimatedDuration: templateBE.estimatedDurationDays,
     cost: templateBE.estimatedCost,
-    phases: (templateBE.treatmentSteps || []).map((buoc) => ({
-      id: `phase_${buoc.step}`,
-      name: buoc.name,
-      duration: buoc.duration,
-      description: buoc.description,
-      // activitiesDetail là mảng object, FE có thể mở rộng nếu cần
-      activities: (buoc.activities || []).map((hoatDong, idx) => ({
-        name: hoatDong,
+    phases: (templateBE.treatmentSteps || []).map((step) => ({
+      id: `phase_${step.step}`,
+      name: step.name,
+      duration: step.duration,
+      description: step.description,
+      activities: (step.activities || []).map((act, idx) => ({
+        name: act,
         day: idx + 1,
         type: "procedure",
         notes: "",
       })),
-      // Nếu cần, có thể thêm activitiesDetail ở đây
-      activitiesDetail: (buoc.activities || []).map((hoatDong, idx) => ({
-        name: hoatDong,
+      activitiesDetail: (step.activities || []).map((act, idx) => ({
+        name: act,
         day: idx + 1,
         type: "procedure",
         notes: "",
       })),
-      medications: [], // Sẽ được map ở dưới nếu cần
+      medications: medicationMap[step.name] || [],
     })),
-    medications: (templateBE.medicationPlan || []).map((keHoach) => ({
-      phase: keHoach.phase,
-      medications: (keHoach.medications || []).map((thuoc) => ({
-        name: thuoc.name,
-        dosage: thuoc.dosage,
-        frequency: thuoc.frequency,
-        duration: thuoc.duration,
-        route: thuoc.route || "Uống",
-      })),
-    })),
+    medications: templateBE.medicationPlan || [],
     monitoring: templateBE.monitoringSchedule || [],
     successRate: templateBE.successProbability,
     riskFactors: templateBE.riskFactors,
@@ -293,9 +293,7 @@ const TreatmentPlanEditor = ({
 
           if (templateResponse.success && templateResponse.data) {
             // Sử dụng hàm chuyển đổi template từ backend sang FE
-            const template = chuyenDoiTemplateTuBackendSangFE(
-              templateResponse.data
-            );
+            const template = convertTemplate(templateResponse.data);
             console.log(
               "✅ Template loaded from API (đã chuyển đổi):",
               template
@@ -770,9 +768,7 @@ const TreatmentPlanEditor = ({
 
         if (templateResponse.success && templateResponse.data) {
           // Sử dụng hàm chuyển đổi template từ backend sang FE
-          const template = chuyenDoiTemplateTuBackendSangFE(
-            templateResponse.data
-          );
+          const template = convertTemplate(templateResponse.data);
           console.log(
             "✅ [TreatmentPlanEditor] Template loaded from API (đã chuyển đổi):",
             template.name
@@ -1164,8 +1160,15 @@ const TreatmentPlanEditor = ({
         message.error("❌ Vui lòng chọn phác đồ điều trị");
         return;
       }
-      // Build medicationPlan từ các phase
-      const medicationPlan = selectedTemplate?.phases?.reduce((acc, phase) => {
+      // === BẮT ĐẦU: Merge customizations vào phases ===
+      const effectivePhases = selectedTemplate.phases.map((phase) => {
+        const custom = customizations.phases?.[phase.id];
+        return custom ? { ...phase, ...custom } : phase;
+      });
+      // === KẾT THÚC: Merge customizations vào phases ===
+
+      // Build medicationPlan từ các phase đã merge customizations
+      const medicationPlan = effectivePhases.reduce((acc, phase) => {
         if (Array.isArray(phase.medications) && phase.medications.length > 0) {
           acc.push({
             phase: phase.name,
@@ -1180,6 +1183,18 @@ const TreatmentPlanEditor = ({
         }
         return acc;
       }, []);
+
+      // Build treatmentSteps từ các phase đã merge customizations
+      const treatmentSteps = effectivePhases.map((phase, idx) => ({
+        step: idx + 1,
+        name: phase.name,
+        description: phase.description,
+        duration: phase.duration,
+        activities: (phase.activities || []).map((act) =>
+          typeof act === "string" ? act : act.name
+        ),
+      }));
+
       // Build planData với các trường bắt buộc
       const planData = {
         patientId: patientId,
@@ -1193,15 +1208,7 @@ const TreatmentPlanEditor = ({
         estimatedDurationDays:
           parseInt(selectedTemplate?.estimatedDuration) || 21,
         estimatedCost: parseFloat(selectedTemplate?.cost) || 0.0,
-        treatmentSteps: selectedTemplate?.phases?.map((phase, idx) => ({
-          step: idx + 1,
-          name: phase.name,
-          description: phase.description,
-          duration: phase.duration,
-          activities: (phase.activities || []).map((act) =>
-            typeof act === "string" ? act : act.name
-          ),
-        })),
+        treatmentSteps: treatmentSteps,
         medicationPlan: medicationPlan,
         monitoringSchedule: [],
         successProbability: parseFloat(selectedTemplate?.successRate) || 0.7,
@@ -1386,9 +1393,7 @@ const TreatmentPlanEditor = ({
           let mergedTemplate;
           if (templateResponse.success && templateResponse.data) {
             // Sử dụng hàm chuyển đổi template từ backend sang FE
-            const template = chuyenDoiTemplateTuBackendSangFE(
-              templateResponse.data
-            );
+            const template = convertTemplate(templateResponse.data);
             // Merge sâu customizations vào từng phase của template
             mergedTemplate = { ...template };
             if (
@@ -1895,9 +1900,7 @@ const TreatmentPlanEditor = ({
 
       if (templateResponse.success && templateResponse.data) {
         // Sử dụng hàm chuyển đổi template từ backend sang FE
-        const template = chuyenDoiTemplateTuBackendSangFE(
-          templateResponse.data
-        );
+        const template = convertTemplate(templateResponse.data);
         setSelectedTemplate(template);
 
         // Set form values
@@ -1979,6 +1982,10 @@ const TreatmentPlanEditor = ({
   // Sticky nút chỉnh sửa/lưu
   const renderStickyActionBar = () => {
     if (!existingPlan) return null;
+    // Nếu không đúng quyền, disable nút chỉnh sửa
+    const userId = user?.id || user?.userId;
+    const isDoctorOwner =
+      user?.role === "DOCTOR" && existingPlan.doctorId === userId;
     return (
       <div className="sticky-action-bar">
         {!isEditing ? (
@@ -1987,6 +1994,7 @@ const TreatmentPlanEditor = ({
             icon={<EditOutlined />}
             onClick={handleEnableEdit}
             size="large"
+            disabled={!isDoctorOwner}
           >
             Chỉnh sửa phác đồ
           </Button>
@@ -2050,6 +2058,20 @@ const TreatmentPlanEditor = ({
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isEditing]);
+
+  // Kiểm tra quyền bác sĩ điều trị ở frontend
+  useEffect(() => {
+    if (existingPlan && user?.role === "DOCTOR") {
+      const userId = user.id || user.userId;
+      if (existingPlan.doctorId && existingPlan.doctorId !== userId) {
+        setIsReadOnly(true);
+        setIsEditing(false);
+        message.warning(
+          "Bạn không phải là bác sĩ điều trị phác đồ này. Không thể chỉnh sửa!"
+        );
+      }
+    }
+  }, [existingPlan, user]);
 
   return (
     <div className="treatment-plan-container">
@@ -2416,11 +2438,18 @@ const TreatmentPlanEditor = ({
                                 {/* Activities Table with Real-time Updates */}
                                 <Table
                                   size="small"
-                                  dataSource={effectivePhase.activities}
+                                  dataSource={(
+                                    effectivePhase.activities || []
+                                  ).map((act, idx) => ({
+                                    ...act,
+                                    id:
+                                      act.id ||
+                                      `${
+                                        effectivePhase.id || ""
+                                      }-activity-${idx}`,
+                                  }))}
                                   pagination={false}
-                                  rowKey={(record) =>
-                                    `activity-${record.name}-${record.day}`
-                                  }
+                                  rowKey={(record) => record.id}
                                   columns={[
                                     {
                                       title: "Ngày",
@@ -2476,11 +2505,18 @@ const TreatmentPlanEditor = ({
                                       </Title>
                                       <Table
                                         size="small"
-                                        dataSource={effectivePhase.medications}
+                                        dataSource={(
+                                          effectivePhase.medications || []
+                                        ).map((med, idx) => ({
+                                          ...med,
+                                          id:
+                                            med.id ||
+                                            `${
+                                              effectivePhase.id || ""
+                                            }-medication-${idx}`,
+                                        }))}
                                         pagination={false}
-                                        rowKey={(record) =>
-                                          `medication-${record.name}-${record.startDay}`
-                                        }
+                                        rowKey={(record) => record.id}
                                         columns={[
                                           {
                                             title: "Tên thuốc",
@@ -2803,9 +2839,16 @@ const TreatmentPlanEditor = ({
                   <Form.Item style={{ marginBottom: 8 }}>
                     <Table
                       size="small"
-                      dataSource={editingPhase.activitiesDetail || []}
+                      dataSource={(editingPhase.activitiesDetail || []).map(
+                        (act, idx) => ({
+                          ...act,
+                          id:
+                            act.id ||
+                            `${editingPhase.id || ""}-activity-${idx}`,
+                        })
+                      )}
                       pagination={false}
-                      rowKey={(record, idx) => `activity-${idx}`}
+                      rowKey={(record) => record.id}
                       columns={[
                         {
                           title: "Tên hoạt động",
@@ -2986,9 +3029,16 @@ const TreatmentPlanEditor = ({
                   <Form.Item style={{ marginBottom: 8 }}>
                     <Table
                       size="small"
-                      dataSource={editingPhase.medications || []}
+                      dataSource={(editingPhase.medications || []).map(
+                        (med, idx) => ({
+                          ...med,
+                          id:
+                            med.id ||
+                            `${editingPhase.id || ""}-medication-${idx}`,
+                        })
+                      )}
                       pagination={false}
-                      rowKey={(record, idx) => `medication-${idx}`}
+                      rowKey={(record) => record.id}
                       columns={[
                         {
                           title: "Tên thuốc",
