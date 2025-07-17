@@ -1,17 +1,20 @@
 import axiosClient from "./axiosClient";
 
 export const treatmentPlanAPI = {
-  // Lưu phác đồ điều trị mới
-  async saveTreatmentPlan(planData) {
+  // Lưu phác đồ điều trị mới từ clinical result
+  async createTreatmentPlanFromClinicalResult(resultId, planData) {
     try {
-      const response = await axiosClient.post("/treatmentPlans", planData);
+      const response = await axiosClient.post(
+        `/api/treatment-workflow/treatment-plan/from-clinical-result/${resultId}`,
+        planData
+      );
       return {
         success: true,
         data: response.data,
         message: "Phác đồ điều trị đã được lưu thành công",
       };
     } catch (error) {
-      console.error("Error saving treatment plan:", error);
+      console.error("Error saving treatment plan from clinical result:", error);
       return {
         success: false,
         error: error.message,
@@ -24,7 +27,7 @@ export const treatmentPlanAPI = {
   async updateTreatmentPlan(planId, planData) {
     try {
       const response = await axiosClient.put(
-        `/treatmentPlans/${planId}`,
+        `/api/treatment-workflow/treatment-plan/${planId}/modify`,
         planData
       );
       return {
@@ -45,7 +48,9 @@ export const treatmentPlanAPI = {
   // Lấy phác đồ điều trị theo ID
   async getTreatmentPlan(planId) {
     try {
-      const response = await axiosClient.get(`/treatmentPlans/${planId}`);
+      const response = await axiosClient.get(
+        `/api/treatment-workflow/treatment-plan/${planId}`
+      );
       return {
         success: true,
         data: response.data,
@@ -65,7 +70,7 @@ export const treatmentPlanAPI = {
   async getTreatmentPlansByPatient(patientId) {
     try {
       const response = await axiosClient.get(
-        `/treatmentPlans?patientId=${patientId}`
+        `/api/treatment-workflow/patient/${patientId}/treatment-history`
       );
       return {
         success: true,
@@ -86,7 +91,7 @@ export const treatmentPlanAPI = {
   async getTreatmentPlansByDoctor(doctorId) {
     try {
       const response = await axiosClient.get(
-        `/treatmentPlans?doctorId=${doctorId}`
+        `/api/treatment-workflow/doctor/${doctorId}/treatment-phases`
       );
       return {
         success: true,

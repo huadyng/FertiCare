@@ -447,31 +447,55 @@ const TreatmentPlanEditor = ({
     loadDoctorSpecialty();
   }, []);
 
-  // Load active treatment plan từ API khi vào trang hoặc khi patientId thay đổi
+  // Load active treatment plan từ localStorage hoặc API khi vào trang hoặc khi patientId thay đổi
   useEffect(() => {
     const loadActivePlan = async () => {
       if (!patientId) return;
       setLoading(true);
+      // 1. Ưu tiên lấy từ localStorage nếu có
+      const localPlanKey = `treatment_plan_completed_${patientId}`;
+      const localPlan = localStorage.getItem(localPlanKey);
+      let loadedFromLocal = false;
+      if (localPlan) {
+        try {
+          const parsedPlan = JSON.parse(localPlan);
+          if (parsedPlan && (parsedPlan.id || parsedPlan.planId)) {
+            setExistingPlan(parsedPlan);
+            setIsEditing(false);
+            setIsReadOnly(true);
+            loadedFromLocal = true;
+          }
+        } catch (e) {
+          localStorage.removeItem(localPlanKey);
+        }
+      }
+      // 2. Gọi API để lấy dữ liệu mới nhất (đồng bộ lại nếu có)
       try {
         const response = await apiTreatmentManagement.getActiveTreatmentPlan(
           patientId
         );
         if (response.success && response.data) {
-          // Nếu đã có phác đồ active, set vào state và chuyển sang chế độ xem/chỉnh sửa
           const frontendPlan = transformApiPlanToFrontend(response.data);
           setExistingPlan(frontendPlan);
           setIsEditing(false);
           setIsReadOnly(true);
-        } else {
-          // Nếu chưa có phác đồ, cho phép tạo mới
+          // Nếu khác localStorage thì cập nhật lại localStorage
+          if (!loadedFromLocal || JSON.stringify(frontendPlan) !== localPlan) {
+            localStorage.setItem(localPlanKey, JSON.stringify(frontendPlan));
+          }
+        } else if (!loadedFromLocal) {
+          // Nếu không có phác đồ ở cả localStorage và API thì cho phép tạo mới
           setExistingPlan(null);
           setIsEditing(false);
           setIsReadOnly(false);
         }
       } catch (error) {
-        setExistingPlan(null);
-        setIsEditing(false);
-        setIsReadOnly(false);
+        // Nếu lỗi API mà đã có local thì giữ nguyên, nếu không thì cho phép tạo mới
+        if (!loadedFromLocal) {
+          setExistingPlan(null);
+          setIsEditing(false);
+          setIsReadOnly(false);
+        }
       } finally {
         setLoading(false);
       }
@@ -1269,25 +1293,58 @@ const TreatmentPlanEditor = ({
           // Nếu chưa có plan, mới gọi API tạo mới
           console.log("🆕 [TreatmentPlanEditor] Creating new treatment plan");
           let resultId = null;
-          if (examinationData && examinationData.id) {
+          console.log(
+            "[DEBUG] examinationData khi tạo phác đồ:",
+            examinationData
+          );
+          if (examinationData && isUUID(examinationData.id)) {
             resultId = examinationData.id;
+            console.log(
+              "[DEBUG] Sử dụng examinationData.id là UUID:",
+              resultId
+            );
           } else {
             const clinicalResults =
               await apiTreatmentManagement.getClinicalResultsByPatient(
                 patientId
               );
+            console.log("[DEBUG] clinicalResults trả về:", clinicalResults);
             if (clinicalResults.success && clinicalResults.data.length > 0) {
-              resultId = clinicalResults.data[0].id;
+              // Ưu tiên lấy clinical result có id là UUID
+              const uuidResult = clinicalResults.data.find((r) => isUUID(r.id));
+              if (uuidResult) {
+                resultId = uuidResult.id;
+                console.log(
+                  "[DEBUG] Tìm thấy clinical result có UUID:",
+                  resultId
+                );
+              } else {
+                console.warn(
+                  "[DEBUG] Không có clinical result nào có id là UUID!"
+                );
+              }
+            } else {
+              console.warn(
+                "[DEBUG] Không có clinical result nào cho bệnh nhân này!"
+              );
             }
           }
           if (resultId) {
+            console.log("[DEBUG] Gọi API tạo phác đồ với resultId:", resultId);
             result =
               await apiTreatmentManagement.createTreatmentPlanFromClinicalResult(
                 resultId,
                 planData
               );
           } else {
-            result = await treatmentPlanAPI.saveTreatmentPlan(planData);
+            console.error(
+              "[DEBUG] Không tìm thấy resultId là UUID, không thể tạo phác đồ!"
+            );
+            message.error(
+              "Không tìm thấy kết quả khám lâm sàng hợp lệ (UUID). Không thể tạo phác đồ điều trị mới!"
+            );
+            setLoading(false);
+            return;
           }
         }
         const savedPlan = result.success ? result.data : null;
@@ -1353,6 +1410,13 @@ const TreatmentPlanEditor = ({
             });
           setIsCompleted(true);
           setSubmittedPlan(savedPlan || planData);
+        }
+        // Thêm hoặc cập nhật localStorage với phác đồ đã lưu thành công
+        if (savedPlan || planData) {
+          localStorage.setItem(
+            `treatment_plan_completed_${patientId}`,
+            JSON.stringify(savedPlan || planData)
+          );
         }
       } catch (apiError) {
         console.error("❌ API Error:", apiError);
@@ -2072,6 +2136,13 @@ const TreatmentPlanEditor = ({
       }
     }
   }, [existingPlan, user]);
+
+  // Thêm hàm kiểm tra UUID
+  function isUUID(str) {
+    return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+      str
+    );
+  }
 
   return (
     <div className="treatment-plan-container">

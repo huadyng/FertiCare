@@ -373,70 +373,65 @@ const ExaminationForm = ({
       // Validate required fields
       if (!values.diagnosis) {
         message.error("Vui lòng nhập chẩn đoán");
+        setLoading(false);
         return;
       }
 
-      const examinationData = {
-        id: existingData?.id || Date.now().toString(),
-        patientId,
-        doctorId: user?.id || "defaultDoctor",
-        doctorName: user?.fullName || "Bác sĩ",
-        examinationDate:
-          existingData?.examinationDate ||
-          new Date().toISOString().split("T")[0],
-        symptoms,
-        clinicalSigns: {
-          bloodPressure: values.bloodPressure,
-          temperature: values.temperature,
-          heartRate: values.heartRate,
-          weight: values.weight,
-          height: values.height,
-        },
-        labResults: {
-          ...labResults,
-          ultrasound: values.ultrasound,
-        },
-        diagnosis: values.diagnosis,
-        attachments: attachments.map((file) => file.name),
-        notes: values.notes,
-        status: "completed",
-        // Enhanced metadata
-        isEdited: isEditing,
-        editedAt: isEditing ? new Date().toISOString() : undefined,
-        originalData: isEditing ? existingData : undefined,
-        createdAt: existingData?.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      // Always set completed and show results regardless of API status
-      setIsCompleted(true);
-      setSubmittedData(examinationData);
-      setOriginalData(examinationData);
-
-      let savedResult = null;
-
-      // Try to save to API, but don't block UI if it fails
-      try {
-        // Kiểm tra xem có clinical result nào đã tồn tại cho bệnh nhân này không
-        const existingResults = await clinicalResultsAPI.getExaminationResults(
-          patientId
+      // Lấy clinical result hiện có của bệnh nhân
+      const existingResults = await clinicalResultsAPI.getExaminationResults(
+        patientId
+      );
+      console.log("[DEBUG] existingResults clinical result:", existingResults);
+      if (existingResults && existingResults.length > 0) {
+        const existingResult = existingResults[0];
+        const examinationData = {
+          ...existingResult,
+          patientId,
+          doctorId: user?.id || "defaultDoctor",
+          doctorName: user?.fullName || "Bác sĩ",
+          examinationDate:
+            existingResult.examinationDate ||
+            new Date().toISOString().split("T")[0],
+          symptoms,
+          clinicalSigns: {
+            bloodPressure: values.bloodPressure,
+            temperature: values.temperature,
+            heartRate: values.heartRate,
+            weight: values.weight,
+            height: values.height,
+          },
+          labResults: {
+            ...labResults,
+            ultrasound: values.ultrasound,
+          },
+          diagnosis: values.diagnosis,
+          attachments: attachments.map((file) => file.name),
+          notes: values.notes,
+          status: "completed",
+          isEdited: isEditing,
+          editedAt: isEditing ? new Date().toISOString() : undefined,
+          originalData: isEditing ? existingData : undefined,
+          createdAt: existingResult.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        // Gọi PUT để cập nhật clinical result này
+        console.log(
+          "[DEBUG] Gọi PUT cập nhật clinical result id:",
+          existingResult.id
         );
-        let savedResult;
-
-        if (existingResults && existingResults.length > 0) {
-          // Nếu có kết quả đã tồn tại, cập nhật kết quả đầu tiên
-          const existingResult = existingResults[0];
+        let savedResult = null;
+        try {
           savedResult = await clinicalResultsAPI.updateExaminationResult(
             existingResult.id,
             examinationData
           );
-        } else {
-          // Nếu không có kết quả nào, tạo mới (nhưng backend không có POST endpoint)
-          // Vì vậy sẽ chỉ lưu local và hiển thị thông báo
-          console.warn(
-            "Không có clinical result nào tồn tại để cập nhật. Chỉ lưu local."
+        } catch (apiError) {
+          console.error("API update failed:", apiError);
+          message.error(
+            "❌ Không thể cập nhật kết quả khám. Vui lòng kiểm tra kết nối và thử lại."
           );
-          savedResult = examinationData;
+          setLoading(false);
+          return;
         }
         // Lưu vào localStorage để giữ lại khi reload
         const dataToStore = {
@@ -450,128 +445,65 @@ const ExaminationForm = ({
           JSON.stringify(dataToStore)
         );
         console.log("💾 Saved examination data to localStorage:", dataToStore);
-
-        const actionText =
-          existingResults && existingResults.length > 0 ? "Cập nhật" : "Lưu";
-        message.success(
-          `🎉 ${actionText} kết quả khám thành công! ${
-            existingResults && existingResults.length > 0
-              ? ""
-              : "Hiển thị kết quả bên dưới."
-          }`
-        );
-
-        // Update with saved result if API succeeded
-        setSubmittedData(savedResult || examinationData);
-
-        // Store completed examination for TreatmentProcess sync
-        const syncDataToStore = {
-          ...(savedResult || examinationData),
-          completedAt: new Date().toISOString(),
-          fromStandalonePage: true,
-          apiSaved: true,
-        };
-        localStorage.setItem(
-          `examination_completed_${patientId}`,
-          JSON.stringify(syncDataToStore)
-        );
-        console.log(
-          "💾 Synced examination data to localStorage:",
-          syncDataToStore
-        );
-
-        // Dispatch custom event to notify TreatmentProcess
+        message.success("🎉 Cập nhật kết quả khám thành công!");
+        setIsCompleted(true);
+        setSubmittedData(savedResult);
+        setOriginalData(savedResult);
+        // Dispatch custom event để đồng bộ các bước tiếp theo
         const syncEvent = new CustomEvent("examinationCompleted", {
           detail: {
             patientId,
-            examinationData: savedResult || examinationData,
+            examinationData: savedResult,
           },
         });
         window.dispatchEvent(syncEvent);
-        console.log(
-          "🔔 Dispatched examinationCompleted event:",
-          syncEvent.detail
-        );
-
         // Update treatment state manager
-        treatmentStateManager.updateExamination(
-          patientId,
-          savedResult || examinationData
-        );
-        console.log("💾 Updated treatment state manager");
-
-        // Dispatch additional event for auto progress
+        treatmentStateManager.updateExamination(patientId, savedResult);
+        // Dispatch event cho auto progress
         const progressEvent = new CustomEvent("stepCompleted", {
           detail: {
             patientId,
             stepIndex: 0,
             stepName: "Khám lâm sàng",
-            data: savedResult || examinationData,
+            data: savedResult,
             autoAdvance: true,
           },
         });
         window.dispatchEvent(progressEvent);
-        console.log("🔔 Dispatched stepCompleted event:", progressEvent.detail);
-
-        // Force refresh state manager để đảm bảo cập nhật
         setTimeout(() => {
           treatmentStateManager.forceRefresh();
           console.log("🔄 Forced refresh of treatment state manager");
         }, 500);
-      } catch (apiError) {
-        console.error("API save failed:", apiError);
+        // Log kiểm tra id
+        console.log("[DEBUG] Kết quả cập nhật clinical result:", savedResult);
+        if (savedResult && savedResult.id) {
+          console.log(
+            "[DEBUG] id của clinical result:",
+            savedResult.id,
+            "Kiểu:",
+            typeof savedResult.id
+          );
+          const uuidRegex =
+            /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+          if (uuidRegex.test(savedResult.id)) {
+            console.log("[DEBUG] id là UUID hợp lệ!");
+          } else {
+            console.warn("[DEBUG] id KHÔNG phải UUID!");
+          }
+        } else {
+          console.warn("[DEBUG] Không có id trả về từ savedResult!");
+        }
+      } else {
+        // Không có clinical result nào để cập nhật
         message.error(
-          "❌ Không thể lưu kết quả khám. Vui lòng kiểm tra kết nối và thử lại."
+          "Không tìm thấy kết quả khám lâm sàng để cập nhật. Vui lòng liên hệ quản trị viên!"
         );
-
-        // Still dispatch events even if API fails
-        console.log("🔄 Dispatching events despite API failure...");
-
-        // Dispatch custom event to notify TreatmentProcess
-        const syncEvent = new CustomEvent("examinationCompleted", {
-          detail: {
-            patientId,
-            examinationData: examinationData, // Use local data
-          },
-        });
-        window.dispatchEvent(syncEvent);
-        console.log(
-          "🔔 Dispatched examinationCompleted event (API failed):",
-          syncEvent.detail
-        );
-
-        // Update treatment state manager
-        treatmentStateManager.updateExamination(
-          patientId,
-          examinationData // Use local data
-        );
-        console.log("💾 Updated treatment state manager (API failed)");
-
-        // Dispatch additional event for auto progress
-        const progressEvent = new CustomEvent("stepCompleted", {
-          detail: {
-            patientId,
-            stepIndex: 0,
-            stepName: "Khám lâm sàng",
-            data: examinationData, // Use local data
-            autoAdvance: true,
-          },
-        });
-        window.dispatchEvent(progressEvent);
-        console.log(
-          "🔔 Dispatched stepCompleted event (API failed):",
-          progressEvent.detail
-        );
-      }
-
-      // Automatically notify TreatmentProcess that examination is completed
-      if (onNext) {
-        onNext(savedResult || examinationData);
+        setLoading(false);
+        return;
       }
     } catch (error) {
-      console.error("Critical error in examination form:", error);
-      // message.error("❌ Có lỗi nghiêm trọng. Vui lòng tải lại trang!");
-    } finally {
+      console.error("❌ Critical error in handleSubmit:", error);
+      message.error("Có lỗi xảy ra khi lưu kết quả khám. Vui lòng thử lại!");
       setLoading(false);
     }
   };
