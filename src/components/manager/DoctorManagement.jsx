@@ -10,7 +10,7 @@ import {
   toggleDoctorStatus,
 } from "../../api/apiManager";
 
-import DoctorForm from "./doctorWorks/DoctorForm";
+import DoctorForm from "./Form/DoctorForm";
 
 const DoctorManagement = () => {
   const [doctors, setDoctors] = useState([]);

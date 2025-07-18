@@ -14,10 +14,6 @@ export const updateDoctor = (id, doctor) => {
   return axiosClient.put(`${BASE}/${id}`, doctor);
 };
 
-export const deleteDoctor = (id) => {
-  return axiosClient.delete(`${BASE}/${id}`);   
-};
-
 export const toggleDoctorStatus = (id) => {
   return axiosClient.put(`${BASE}/${id}/status`);
 };
