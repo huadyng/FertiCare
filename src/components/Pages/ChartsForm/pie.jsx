@@ -37,19 +37,19 @@ export default function RatingsPieChart() {
   const tableStyle = {
     width: "100%",
     borderCollapse: "collapse",
-    fontSize: "16px"
+    fontSize: "16px",
   };
 
   const thStyle = {
     background: "#f0f0f0",
     border: "1px solid #ccc",
     padding: "12px",
-    textAlign: "left"
+    textAlign: "left",
   };
 
   const tdStyle = {
     border: "1px solid #ccc",
-    padding: "12px"
+    padding: "12px",
   };
 
   return (
@@ -83,7 +83,7 @@ export default function RatingsPieChart() {
         justifyContent: "center",
         gap: "60px",
         marginTop: "40px",
-        flexWrap: "wrap"
+        flexWrap: "wrap",
       }}>
         {/* Bảng tích cực */}
         <div style={{ width: "45%" }}>
