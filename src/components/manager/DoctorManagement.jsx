@@ -7,7 +7,6 @@ import {
   getDoctors,
   createDoctor,
   updateDoctor,
-  deleteDoctor,
   toggleDoctorStatus,
 } from "../../api/apiManager";
 
@@ -87,20 +86,6 @@ const DoctorManagement = () => {
   }
 };
 
-  // Delete doctor handler
-  const handleDelete = async (id) => {
-    setLoading(true);
-    try {
-      await deleteDoctor(id);
-      message.success("Doctor deleted");
-      fetchDoctors();
-    } catch (error) {
-      message.error("Delete failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const columns = [
     {
       title: "Full Name",
@@ -136,14 +121,7 @@ const DoctorManagement = () => {
           <Button icon={<EditOutlined />} onClick={() => openModal("edit", record)}>
             Edit
           </Button>
-          <Popconfirm
-            title="Are you sure to delete this doctor?"
-            onConfirm={() => handleDelete(record.id)}
-            okText="Yes"
-            cancelText="No"
-          >
-            <Button danger>Delete</Button>
-          </Popconfirm>
+          
         </Space>
       ),
     },
