@@ -18,6 +18,6 @@ export const deleteDoctor = (id) => {
   return axiosClient.delete(`${BASE}/${id}`);   
 };
 
-export const toggleDoctorStatus = (id, status) => {
-  return axiosClient.patch(`${BASE}/${id}/stats`, { status });
+export const toggleDoctorStatus = (id) => {
+  return axiosClient.put(`${BASE}/${id}/status`);
 };

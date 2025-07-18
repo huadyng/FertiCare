@@ -74,18 +74,18 @@ const DoctorManagement = () => {
 
   // Toggle status handler
   const handleToggleStatus = async (doctor) => {
-    setLoading(true);
-    try {
-      const newStatus = doctor.status === "active" ? "inactive" : "active";
-      await toggleDoctorStatus(doctor.id, newStatus);
-      message.success("Status updated");
-      fetchDoctors();
-    } catch (error) {
-      message.error("Failed to update status");
-    } finally {
-      setLoading(false);
-    }
-  };
+  setLoading(true);
+  try {
+    await toggleDoctorStatus(doctor.id); // Chỉ truyền ID
+    message.success("Doctor status toggled");
+    fetchDoctors(); // Reload danh sách
+  } catch (error) {
+    console.error(error);
+    message.error("Failed to toggle doctor status");
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Delete doctor handler
   const handleDelete = async (id) => {
