@@ -1,5 +1,5 @@
 import React from "react";
-import { Form, Input, DatePicker, TimePicker, Button } from "antd";
+import { Form, Input, DatePicker, TimePicker, Button, Select } from "antd";
 import dayjs from "dayjs";
 
 const ShiftForm = ({ mode, initialValues, onSubmit, onCancel }) => {
@@ -88,6 +88,18 @@ const ShiftForm = ({ mode, initialValues, onSubmit, onCancel }) => {
       >
         <Input disabled={isReadOnly} />
       </Form.Item>
+
+      <Form.Item
+        label="Mức ưu tiên"
+        name="priority"
+        rules={[{ required: true, message: "Vui lòng chọn mức ưu tiên" }]}
+      >
+        <Select placeholder="Chọn mức ưu tiên">
+        <Option value="low">Thấp</Option>
+        <Option value="medium">Trung bình</Option>
+        <Option value="high">Cao</Option>
+        </Select>
+    </Form.Item>
 
       <Form.Item
         label="Ghi chú"
