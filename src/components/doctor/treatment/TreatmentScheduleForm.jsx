@@ -242,86 +242,80 @@ const TreatmentScheduleForm = ({
 
   // BACKEND SYNC: Format data for API submission
   const formatDataForBackend = (formData) => {
+    // Chỉ giữ lại các trường bắt buộc và các trường có giá trị thực sự
     const backendData = {
-      // Required fields
       patientId: patientId,
-      planName: formData.planName || "",
       treatmentType: formData.treatmentType || "IUI",
-
-      // Optional basic fields
-      planDescription: formData.planDescription || "",
-      treatmentCycle: formData.treatmentCycle
-        ? parseInt(formData.treatmentCycle)
-        : null,
-      estimatedDurationDays: formData.estimatedDurationDays
-        ? parseInt(formData.estimatedDurationDays)
-        : null,
-      estimatedCost: formData.estimatedCost
-        ? parseFloat(formData.estimatedCost)
-        : null,
-
-      // Assessment fields
-      successProbability: formData.successProbability
-        ? parseFloat(formData.successProbability)
-        : null,
-      riskFactors: formData.riskFactors || "",
-      contraindications: formData.contraindications || "",
-
-      // Schedule fields
-      startDate: formData.startDate
-        ? dayjs(formData.startDate).format("YYYY-MM-DDTHH:mm:ss")
-        : null,
-      endDate: formData.endDate
-        ? dayjs(formData.endDate).format("YYYY-MM-DDTHH:mm:ss")
-        : null,
-
-      // Status
-      status: formData.status || "draft",
-
-      // Treatment steps - ensure correct structure
-      treatmentSteps:
-        formData.treatmentSteps && Array.isArray(formData.treatmentSteps)
-          ? formData.treatmentSteps.map((step) => ({
-              step: step.step || 0,
-              name: step.name || "",
-              duration: step.duration || "",
-              description: step.description || "",
-              activities: Array.isArray(step.activities) ? step.activities : [],
-            }))
-          : [],
-
-      // Medication plan - ensure correct structure
-      medicationPlan:
-        formData.medicationPlan && Array.isArray(formData.medicationPlan)
-          ? formData.medicationPlan.map((plan) => ({
-              phase: plan.phase || "",
-              medications: Array.isArray(plan.medications)
-                ? plan.medications.map((med) => ({
-                    name: med.name || "",
-                    dosage: med.dosage || "",
-                    frequency: med.frequency || "",
-                    duration: med.duration || "",
-                  }))
-                : [],
-            }))
-          : [],
-
-      // Monitoring schedule - ensure correct structure
-      monitoringSchedule:
-        formData.monitoringSchedule &&
-        Array.isArray(formData.monitoringSchedule)
-          ? formData.monitoringSchedule.map((schedule) => ({
-              day: schedule.day || 0,
-              activity: schedule.activity || "",
-              type: schedule.type || "",
-            }))
-          : [],
-
-      // Additional fields
-      notes: formData.notes || "",
-      templateId: formData.templateId || null,
     };
 
+    // Các trường không bắt buộc, chỉ thêm nếu có giá trị thực
+    if (formData.planName) backendData.planName = formData.planName;
+    if (formData.planDescription)
+      backendData.planDescription = formData.planDescription;
+    if (formData.treatmentCycle)
+      backendData.treatmentCycle = parseInt(formData.treatmentCycle);
+    if (formData.estimatedDurationDays)
+      backendData.estimatedDurationDays = parseInt(
+        formData.estimatedDurationDays
+      );
+    if (formData.estimatedCost)
+      backendData.estimatedCost = parseFloat(formData.estimatedCost);
+    if (
+      formData.treatmentSteps &&
+      Array.isArray(formData.treatmentSteps) &&
+      formData.treatmentSteps.length > 0
+    )
+      backendData.treatmentSteps = formData.treatmentSteps.map((step) => ({
+        step: step.step || 0,
+        name: step.name || "",
+        duration: step.duration || "",
+        description: step.description || "",
+        activities: Array.isArray(step.activities) ? step.activities : [],
+      }));
+    if (
+      formData.medicationPlan &&
+      Array.isArray(formData.medicationPlan) &&
+      formData.medicationPlan.length > 0
+    )
+      backendData.medicationPlan = formData.medicationPlan.map((plan) => ({
+        phase: plan.phase || "",
+        medications: Array.isArray(plan.medications)
+          ? plan.medications.map((med) => ({
+              name: med.name || "",
+              dosage: med.dosage || "",
+              frequency: med.frequency || "",
+              duration: med.duration || "",
+            }))
+          : [],
+      }));
+    if (
+      formData.monitoringSchedule &&
+      Array.isArray(formData.monitoringSchedule) &&
+      formData.monitoringSchedule.length > 0
+    )
+      backendData.monitoringSchedule = formData.monitoringSchedule.map(
+        (schedule) => ({
+          day: schedule.day || 0,
+          activity: schedule.activity || "",
+          type: schedule.type || "",
+        })
+      );
+    if (formData.successProbability)
+      backendData.successProbability = parseFloat(formData.successProbability);
+    if (formData.riskFactors) backendData.riskFactors = formData.riskFactors;
+    if (formData.contraindications)
+      backendData.contraindications = formData.contraindications;
+    if (formData.startDate)
+      backendData.startDate = dayjs(formData.startDate).format(
+        "YYYY-MM-DDTHH:mm:ss"
+      );
+    if (formData.endDate)
+      backendData.endDate = dayjs(formData.endDate).format(
+        "YYYY-MM-DDTHH:mm:ss"
+      );
+    if (formData.status) backendData.status = formData.status;
+    if (formData.notes) backendData.notes = formData.notes;
+    if (formData.templateId) backendData.templateId = formData.templateId;
     return backendData;
   };
 
@@ -364,6 +358,28 @@ const TreatmentScheduleForm = ({
         currentTreatmentPlan.planId
       );
 
+      // Nếu user là bác sĩ, lấy phases qua API mới
+      if (user?.role === "DOCTOR" || user?.role?.toUpperCase() === "DOCTOR") {
+        const result = await apiTreatmentManagement.getDoctorTreatmentPhases(
+          user.id
+        );
+        if (result.success && result.data) {
+          // Lọc phases theo planId của bệnh nhân hiện tại
+          const filteredPhases = Array.isArray(result.data)
+            ? result.data.filter(
+                (phase) => phase.planId === currentTreatmentPlan.planId
+              )
+            : [];
+          setApiPhases(filteredPhases);
+          console.log("✅ Doctor phases loaded:", filteredPhases);
+        } else {
+          setApiPhases([]);
+          message.warning("Không có giai đoạn điều trị nào cho bác sĩ.");
+        }
+        return;
+      }
+
+      // Nếu không phải bác sĩ, dùng API cũ
       const result = await apiTreatmentManagement.getTreatmentPlanPhases(
         currentTreatmentPlan.planId
       );
@@ -378,11 +394,10 @@ const TreatmentScheduleForm = ({
       console.error("❌ Error loading treatment plan phases:", error);
       setApiPhases([]);
     }
-  }, [currentTreatmentPlan?.planId]);
+  }, [currentTreatmentPlan?.planId, user]);
 
   // BACKEND SYNC: Load treatment data with proper error handling
   const loadTreatmentData = useCallback(async () => {
-    // Tránh tải dữ liệu nhiều lần cùng lúc
     if (loadingPhases) {
       console.log("🔄 [TreatmentScheduleForm] Already loading, skipping...");
       return;
@@ -405,7 +420,7 @@ const TreatmentScheduleForm = ({
       });
 
       // Check doctor-patient access first (for doctors)
-      if (user?.role === "doctor") {
+      if (user?.role === "doctor" || user?.role?.toUpperCase() === "DOCTOR") {
         console.log("🔍 [TreatmentScheduleForm] Doctor access check...");
         const accessResult =
           await apiTreatmentManagement.checkDoctorPatientAccess(
@@ -431,19 +446,25 @@ const TreatmentScheduleForm = ({
         console.log(
           "🔄 [TreatmentScheduleForm] Loading treatment plan from API..."
         );
-        const planResult =
-          await apiTreatmentManagement.getTreatmentPlansByPatient(patientId);
-        if (
-          planResult.success &&
-          planResult.data &&
-          planResult.data.length > 0
-        ) {
-          // Get the most recent active plan
-          const activePlans = planResult.data.filter(
-            (plan) => plan.status === "active"
-          );
-          treatmentPlanData =
-            activePlans.length > 0 ? activePlans[0] : planResult.data[0];
+        // Nếu user là bác sĩ, không gọi getTreatmentPlansByPatient nữa
+        if (user?.role === "DOCTOR" || user?.role?.toUpperCase() === "DOCTOR") {
+          // Không có API lấy treatment plan theo doctorId, nên bỏ qua bước này
+          // hoặc có thể lấy từ props hoặc context khác nếu cần
+        } else {
+          const planResult =
+            await apiTreatmentManagement.getTreatmentPlansByPatient(patientId);
+          if (
+            planResult.success &&
+            planResult.data &&
+            planResult.data.length > 0
+          ) {
+            // Get the most recent active plan
+            const activePlans = planResult.data.filter(
+              (plan) => plan.status === "active"
+            );
+            treatmentPlanData =
+              activePlans.length > 0 ? activePlans[0] : planResult.data[0];
+          }
         }
       }
 
@@ -454,71 +475,85 @@ const TreatmentScheduleForm = ({
         console.log("⚠️ No treatment plan found for patient");
       }
 
-      // Load phases using existing API
-      console.log("🔄 [TreatmentScheduleForm] Loading treatment phases...");
-
-      // Sử dụng API phù hợp cho DOCTOR
-      const phasesResult = await apiTreatmentManagement.getActiveTreatmentPlan(
-        patientId
-      );
-
-      console.log("🔍 [TreatmentScheduleForm] Phases result:", phasesResult);
-
-      if (phasesResult.success && phasesResult.data) {
-        // Handle different response formats
-        let phasesData = [];
-        if (Array.isArray(phasesResult.data)) {
-          phasesData = phasesResult.data;
-        } else if (phasesResult.data.tablePhases) {
-          phasesData = phasesResult.data.tablePhases;
-        } else if (phasesResult.data.phases) {
-          phasesData = phasesResult.data.phases;
-        }
-
-        if (phasesData && phasesData.length > 0) {
-          setApiPhases(phasesData);
-          console.log("✅ Treatment phases loaded:", phasesData);
-
-          // Load activities for each phase
-          setLoadingActivities(true);
-          const activitiesPromises = phasesData.map(async (phase) => {
-            const phaseId = phase.phaseId || phase.planId || phase.id;
-            try {
-              const activitiesResult =
-                await apiTreatmentManagement.getPhaseActivities(phaseId);
-              if (activitiesResult.success && activitiesResult.data) {
-                return {
-                  phaseId: phaseId,
-                  activities: activitiesResult.data,
-                };
-              }
-            } catch (error) {
-              console.warn(
-                `⚠️ Could not load activities for phase ${phaseId}:`,
-                error
-              );
-            }
-            return { phaseId: phaseId, activities: [] };
-          });
-
-          const activitiesResults = await Promise.all(activitiesPromises);
-          const newPhaseActivities = {};
-          activitiesResults.forEach(({ phaseId, activities }) => {
-            newPhaseActivities[phaseId] = activities;
-          });
-
-          setPhaseActivities(newPhaseActivities);
-          setLoadingActivities(false);
-
-          console.log("✅ Phase activities loaded:", newPhaseActivities);
+      // Load phases using API phù hợp cho DOCTOR
+      if (user?.role === "DOCTOR" || user?.role?.toUpperCase() === "DOCTOR") {
+        const phasesResult =
+          await apiTreatmentManagement.getDoctorTreatmentPhases(user.id);
+        if (phasesResult.success && phasesResult.data) {
+          // Lọc phases theo planId của bệnh nhân hiện tại (nếu có)
+          const filteredPhases = Array.isArray(phasesResult.data)
+            ? phasesResult.data.filter((phase) => phase.patientId === patientId)
+            : [];
+          setApiPhases(filteredPhases);
+          console.log("✅ Doctor phases loaded:", filteredPhases);
         } else {
-          message.warning("⚠️ Không có hoạt động nào được tải từ API");
+          setApiPhases([]);
+          setPhaseActivities({});
+          message.warning("Không có hoạt động nào được tải từ API");
         }
       } else {
-        console.error("Failed to load phases:", phasesResult.message);
-        message.error("Không thể tải thông tin giai đoạn điều trị");
-        setApiPhases([]);
-        setPhaseActivities({});
+        // Sử dụng API cũ cho bệnh nhân
+        const phasesResult =
+          await apiTreatmentManagement.getActiveTreatmentPlan(patientId);
+
+        console.log("🔍 [TreatmentScheduleForm] Phases result:", phasesResult);
+
+        if (phasesResult.success && phasesResult.data) {
+          // Handle different response formats
+          let phasesData = [];
+          if (Array.isArray(phasesResult.data)) {
+            phasesData = phasesResult.data;
+          } else if (phasesResult.data.tablePhases) {
+            phasesData = phasesResult.data.tablePhases;
+          } else if (phasesResult.data.phases) {
+            phasesData = phasesResult.data.phases;
+          }
+
+          if (phasesData && phasesData.length > 0) {
+            setApiPhases(phasesData);
+            console.log("✅ Treatment phases loaded:", phasesData);
+
+            // Load activities for each phase
+            setLoadingActivities(true);
+            const activitiesPromises = phasesData.map(async (phase) => {
+              const phaseId = phase.phaseId || phase.planId || phase.id;
+              try {
+                const activitiesResult =
+                  await apiTreatmentManagement.getPhaseActivities(phaseId);
+                if (activitiesResult.success && activitiesResult.data) {
+                  return {
+                    phaseId: phaseId,
+                    activities: activitiesResult.data,
+                  };
+                }
+              } catch (error) {
+                console.warn(
+                  `⚠️ Could not load activities for phase ${phaseId}:`,
+                  error
+                );
+              }
+              return { phaseId: phaseId, activities: [] };
+            });
+
+            const activitiesResults = await Promise.all(activitiesPromises);
+            const newPhaseActivities = {};
+            activitiesResults.forEach(({ phaseId, activities }) => {
+              newPhaseActivities[phaseId] = activities;
+            });
+
+            setPhaseActivities(newPhaseActivities);
+            setLoadingActivities(false);
+
+            console.log("✅ Phase activities loaded:", newPhaseActivities);
+          } else {
+            message.warning("⚠️ Không có hoạt động nào được tải từ API");
+          }
+        } else {
+          console.error("Failed to load phases:", phasesResult.message);
+          message.error("Không thể tải thông tin giai đoạn điều trị");
+          setApiPhases([]);
+          setPhaseActivities({});
+        }
       }
 
       setInitialDataLoaded(true);
@@ -1711,238 +1746,20 @@ const TreatmentScheduleForm = ({
             </Col>
           </Row>
 
-          {/* BACKEND SYNC: Additional form fields for complete treatment plan */}
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                label="Tên lịch điều trị"
-                name="planName"
-                rules={[
-                  {
-                    required: true,
-                    message: "Vui lòng nhập tên lịch điều trị",
-                  },
-                  { max: 255, message: "Tên không được vượt quá 255 ký tự" },
-                ]}
-              >
-                <Input placeholder="Nhập tên lịch điều trị" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="Số chu kỳ điều trị" name="treatmentCycle">
-                <InputNumber
-                  min={1}
-                  max={10}
-                  style={{ width: "100%" }}
-                  placeholder="1"
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item label="Mô tả lịch điều trị" name="planDescription">
-            <Input.TextArea
-              rows={3}
-              placeholder="Mô tả chi tiết về lịch điều trị..."
-            />
+          <Form.Item
+            label="Tên lịch điều trị"
+            name="planName"
+            rules={[
+              {
+                required: true,
+                message: "Vui lòng nhập tên lịch điều trị",
+              },
+              { max: 255, message: "Tên không được vượt quá 255 ký tự" },
+            ]}
+          >
+            <Input placeholder="Nhập tên lịch điều trị" />
           </Form.Item>
 
-          <Row gutter={16}>
-            <Col span={8}>
-              <Form.Item
-                label="Thời gian ước tính (ngày)"
-                name="estimatedDurationDays"
-              >
-                <InputNumber
-                  min={1}
-                  max={365}
-                  style={{ width: "100%" }}
-                  placeholder="30"
-                />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item label="Chi phí ước tính (VNĐ)" name="estimatedCost">
-                <InputNumber
-                  min={0}
-                  formatter={(value) =>
-                    `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-                  }
-                  parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
-                  style={{ width: "100%" }}
-                  placeholder="0"
-                />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item label="Tỷ lệ thành công (%)" name="successProbability">
-                <InputNumber
-                  min={0}
-                  max={100}
-                  style={{ width: "100%" }}
-                  placeholder="75"
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item label="Yếu tố nguy cơ" name="riskFactors">
-                <Input.TextArea
-                  rows={3}
-                  placeholder="Các yếu tố nguy cơ cần lưu ý..."
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="Chống chỉ định" name="contraindications">
-                <Input.TextArea
-                  rows={3}
-                  placeholder="Các trường hợp chống chỉ định..."
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          {/* Generated Schedule Display */}
-          {generatedSchedule && generatedSchedule.length > 0 && (
-            <Card
-              title="Lịch điều trị được tạo"
-              size="small"
-              style={{ marginBottom: 16 }}
-              extra={
-                <Space>
-                  <Button
-                    size="small"
-                    onClick={handleAddCustomSession}
-                    icon={<PlusOutlined />}
-                  >
-                    Thêm buổi tùy chỉnh
-                  </Button>
-                  <Text type="secondary">
-                    Tổng: {generatedSchedule.length} buổi
-                  </Text>
-                </Space>
-              }
-            >
-              <Table
-                dataSource={generatedSchedule}
-                rowKey={(record) => {
-                  // FIX: Create unique key for each row with better fallback
-                  if (record.id) {
-                    return record.id;
-                  }
-
-                  // Create unique key with index fallback
-                  const phaseName = record.phaseName || "unknown";
-                  const date =
-                    record.date || new Date().toISOString().split("T")[0];
-                  const activity = record.activity || "activity";
-                  const timestamp = Date.now() + index; // Add index to ensure uniqueness
-                  const randomSuffix = Math.random().toString(36).substr(2, 9);
-
-                  const uniqueKey = `schedule_${phaseName}_${date}_${activity.replace(
-                    /\s+/g,
-                    "_"
-                  )}_${index}_${timestamp}_${randomSuffix}`;
-
-                  return uniqueKey;
-                }}
-                columns={[
-                  {
-                    title: "Ngày",
-                    dataIndex: "date",
-                    key: "date",
-                    render: (date) => dayjs(date).format("DD/MM/YYYY"),
-                  },
-                  {
-                    title: "Giai đoạn",
-                    dataIndex: "phaseName",
-                    key: "phaseName",
-                    render: (text, record) => <Tag color="blue">{text}</Tag>,
-                  },
-                  {
-                    title: "Hoạt động",
-                    dataIndex: "activity",
-                    key: "activity",
-                  },
-                  {
-                    title: "Thời gian",
-                    dataIndex: "duration",
-                    key: "duration",
-                    render: (duration) => `${duration} phút`,
-                  },
-                  {
-                    title: "Phòng",
-                    dataIndex: "room",
-                    key: "room",
-                  },
-                  {
-                    title: "Trạng thái",
-                    dataIndex: "completed",
-                    key: "status",
-                    render: (completed) => (
-                      <Tag color={completed ? "green" : "orange"}>
-                        {completed ? "Hoàn thành" : "Chờ thực hiện"}
-                      </Tag>
-                    ),
-                  },
-                  {
-                    title: "Thao tác",
-                    key: "action",
-                    render: (_, record) => (
-                      <Space>
-                        <Button
-                          size="small"
-                          icon={<EditOutlined />}
-                          onClick={() => handleEditSession(record)}
-                        >
-                          Sửa
-                        </Button>
-                        {record.custom && (
-                          <Popconfirm
-                            title="Xóa buổi điều trị này?"
-                            onConfirm={() => {
-                              setGeneratedSchedule((prev) =>
-                                prev.filter((s) => s.id !== record.id)
-                              );
-                            }}
-                          >
-                            <Button
-                              size="small"
-                              danger
-                              icon={<DeleteOutlined />}
-                            >
-                              Xóa
-                            </Button>
-                          </Popconfirm>
-                        )}
-                      </Space>
-                    ),
-                  },
-                ]}
-                pagination={false}
-                size="small"
-              />
-            </Card>
-          )}
-
-          {/* Doctor Notes */}
-          <Card
-            title="Ghi chú của bác sĩ"
-            size="small"
-            style={{ marginBottom: 16 }}
-          >
-            <Input.TextArea
-              rows={4}
-              value={doctorNotes}
-              onChange={(e) => setDoctorNotes(e.target.value)}
-              placeholder="Ghi chú thêm về lịch điều trị..."
-            />
-          </Card>
-
-          {/* Submit Button */}
           <Form.Item>
             <Space>
               <Button
@@ -1957,8 +1774,6 @@ const TreatmentScheduleForm = ({
               <Button
                 onClick={() => {
                   form.resetFields();
-                  setGeneratedSchedule([]);
-                  setDoctorNotes("");
                 }}
                 disabled={loading}
               >

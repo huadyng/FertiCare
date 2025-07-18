@@ -395,6 +395,32 @@ const apiTreatmentManagement = {
     }
   },
 
+  // Lấy các phase điều trị dành cho bác sĩ (theo doctorId)
+  getDoctorTreatmentPhases: async (doctorId) => {
+    try {
+      const response = await axiosClient.get(
+        `/api/treatment-workflow/doctor/${doctorId}/treatment-phases`,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
+      return {
+        success: true,
+        data: response.data,
+        message: "Lấy danh sách phase điều trị cho bác sĩ thành công",
+      };
+    } catch (error) {
+      console.error("Error fetching doctor treatment phases:", error);
+      return {
+        success: false,
+        data: [],
+        message:
+          error.response?.data?.message ||
+          "Không thể lấy danh sách phase điều trị cho bác sĩ",
+      };
+    }
+  },
+
   // Cập nhật trạng thái phase
   updatePhaseStatus: async (treatmentPlanId, phaseId, statusData) => {
     try {

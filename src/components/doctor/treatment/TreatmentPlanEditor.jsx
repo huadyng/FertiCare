@@ -1116,22 +1116,25 @@ const TreatmentPlanEditor = ({
     { value: "waiting", label: "⌛ Chờ xử lý", color: "purple" },
   ];
 
+  // --- SỬA handleSavePhaseEdit: lưu customizations.phases với key là phase.id (FE tự tạo, không liên quan BE) ---
   const handleSavePhaseEdit = () => {
     if (editingPhase) {
-      // Update customizations with the edited phase
       setCustomizations((prev) => ({
         ...prev,
         phases: {
           ...prev.phases,
-          [editingPhase.id]: editingPhase,
+          [editingPhase.id]: {
+            ...editingPhase,
+            name: editingPhase.name,
+            originalName: editingPhase.originalName || editingPhase.name,
+          },
         },
       }));
-
-      // message.success(`✅ Đã cập nhật giai đoạn "${editingPhase.name}"`);
     }
     setIsEditingPhase(false);
     setEditingPhase(null);
   };
+  // --- HẾT SỬA handleSavePhaseEdit ---
 
   const handleCancelPhaseEdit = () => {
     setIsEditingPhase(false);
@@ -1140,10 +1143,15 @@ const TreatmentPlanEditor = ({
   };
 
   // Get effective phase (customized or original)
+  // --- SỬA getEffectivePhase: chỉ tìm customPhase theo name/originalName ---
   const getEffectivePhase = (phase) => {
-    const customPhase = customizations.phases?.[phase.id];
+    let customPhase = customizations.phases?.[phase.name];
+    if (!customPhase && phase.name) {
+      customPhase = Object.values(customizations.phases || {}).find(
+        (cp) => cp.originalName === phase.name
+      );
+    }
     const effectivePhase = customPhase ? { ...phase, ...customPhase } : phase;
-
     // Đảm bảo có activitiesDetail
     return {
       ...effectivePhase,
@@ -1151,6 +1159,7 @@ const TreatmentPlanEditor = ({
         effectivePhase.activitiesDetail || effectivePhase.activities || [],
     };
   };
+  // --- HẾT SỬA getEffectivePhase ---
 
   const handleAddMedication = () => {
     const newMed = {
@@ -1209,6 +1218,7 @@ const TreatmentPlanEditor = ({
       }, []);
 
       // Build treatmentSteps từ các phase đã merge customizations
+      // CHỈ gửi các trường BE cần: step, name, description, duration, activities (KHÔNG gửi id)
       const treatmentSteps = effectivePhases.map((phase, idx) => ({
         step: idx + 1,
         name: phase.name,
@@ -1232,7 +1242,7 @@ const TreatmentPlanEditor = ({
         estimatedDurationDays:
           parseInt(selectedTemplate?.estimatedDuration) || 21,
         estimatedCost: parseFloat(selectedTemplate?.cost) || 0.0,
-        treatmentSteps: treatmentSteps,
+        treatmentSteps: treatmentSteps, // KHÔNG có id
         medicationPlan: medicationPlan,
         monitoringSchedule: [],
         successProbability: parseFloat(selectedTemplate?.successRate) || 0.7,
@@ -1443,11 +1453,11 @@ const TreatmentPlanEditor = ({
   };
 
   // Thêm function để bật chế độ chỉnh sửa
+  // --- SỬA handleEnableEdit: merge customizations theo name/originalName ---
   const handleEnableEdit = () => {
     setIsReadOnly(false);
     setIsEditing(true);
     if (existingPlan) {
-      // Luôn lấy template chuẩn từ API khi chỉnh sửa
       (async () => {
         try {
           const templateResponse =
@@ -1456,9 +1466,7 @@ const TreatmentPlanEditor = ({
             );
           let mergedTemplate;
           if (templateResponse.success && templateResponse.data) {
-            // Sử dụng hàm chuyển đổi template từ backend sang FE
             const template = convertTemplate(templateResponse.data);
-            // Merge sâu customizations vào từng phase của template
             mergedTemplate = { ...template };
             if (
               existingPlan.customizations &&
@@ -1466,26 +1474,27 @@ const TreatmentPlanEditor = ({
             ) {
               mergedTemplate.phases = mergedTemplate.phases.map(
                 (phase, idx) => {
-                  const customPhase =
-                    existingPlan.customizations.phases[phase.id];
+                  // Tìm customPhase theo name hoặc originalName
+                  let customPhase =
+                    existingPlan.customizations?.phases?.[phase.name];
+                  if (!customPhase && phase.name) {
+                    customPhase = Object.values(
+                      existingPlan.customizations?.phases || {}
+                    ).find((cp) => cp.originalName === phase.name);
+                  }
                   if (customPhase) {
-                    // Merge sâu từng trường của phase
                     return {
                       ...phase,
                       ...customPhase,
-                      // Nếu customPhase có activitiesDetail thì dùng, không thì lấy từ template
                       activitiesDetail:
                         customPhase.activitiesDetail ||
                         phase.activitiesDetail ||
                         phase.activities ||
                         [],
-                      // Nếu customPhase có activities thì dùng, không thì lấy từ template
                       activities:
                         customPhase.activities || phase.activities || [],
-                      // Nếu customPhase có medications thì dùng, không thì lấy từ template
                       medications:
                         customPhase.medications || phase.medications || [],
-                      // Nếu customPhase có description/duration thì dùng, không thì lấy từ template
                       description: customPhase.description || phase.description,
                       duration: customPhase.duration || phase.duration,
                     };
@@ -1495,7 +1504,6 @@ const TreatmentPlanEditor = ({
               );
             }
           } else {
-            // Fallback: dùng finalPlan nếu không lấy được template
             mergedTemplate = existingPlan.finalPlan || existingPlan.template;
           }
           setSelectedTemplate(mergedTemplate);
@@ -1523,6 +1531,7 @@ const TreatmentPlanEditor = ({
     }
     message.info("🔄 Đã chuyển sang chế độ chỉnh sửa");
   };
+  // --- HẾT SỬA handleEnableEdit ---
 
   // Thêm function để hủy chỉnh sửa
   const handleCancelEdit = () => {
@@ -2643,7 +2652,7 @@ const TreatmentPlanEditor = ({
                   >
                     {customMedications?.map((med) => (
                       <Card
-                        key={med.id}
+                        key={med.id || `${med.name || ""}-${idx}`}
                         type="inner"
                         size="small"
                         style={{ marginBottom: 8 }}
