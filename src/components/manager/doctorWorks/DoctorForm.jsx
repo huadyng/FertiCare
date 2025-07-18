@@ -30,7 +30,6 @@ const DoctorForm = ({ initialValues, onSubmit, onCancel, disabled = false }) => 
     address: "",
     specialty: "",
     department: "",
-    departmentId: "",
     experienceYears: 0,
     contractType: "full-time",
     schedule: initialSchedule,
@@ -137,14 +136,6 @@ const DoctorForm = ({ initialValues, onSubmit, onCancel, disabled = false }) => 
         rules={[{ required: true, message: "Please input department" }]}
       >
         <Input placeholder="Enter department" />
-      </Form.Item>
-
-      <Form.Item
-        label="Department ID"
-        name="departmentId"
-        rules={[{ required: true, message: "Please input department ID" }]}
-      >
-        <Input placeholder="Enter department ID" />
       </Form.Item>
 
       <Form.Item
