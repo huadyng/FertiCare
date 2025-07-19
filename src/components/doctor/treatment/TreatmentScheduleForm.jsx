@@ -28,6 +28,7 @@ import {
   Switch,
   Progress,
   Spin,
+  Empty,
 } from "antd";
 import {
   CalendarOutlined,
@@ -437,19 +438,76 @@ const TreatmentScheduleForm = ({
 
       // Load treatment plan
       let treatmentPlanData = null;
-      if (treatmentPlan && treatmentPlan.planId) {
+      if (treatmentPlan) {
         console.log(
-          "🔄 [TreatmentScheduleForm] Loading treatment plan from prop..."
+          "🔄 [TreatmentScheduleForm] Loading treatment plan from prop...",
+          treatmentPlan
         );
-        treatmentPlanData = treatmentPlan;
-      } else {
+        // Kiểm tra các trường có thể có planId
+        if (
+          treatmentPlan.planId ||
+          treatmentPlan.id ||
+          treatmentPlan.treatmentPlanId
+        ) {
+          treatmentPlanData = treatmentPlan;
+        } else {
+          console.log(
+            "⚠️ [TreatmentScheduleForm] Treatment plan prop exists but no planId found"
+          );
+        }
+      }
+
+      if (!treatmentPlanData) {
         console.log(
           "🔄 [TreatmentScheduleForm] Loading treatment plan from API..."
         );
-        // Nếu user là bác sĩ, không gọi getTreatmentPlansByPatient nữa
+        // Nếu user là bác sĩ, sử dụng getDoctorTreatmentPhases để lấy phases
         if (user?.role === "DOCTOR" || user?.role?.toUpperCase() === "DOCTOR") {
-          // Không có API lấy treatment plan theo doctorId, nên bỏ qua bước này
-          // hoặc có thể lấy từ props hoặc context khác nếu cần
+          console.log(
+            "🔍 [TreatmentScheduleForm] Loading doctor treatment phases..."
+          );
+          const phasesResult =
+            await apiTreatmentManagement.getDoctorTreatmentPhases(user.id);
+          if (phasesResult.success && phasesResult.data) {
+            // Lọc phases theo patientId hiện tại
+            const patientPhases = Array.isArray(phasesResult.data)
+              ? phasesResult.data.filter(
+                  (phase) => phase.patientId === patientId
+                )
+              : [];
+
+            console.log(
+              "🔍 [TreatmentScheduleForm] All doctor phases:",
+              phasesResult.data
+            );
+            console.log(
+              "🔍 [TreatmentScheduleForm] Filtered phases for patient:",
+              patientPhases
+            );
+
+            if (patientPhases.length > 0) {
+              // Tạo treatment plan data từ phases
+              const firstPhase = patientPhases[0];
+              treatmentPlanData = {
+                planId: firstPhase.planId,
+                patientId: patientId,
+                status: "active",
+                phases: patientPhases.map((phase) => ({
+                  id: phase.phaseId,
+                  name: phase.phaseName,
+                  description: phase.description,
+                  duration: phase.expectedDuration,
+                  status: phase.status,
+                  startDate: phase.startDate,
+                  endDate: phase.endDate,
+                })),
+              };
+              console.log(
+                "✅ Treatment plan created from phases:",
+                treatmentPlanData
+              );
+            }
+          }
         } else {
           const planResult =
             await apiTreatmentManagement.getTreatmentPlansByPatient(patientId);
@@ -471,30 +529,63 @@ const TreatmentScheduleForm = ({
       if (treatmentPlanData) {
         setCurrentTreatmentPlan(treatmentPlanData);
         console.log("✅ Treatment plan loaded:", treatmentPlanData);
-      } else {
-        console.log("⚠️ No treatment plan found for patient");
-      }
 
-      // Load phases using API phù hợp cho DOCTOR
-      if (user?.role === "DOCTOR" || user?.role?.toUpperCase() === "DOCTOR") {
-        const phasesResult =
-          await apiTreatmentManagement.getDoctorTreatmentPhases(user.id);
-        if (phasesResult.success && phasesResult.data) {
-          // Lọc phases theo planId của bệnh nhân hiện tại (nếu có)
-          const filteredPhases = Array.isArray(phasesResult.data)
-            ? phasesResult.data.filter((phase) => phase.patientId === patientId)
-            : [];
-          setApiPhases(filteredPhases);
-          console.log("✅ Doctor phases loaded:", filteredPhases);
-        } else {
-          setApiPhases([]);
-          setPhaseActivities({});
-          message.warning("Không có hoạt động nào được tải từ API");
+        // Nếu có treatment plan từ props, tạo phases từ đó
+        if (treatmentPlanData.finalPlan?.phases || treatmentPlanData.phases) {
+          console.log(
+            "🔄 [TreatmentScheduleForm] Creating phases from treatment plan..."
+          );
+          const phases =
+            treatmentPlanData.finalPlan?.phases || treatmentPlanData.phases;
+          const createdPhases = phases.map((phase, index) => ({
+            phaseId: phase.id || `phase_${index}`,
+            phaseName: phase.name || `Giai đoạn ${index + 1}`,
+            description: phase.description || "",
+            phaseOrder: index + 1,
+            expectedDuration: phase.duration || "5-7 ngày",
+            status: phase.status || "Pending",
+            patientId: patientId,
+            planId: treatmentPlanData.planId || treatmentPlanData.id,
+            startDate: phase.startDate,
+            endDate: phase.endDate,
+          }));
+          setApiPhases(createdPhases);
+          console.log("✅ Phases created from treatment plan:", createdPhases);
         }
       } else {
-        // Sử dụng API cũ cho bệnh nhân
-        const phasesResult =
-          await apiTreatmentManagement.getActiveTreatmentPlan(patientId);
+        console.log("⚠️ No treatment plan found for patient");
+        if (user?.role === "DOCTOR" || user?.role?.toUpperCase() === "DOCTOR") {
+          message.info(
+            "Bệnh nhân chưa có phác đồ điều trị. Vui lòng tạo phác đồ điều trị trước."
+          );
+        }
+      }
+
+      // Load phases using API phù hợp cho bệnh nhân (chỉ khi không có treatment plan từ props)
+      // Đã xử lý ở trên, không cần gọi lại API
+      if (false && !treatmentPlanData) {
+        // Sử dụng API phù hợp cho từng role
+        let phasesResult;
+        if (user?.role === "DOCTOR" || user?.role?.toUpperCase() === "DOCTOR") {
+          // Bác sĩ sử dụng API getDoctorTreatmentPhases
+          phasesResult = await apiTreatmentManagement.getDoctorTreatmentPhases(
+            user.id
+          );
+          if (phasesResult.success && phasesResult.data) {
+            // Lọc phases theo patientId của bệnh nhân hiện tại
+            const filteredPhases = Array.isArray(phasesResult.data)
+              ? phasesResult.data.filter(
+                  (phase) => phase.patientId === patientId
+                )
+              : [];
+            phasesResult.data = filteredPhases;
+          }
+        } else {
+          // Bệnh nhân sử dụng API cũ
+          phasesResult = await apiTreatmentManagement.getActiveTreatmentPlan(
+            patientId
+          );
+        }
 
         console.log("🔍 [TreatmentScheduleForm] Phases result:", phasesResult);
 
@@ -510,12 +601,27 @@ const TreatmentScheduleForm = ({
           }
 
           if (phasesData && phasesData.length > 0) {
-            setApiPhases(phasesData);
-            console.log("✅ Treatment phases loaded:", phasesData);
+            // Transform phases data to match expected format
+            const transformedPhases = phasesData.map((phase) => ({
+              phaseId: phase.phaseId || phase.id,
+              phaseName: phase.phaseName || phase.name,
+              description: phase.description || "",
+              phaseOrder: phase.phaseOrder || 1,
+              expectedDuration:
+                phase.expectedDuration || phase.duration || "5-7 ngày",
+              status: phase.status || "Pending",
+              patientId: phase.patientId || patientId,
+              planId: phase.planId,
+              startDate: phase.startDate,
+              endDate: phase.endDate,
+            }));
+
+            setApiPhases(transformedPhases);
+            console.log("✅ Treatment phases loaded:", transformedPhases);
 
             // Load activities for each phase
             setLoadingActivities(true);
-            const activitiesPromises = phasesData.map(async (phase) => {
+            const activitiesPromises = transformedPhases.map(async (phase) => {
               const phaseId = phase.phaseId || phase.planId || phase.id;
               try {
                 const activitiesResult =
@@ -546,7 +652,19 @@ const TreatmentScheduleForm = ({
 
             console.log("✅ Phase activities loaded:", newPhaseActivities);
           } else {
-            message.warning("⚠️ Không có hoạt động nào được tải từ API");
+            if (
+              user?.role === "DOCTOR" ||
+              user?.role?.toUpperCase() === "DOCTOR"
+            ) {
+              console.log(
+                "⚠️ [TreatmentScheduleForm] No phases found for patient, may need to create treatment plan"
+              );
+              message.info(
+                "Bệnh nhân chưa có phác đồ điều trị. Vui lòng tạo phác đồ điều trị trước."
+              );
+            } else {
+              message.warning("⚠️ Không có hoạt động nào được tải từ API");
+            }
           }
         } else {
           console.error("Failed to load phases:", phasesResult.message);
@@ -1449,7 +1567,7 @@ const TreatmentScheduleForm = ({
         )}
 
         {/* Treatment Plan Phases with Status Management */}
-        {apiPhases && apiPhases.length > 0 && (
+        {apiPhases && apiPhases.length > 0 ? (
           <Card
             size="small"
             title={`Giai đoạn điều trị (${apiPhases.length})`}
@@ -1698,6 +1816,25 @@ const TreatmentScheduleForm = ({
                   ),
                 },
               ]}
+            />
+          </Card>
+        ) : (
+          <Card
+            size="small"
+            title="Giai đoạn điều trị"
+            style={{ marginBottom: 16 }}
+          >
+            <Empty
+              description={
+                <div>
+                  <p>Chưa có giai đoạn điều trị nào</p>
+                  <p style={{ fontSize: "12px", color: "#666" }}>
+                    Vui lòng tạo phác đồ điều trị từ trang lập phác đồ trước khi
+                    tạo lịch điều trị
+                  </p>
+                </div>
+              }
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
             />
           </Card>
         )}

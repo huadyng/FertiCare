@@ -64,56 +64,117 @@ const { TextArea } = Input;
 function convertTemplate(templateBE) {
   if (!templateBE) return null;
 
-  const medicationMap = {};
-  (templateBE.medicationPlan || []).forEach((plan) => {
-    medicationMap[plan.phase] = (plan.medications || []).map((med) => ({
-      name: med.name,
-      dosage: med.dosage,
-      frequency: med.frequency,
-      duration: med.duration,
-      route: med.route || "Oral",
-    }));
-  });
+  // Handle backend template format (with treatmentSteps)
+  if (templateBE.treatmentSteps) {
+    const medicationMap = {};
+    (templateBE.medicationPlan || []).forEach((plan) => {
+      medicationMap[plan.phase] = (plan.medications || []).map((med) => ({
+        name: med.name,
+        dosage: med.dosage,
+        frequency: med.frequency,
+        duration: med.duration,
+        // route: med.route || "Oral", // Removed to match backend DTO
+      }));
+    });
 
+    return {
+      id: templateBE.templateId,
+      name: templateBE.name,
+      description: templateBE.description,
+      type: templateBE.treatmentType,
+      planName: templateBE.planName,
+      planDescription: templateBE.planDescription,
+      estimatedDuration: templateBE.estimatedDurationDays,
+      cost: templateBE.estimatedCost,
+      phases: (templateBE.treatmentSteps || []).map((step) => ({
+        id: `phase_${step.step}`,
+        name: step.name,
+        duration: step.duration,
+        description: step.description,
+        activities: (step.activities || []).map((act, idx) => ({
+          name: act,
+          day: idx + 1,
+          type: "procedure",
+          notes: "",
+        })),
+        activitiesDetail: (step.activities || []).map((act, idx) => ({
+          name: act,
+          day: idx + 1,
+          type: "procedure",
+          notes: "",
+        })),
+        medications: medicationMap[step.name] || [],
+      })),
+      medications: templateBE.medicationPlan || [],
+      monitoring: templateBE.monitoringSchedule || [],
+      successRate: templateBE.successProbability,
+      riskFactors: templateBE.riskFactors,
+      contraindications: templateBE.contraindications,
+      treatmentCycle: templateBE.treatmentCycle,
+      createdAt: templateBE.createdAt,
+      updatedAt: templateBE.updatedAt,
+      createdBy: templateBE.createdBy,
+      updatedBy: templateBE.updatedBy,
+      isActive: templateBE.isActive,
+    };
+  }
+
+  // Handle local template format (with phases)
+  if (templateBE.phases) {
+    return {
+      id: templateBE.id,
+      name: templateBE.name,
+      description: templateBE.description,
+      type: templateBE.type,
+      planName: templateBE.name,
+      planDescription: templateBE.description,
+      estimatedDuration: templateBE.estimatedDuration,
+      cost: templateBE.cost,
+      phases: templateBE.phases.map((phase, index) => ({
+        id: phase.id || `phase_${index + 1}`,
+        name: phase.name,
+        duration: phase.duration,
+        description: phase.notes || "",
+        order: phase.order || index + 1,
+        activities: (phase.activities || []).map((act, idx) => ({
+          name: typeof act === "string" ? act : act.name,
+          day: typeof act === "string" ? idx + 1 : act.day || idx + 1,
+          type: typeof act === "string" ? "procedure" : act.type || "procedure",
+          notes: typeof act === "string" ? "" : act.notes || "",
+        })),
+        activitiesDetail: (phase.activities || []).map((act, idx) => ({
+          name: typeof act === "string" ? act : act.name,
+          day: typeof act === "string" ? idx + 1 : act.day || idx + 1,
+          type: typeof act === "string" ? "procedure" : act.type || "procedure",
+          notes: typeof act === "string" ? "" : act.notes || "",
+        })),
+        medications: phase.medications || [],
+      })),
+      medications: templateBE.medications || [],
+      monitoring: templateBE.monitoring || [],
+      successRate: templateBE.successRate,
+      riskFactors: templateBE.riskFactors,
+      contraindications: templateBE.contraindications,
+      treatmentCycle: templateBE.treatmentCycle,
+      requirements: templateBE.requirements || [],
+      createdAt: templateBE.createdAt,
+      updatedAt: templateBE.updatedAt,
+      createdBy: templateBE.createdBy,
+      updatedBy: templateBE.updatedBy,
+      isActive: templateBE.isActive,
+    };
+  }
+
+  // Fallback for unknown template format
+  console.warn("Unknown template format:", templateBE);
   return {
-    id: templateBE.templateId,
-    name: templateBE.name,
-    description: templateBE.description,
-    type: templateBE.treatmentType,
-    planName: templateBE.planName,
-    planDescription: templateBE.planDescription,
-    estimatedDuration: templateBE.estimatedDurationDays,
-    cost: templateBE.estimatedCost,
-    phases: (templateBE.treatmentSteps || []).map((step) => ({
-      id: `phase_${step.step}`,
-      name: step.name,
-      duration: step.duration,
-      description: step.description,
-      activities: (step.activities || []).map((act, idx) => ({
-        name: act,
-        day: idx + 1,
-        type: "procedure",
-        notes: "",
-      })),
-      activitiesDetail: (step.activities || []).map((act, idx) => ({
-        name: act,
-        day: idx + 1,
-        type: "procedure",
-        notes: "",
-      })),
-      medications: medicationMap[step.name] || [],
-    })),
-    medications: templateBE.medicationPlan || [],
-    monitoring: templateBE.monitoringSchedule || [],
-    successRate: templateBE.successProbability,
-    riskFactors: templateBE.riskFactors,
-    contraindications: templateBE.contraindications,
-    treatmentCycle: templateBE.treatmentCycle,
-    createdAt: templateBE.createdAt,
-    updatedAt: templateBE.updatedAt,
-    createdBy: templateBE.createdBy,
-    updatedBy: templateBE.updatedBy,
-    isActive: templateBE.isActive,
+    id: templateBE.id || templateBE.templateId || "unknown",
+    name: templateBE.name || "Unknown Template",
+    description: templateBE.description || "",
+    type: templateBE.type || templateBE.treatmentType || "IUI",
+    phases: [],
+    medications: [],
+    monitoring: [],
   };
 }
 
@@ -416,36 +477,41 @@ const TreatmentPlanEditor = ({
                 );
                 setDoctorSpecialty("IUI"); // Default fallback for doctors
               } else {
-                console.log(
-                  "ℹ️ [TreatmentPlanEditor] User is not a doctor, using IUI specialty"
+                console.warn(
+                  "⚠️ [TreatmentPlanEditor] User is not a doctor, setting specialty to null"
                 );
-                setDoctorSpecialty("IUI"); // Default fallback
+                setDoctorSpecialty(null);
               }
             }
-          } else {
-            console.warn(
-              "⚠️ [TreatmentPlanEditor] No doctor ID found in user data"
-            );
-            setDoctorSpecialty("IUI"); // Default fallback
           }
-        } else {
-          console.warn(
-            "⚠️ [TreatmentPlanEditor] No user data found in localStorage"
-          );
-          setDoctorSpecialty("IUI"); // Default fallback
         }
       } catch (error) {
-        console.warn(
-          "⚠️ [TreatmentPlanEditor] Error loading doctor specialty:",
+        console.error(
+          "❌ [TreatmentPlanEditor] Error loading doctor specialty:",
           error
         );
-        // Fallback to IUI since that's what's available
-        setDoctorSpecialty("IUI");
+        setDoctorSpecialty(null);
       }
     };
 
     loadDoctorSpecialty();
   }, []);
+
+  // Helper function to load template from API
+  const loadTemplateFromAPI = async (treatmentType) => {
+    try {
+      const templateResponse = await apiTreatmentManagement.getTemplateByType(
+        treatmentType
+      );
+      return templateResponse;
+    } catch (error) {
+      console.error(
+        "❌ [TreatmentPlanEditor] Error loading template from API:",
+        error
+      );
+      return { success: false, data: null, message: error.message };
+    }
+  };
 
   // Load active treatment plan từ localStorage hoặc API khi vào trang hoặc khi patientId thay đổi
   useEffect(() => {
@@ -490,6 +556,25 @@ const TreatmentPlanEditor = ({
           setIsReadOnly(false);
         }
       } catch (error) {
+        console.error(
+          "❌ [TreatmentPlanEditor] Error loading active plan:",
+          error
+        );
+
+        // Hiển thị thông báo lỗi cụ thể
+        if (error.apiError) {
+          message.error("❌ Lỗi API: " + error.message);
+        } else if (error.noData) {
+          // Không có dữ liệu, cho phép tạo mới
+          console.log(
+            "ℹ️ [TreatmentPlanEditor] No existing plan found, allowing creation of new plan"
+          );
+        } else if (error.invalidData) {
+          message.error("❌ Dữ liệu không hợp lệ: " + error.message);
+        } else {
+          message.error("❌ Lỗi không xác định: " + error.message);
+        }
+
         // Nếu lỗi API mà đã có local thì giữ nguyên, nếu không thì cho phép tạo mới
         if (!loadedFromLocal) {
           setExistingPlan(null);
@@ -780,23 +865,23 @@ const TreatmentPlanEditor = ({
   const handleTemplateChange = useCallback(
     async (treatmentType) => {
       console.log(
-        "🔄 [TreatmentPlanEditor] handleTemplateChange called with:",
-        treatmentType
+        `🔄 [TreatmentPlanEditor] handleTemplateChange called with: ${treatmentType}`
       );
 
-      try {
-        // Thử load template từ API trước
-        const templateResponse = await apiTreatmentManagement.getTemplateByType(
-          treatmentType
-        );
+      setTemplateLoading(true);
+      setHasError(false);
 
-        if (templateResponse.success && templateResponse.data) {
-          // Sử dụng hàm chuyển đổi template từ backend sang FE
-          const template = convertTemplate(templateResponse.data);
+      try {
+        // Try to load template from API first
+        const apiResult = await loadTemplateFromAPI(treatmentType);
+        console.log("🔍 [TreatmentPlanEditor] API result:", apiResult);
+
+        if (apiResult && apiResult.success && apiResult.data) {
           console.log(
-            "✅ [TreatmentPlanEditor] Template loaded from API (đã chuyển đổi):",
-            template.name
+            "✅ [TreatmentPlanEditor] Successfully loaded template from API"
           );
+          const template = convertTemplate(apiResult.data);
+          console.log("🔍 [TreatmentPlanEditor] Converted template:", template);
           setSelectedTemplate(template);
           setTemplateLoadedFromAPI(true);
           setTemplateLoading(false);
@@ -808,17 +893,32 @@ const TreatmentPlanEditor = ({
 
           // Fallback to local template
           const localTemplate = getTemplateByType(treatmentType);
+          console.log(
+            "🔍 [TreatmentPlanEditor] Local template:",
+            localTemplate
+          );
           if (localTemplate) {
-            setSelectedTemplate(localTemplate);
-            generateDoctorSuggestions(localTemplate);
+            const convertedTemplate = convertTemplate(localTemplate);
+            console.log(
+              "🔍 [TreatmentPlanEditor] Converted local template:",
+              convertedTemplate
+            );
+            setSelectedTemplate(convertedTemplate);
+            generateDoctorSuggestions(convertedTemplate);
           } else {
             console.warn(
               `⚠️ [TreatmentPlanEditor] Local template not found for type: ${treatmentType}, falling back to IUI`
             );
             const fallbackTemplate = getTemplateByType("IUI");
             if (fallbackTemplate) {
-              setSelectedTemplate(fallbackTemplate);
-              generateDoctorSuggestions(fallbackTemplate);
+              const convertedFallbackTemplate =
+                convertTemplate(fallbackTemplate);
+              console.log(
+                "🔍 [TreatmentPlanEditor] Converted fallback template:",
+                convertedFallbackTemplate
+              );
+              setSelectedTemplate(convertedFallbackTemplate);
+              generateDoctorSuggestions(convertedFallbackTemplate);
             } else {
               console.error(
                 "❌ [TreatmentPlanEditor] No fallback template available!"
@@ -849,17 +949,20 @@ const TreatmentPlanEditor = ({
         // Fallback to local template on error
         const localTemplate = getTemplateByType(treatmentType);
         if (localTemplate) {
-          setSelectedTemplate(localTemplate);
-          generateDoctorSuggestions(localTemplate);
+          const convertedTemplate = convertTemplate(localTemplate);
+          setSelectedTemplate(convertedTemplate);
+          generateDoctorSuggestions(convertedTemplate);
         } else {
           const fallbackTemplate = getTemplateByType("IUI");
           if (fallbackTemplate) {
-            setSelectedTemplate(fallbackTemplate);
-            generateDoctorSuggestions(fallbackTemplate);
+            const convertedFallbackTemplate = convertTemplate(fallbackTemplate);
+            setSelectedTemplate(convertedFallbackTemplate);
+            generateDoctorSuggestions(convertedFallbackTemplate);
           }
         }
       }
 
+      setTemplateLoading(false);
       setCustomizations({
         phases: {},
         medications: {},
@@ -971,7 +1074,7 @@ const TreatmentPlanEditor = ({
           name: "",
           dosage: "",
           frequency: "1 lần/ngày",
-          route: "Uống",
+          // route: "Uống", // Removed to match backend DTO
           duration: "theo giai đoạn",
         },
       ];
@@ -1167,7 +1270,7 @@ const TreatmentPlanEditor = ({
       name: "",
       dosage: "",
       frequency: "",
-      route: "Uống",
+      // route: "Uống", // Removed to match backend DTO
       startDay: 1,
       duration: 1,
       custom: true,
@@ -1209,7 +1312,6 @@ const TreatmentPlanEditor = ({
               name: med.name,
               dosage: med.dosage,
               frequency: med.frequency,
-              route: med.route,
               duration: med.duration,
             })),
           });
@@ -1341,11 +1443,16 @@ const TreatmentPlanEditor = ({
           }
           if (resultId) {
             console.log("[DEBUG] Gọi API tạo phác đồ với resultId:", resultId);
+            console.log(
+              "[DEBUG] planData gửi đi:",
+              JSON.stringify(planData, null, 2)
+            );
             result =
               await apiTreatmentManagement.createTreatmentPlanFromClinicalResult(
                 resultId,
                 planData
               );
+            console.log("[DEBUG] Kết quả API:", result);
           } else {
             console.error(
               "[DEBUG] Không tìm thấy resultId là UUID, không thể tạo phác đồ!"
@@ -1357,7 +1464,23 @@ const TreatmentPlanEditor = ({
             return;
           }
         }
-        const savedPlan = result.success ? result.data : null;
+
+        if (!result.success) {
+          console.error("❌ [TreatmentPlanEditor] API call failed:", result);
+          message.error(
+            `❌ ${result.message || "Có lỗi xảy ra khi lưu phác đồ điều trị"}`
+          );
+          if (result.error) {
+            console.error(
+              "❌ [TreatmentPlanEditor] API Error details:",
+              result.error
+            );
+          }
+          setLoading(false);
+          return;
+        }
+
+        const savedPlan = result.data;
         if (!isEditing) {
           localStorage.removeItem(`treatment_plan_draft_${patientId}`);
         }
@@ -1645,7 +1768,7 @@ const TreatmentPlanEditor = ({
         name: "",
         dosage: "",
         frequency: "1 lần/ngày",
-        route: "Uống",
+        // route: "Uống", // Removed to match backend DTO
         duration: "theo giai đoạn",
       };
 
@@ -1905,56 +2028,63 @@ const TreatmentPlanEditor = ({
 
   // Debug function để kiểm tra template loading
   const debugTemplateLoading = async () => {
-    console.log("🔍 [debugTemplateLoading] Starting template debug...");
+    console.log("🔍 [TreatmentPlanEditor] Debug template loading...");
+    console.log("Current state:", {
+      selectedTemplate,
+      templateLoadedFromAPI,
+      templateLoading,
+      doctorSpecialty,
+      patientInfo: patientInfo?.treatmentType,
+      examinationData: !!examinationData,
+    });
 
-    if (existingPlan?.treatmentType) {
-      console.log(
-        "🔍 [debugTemplateLoading] Loading template for type:",
-        existingPlan.treatmentType
-      );
+    // Test API call
+    try {
+      const testType = patientInfo?.treatmentType || "IUI";
+      console.log("🔍 Testing API call for type:", testType);
+      const apiResult = await loadTemplateFromAPI(testType);
+      console.log("🔍 API result:", apiResult);
 
-      try {
-        const templateResponse = await apiTreatmentManagement.getTemplateByType(
-          existingPlan.treatmentType
-        );
-        console.log(
-          "📡 [debugTemplateLoading] Template API Response:",
-          templateResponse
-        );
-
-        if (templateResponse.success && templateResponse.data) {
-          const template = apiTreatmentManagement.transformTemplateData(
-            templateResponse.data
-          );
-          console.log(
-            "✅ [debugTemplateLoading] Transformed template:",
-            template
-          );
-          setSelectedTemplate(template);
-          message.success("✅ Template loaded successfully!");
-        } else {
-          console.error(
-            "❌ [debugTemplateLoading] Failed to load template:",
-            templateResponse.message
-          );
-          message.error(
-            `❌ Failed to load template: ${templateResponse.message}`
-          );
-        }
-      } catch (error) {
-        console.error(
-          "❌ [debugTemplateLoading] Error loading template:",
-          error
-        );
-        message.error("❌ Error loading template");
+      if (apiResult.success && apiResult.data) {
+        console.log("🔍 Converting API template...");
+        const converted = convertTemplate(apiResult.data);
+        console.log("🔍 Converted template:", converted);
       }
-    } else {
-      console.warn(
-        "⚠️ [debugTemplateLoading] No treatment type found in existing plan"
-      );
-      message.warning("⚠️ No treatment type found");
+    } catch (error) {
+      console.error("❌ API test failed:", error);
+    }
+
+    // Test local template
+    try {
+      const testType = patientInfo?.treatmentType || "IUI";
+      console.log("🔍 Testing local template for type:", testType);
+      const localTemplate = getTemplateByType(testType);
+      console.log("🔍 Local template:", localTemplate);
+
+      if (localTemplate) {
+        console.log("🔍 Converting local template...");
+        const converted = convertTemplate(localTemplate);
+        console.log("🔍 Converted local template:", converted);
+      }
+    } catch (error) {
+      console.error("❌ Local template test failed:", error);
     }
   };
+
+  // Make debug function available globally
+  useEffect(() => {
+    window.debugTreatmentPlanEditor = debugTemplateLoading;
+    console.log(
+      "🔍 [TreatmentPlanEditor] Debug function added to window.debugTreatmentPlanEditor"
+    );
+  }, [
+    selectedTemplate,
+    templateLoadedFromAPI,
+    templateLoading,
+    doctorSpecialty,
+    patientInfo,
+    examinationData,
+  ]);
 
   // Debug function để force reload template từ existing plan
   const forceReloadTemplate = async () => {
@@ -2022,9 +2152,18 @@ const TreatmentPlanEditor = ({
   // Thêm log chi tiết về dữ liệu phases trước khi render bảng
   console.log("selectedTemplate.phases", selectedTemplate?.phases);
   if (selectedTemplate?.phases) {
+    console.log(
+      "🔍 [TreatmentPlanEditor] Template phases found:",
+      selectedTemplate.phases.length
+    );
     selectedTemplate.phases.forEach((phase, idx) => {
       console.log(`Phase ${idx}:`, phase);
     });
+  } else {
+    console.warn(
+      "⚠️ [TreatmentPlanEditor] No phases found in selectedTemplate:",
+      selectedTemplate
+    );
   }
 
   // Banner trạng thái phác đồ
@@ -2650,7 +2789,7 @@ const TreatmentPlanEditor = ({
                     }
                     size="small"
                   >
-                    {customMedications?.map((med) => (
+                    {customMedications?.map((med, idx) => (
                       <Card
                         key={med.id || `${med.name || ""}-${idx}`}
                         type="inner"
@@ -2697,18 +2836,7 @@ const TreatmentPlanEditor = ({
                               }
                             />
                           </Col>
-                          <Col span={3}>
-                            <Select
-                              value={med.route}
-                              onChange={(value) =>
-                                handleUpdateMedication(med.id, "route", value)
-                              }
-                            >
-                              <Option value="Uống">Uống</Option>
-                              <Option value="Tiêm">Tiêm</Option>
-                              <Option value="Bôi">Bôi</Option>
-                            </Select>
-                          </Col>
+
                           <Col span={3}>
                             <InputNumber
                               placeholder="Ngày bắt đầu"
@@ -3177,29 +3305,7 @@ const TreatmentPlanEditor = ({
                             />
                           ),
                         },
-                        {
-                          title: "Đường dùng",
-                          dataIndex: "route",
-                          key: "route",
-                          render: (text, record, idx) => (
-                            <Select
-                              value={text || "Uống"}
-                              style={{ width: 90 }}
-                              onChange={(value) => {
-                                const newMeds = [...editingPhase.medications];
-                                newMeds[idx] = {
-                                  ...newMeds[idx],
-                                  route: value,
-                                };
-                                handlePhaseFieldChange("medications", newMeds);
-                              }}
-                            >
-                              <Option value="Uống">Uống</Option>
-                              <Option value="Tiêm">Tiêm</Option>
-                              <Option value="Bôi">Bôi</Option>
-                            </Select>
-                          ),
-                        },
+
                         {
                           title: "Thời gian",
                           dataIndex: "duration",
@@ -3286,7 +3392,7 @@ const TreatmentPlanEditor = ({
                                 name: med.name,
                                 dosage: med.dosage,
                                 frequency: med.frequency,
-                                route: med.route || "Uống",
+                                // route: med.route || "Uống", // Removed to match backend DTO
                                 duration: med.duration || "theo giai đoạn",
                               };
                               setEditingPhase((prev) => ({

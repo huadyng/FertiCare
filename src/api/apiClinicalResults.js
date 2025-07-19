@@ -28,48 +28,28 @@ export const clinicalResultsAPI = {
           response.data?.length
         );
 
+        // Debug chi tiết từng record
+        if (response.data && Array.isArray(response.data)) {
+          response.data.forEach((record, index) => {
+            console.log(`🔍 [apiClinicalResults] Record ${index}:`, {
+              id: record.resultId || record.id,
+              patientId: record.patientId,
+              appointmentId: record.appointmentId,
+              diagnosis: record.diagnosis,
+              symptoms: record.symptoms,
+              isCompleted: record.isCompleted,
+            });
+          });
+        }
+
         // Transform backend data to frontend format
         if (response.data && Array.isArray(response.data)) {
-          // Filter out empty records before transforming
-          const nonEmptyRecords = response.data.filter((record) => {
-            const hasRealData =
-              record.diagnosis ||
-              record.recommendations ||
-              record.bloodPressureSystolic ||
-              record.bloodPressureDiastolic ||
-              record.temperature ||
-              record.heartRate ||
-              record.weight ||
-              record.height ||
-              record.fshLevel ||
-              record.lhLevel ||
-              record.estradiolLevel ||
-              record.testosteroneLevel ||
-              record.amhLevel ||
-              record.prolactinLevel ||
-              record.ultrasoundFindings ||
-              record.notes ||
-              (record.symptoms &&
-                record.symptoms !== "[]" &&
-                record.symptoms !== '[""]');
-
-            if (!hasRealData) {
-              console.log(
-                `🧹 [apiClinicalResults] Filtering out empty record:`,
-                record.id
-              );
-            }
-
-            return hasRealData;
-          });
-
           console.log(
-            `🔍 [apiClinicalResults] Found ${response.data.length} records, ${nonEmptyRecords.length} non-empty`
+            `🔍 [apiClinicalResults] Found ${response.data.length} records`
           );
 
-          const transformedData = nonEmptyRecords.map(
-            transformBackendToFrontend
-          );
+          // Không lọc bỏ records rỗng nữa - để bác sĩ có thể cập nhật
+          const transformedData = response.data.map(transformBackendToFrontend);
           console.log(
             "🔍 [apiClinicalResults] Transformed data:",
             transformedData
@@ -279,6 +259,48 @@ export const clinicalResultsAPI = {
       return transformBackendToFrontend(response.data);
     } catch (error) {
       console.error("Error fetching examination result by ID:", error);
+      throw error;
+    }
+  },
+
+  // Lấy kết quả khám theo appointmentId (Bác sĩ sử dụng)
+  getExaminationResultByAppointmentId: async (appointmentId, patientId) => {
+    try {
+      console.log(
+        "🔍 [apiClinicalResults] Lấy clinical result theo appointmentId:",
+        appointmentId
+      );
+
+      // Lấy tất cả clinical results của bệnh nhân và tìm theo appointmentId
+      const response = await axiosClient.get(
+        `/api/clinical-results/patient/${patientId}`
+      );
+
+      if (response.data && Array.isArray(response.data)) {
+        const result = response.data.find(
+          (result) => result.appointmentId === appointmentId
+        );
+        if (result) {
+          console.log(
+            "✅ [apiClinicalResults] Tìm thấy clinical result cho appointmentId:",
+            appointmentId
+          );
+          return transformBackendToFrontend(result);
+        } else {
+          console.log(
+            "⚠️ [apiClinicalResults] Không tìm thấy clinical result cho appointmentId:",
+            appointmentId
+          );
+          return null;
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error(
+        "Error fetching examination result by appointmentId:",
+        error
+      );
       throw error;
     }
   },

@@ -45,6 +45,7 @@ import { clinicalResultsAPI } from "../../../api/apiClinicalResults";
 import { UserContext } from "../../../context/UserContext";
 import { treatmentStateManager } from "../../../utils/treatmentStateManager";
 import { debugUtils } from "../../../utils/debugUtils";
+import axiosClient from "../../../services/axiosClient";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -66,6 +67,7 @@ const ExaminationForm = ({
   const [isCompleted, setIsCompleted] = useState(false);
   const [submittedData, setSubmittedData] = useState(null);
   const [originalData, setOriginalData] = useState(null);
+  const [appointmentId, setAppointmentId] = useState(null);
 
   // Debug localStorage on mount in development
   useEffect(() => {
@@ -77,6 +79,87 @@ const ExaminationForm = ({
       debugLocalStorage();
     }
   }, [patientId]);
+
+  // Lấy appointmentId cho bệnh nhân này
+  useEffect(() => {
+    const getAppointmentId = async () => {
+      try {
+        console.log(
+          "🔍 [ExaminationForm] Lấy appointmentId cho patientId:",
+          patientId
+        );
+
+        // Lấy appointments của bác sĩ hôm nay
+        const today = new Date().toISOString().split("T")[0];
+        console.log("🔍 [ExaminationForm] Lấy appointments cho ngày:", today);
+        const response = await axiosClient.get(
+          `/api/doctor/schedule/my-appointments?date=${today}`
+        );
+        console.log(
+          "🔍 [ExaminationForm] Response từ my-appointments:",
+          response.data
+        );
+
+        if (response.data && response.data.appointments) {
+          console.log(
+            "🔍 [ExaminationForm] Appointments found:",
+            response.data.appointments
+          );
+          console.log("🔍 [ExaminationForm] Patient info:", patientInfo);
+
+          // Tìm appointment của bệnh nhân này - sử dụng nhiều cách khác nhau
+          let patientAppointment = null;
+
+          // Cách 1: Tìm theo tên bệnh nhân
+          if (patientInfo && patientInfo.fullName) {
+            patientAppointment = response.data.appointments.find(
+              (appointment) =>
+                appointment.customer &&
+                appointment.customer.name &&
+                appointment.customer.name.includes(patientInfo.fullName)
+            );
+          }
+
+          // Cách 2: Nếu không tìm thấy theo tên, tìm theo customerId
+          if (!patientAppointment && patientId) {
+            patientAppointment = response.data.appointments.find(
+              (appointment) =>
+                appointment.customer && appointment.customer.id === patientId
+            );
+          }
+
+          // Cách 3: Nếu vẫn không tìm thấy, lấy appointment đầu tiên (tạm thời)
+          if (!patientAppointment && response.data.appointments.length > 0) {
+            console.log(
+              "⚠️ [ExaminationForm] Không tìm thấy appointment chính xác, sử dụng appointment đầu tiên"
+            );
+            patientAppointment = response.data.appointments[0];
+          }
+
+          if (patientAppointment) {
+            console.log(
+              "✅ [ExaminationForm] Tìm thấy appointmentId:",
+              patientAppointment.appointmentId
+            );
+            setAppointmentId(patientAppointment.appointmentId);
+          } else {
+            console.log(
+              "⚠️ [ExaminationForm] Không tìm thấy appointment cho bệnh nhân này"
+            );
+          }
+        }
+      } catch (error) {
+        console.warn(
+          "⚠️ [ExaminationForm] Không thể lấy appointmentId:",
+          error
+        );
+      }
+    };
+
+    if (patientId && patientInfo) {
+      getAppointmentId();
+    }
+  }, [patientId, patientInfo]);
 
   // Load existing data or draft when component initializes
   useEffect(() => {
@@ -193,27 +276,8 @@ const ExaminationForm = ({
     console.log("📝 Data labResults:", data.labResults);
 
     try {
-      // Chỉ populate form nếu có dữ liệu thực sự
-      const hasRealData =
-        data.diagnosis ||
-        data.recommendations ||
-        data.clinicalSigns?.bloodPressure ||
-        data.clinicalSigns?.temperature ||
-        data.clinicalSigns?.heartRate ||
-        data.clinicalSigns?.weight ||
-        data.clinicalSigns?.height ||
-        data.labResults?.ultrasound ||
-        data.notes ||
-        (data.symptoms && data.symptoms.length > 0) ||
-        (data.labResults?.bloodTest &&
-          Object.values(data.labResults.bloodTest).some(
-            (val) => val !== null && val !== ""
-          ));
-
-      if (!hasRealData) {
-        console.log("⚠️ No real data to populate, skipping form population");
-        return;
-      }
+      // Populate form ngay cả khi dữ liệu rỗng - để bác sĩ có thể nhập mới
+      console.log("📝 Populating form with data (including empty data)");
 
       form.setFieldsValue({
         diagnosis: data.diagnosis || "",
@@ -370,6 +434,10 @@ const ExaminationForm = ({
     try {
       setLoading(true);
 
+      // Debug thông tin appointmentId
+      console.log("[DEBUG] handleSubmit - appointmentId:", appointmentId);
+      console.log("[DEBUG] handleSubmit - patientId:", patientId);
+
       // Validate required fields
       if (!values.diagnosis) {
         message.error("Vui lòng nhập chẩn đoán");
@@ -378,17 +446,55 @@ const ExaminationForm = ({
       }
 
       // Lấy clinical result hiện có của bệnh nhân
-      const existingResults = await clinicalResultsAPI.getExaminationResults(
-        patientId
-      );
-      console.log("[DEBUG] existingResults clinical result:", existingResults);
-      if (existingResults && existingResults.length > 0) {
-        const existingResult = existingResults[0];
+      let existingResult = null;
+
+      // Nếu có appointmentId, thử lấy clinical result theo appointmentId trước
+      if (appointmentId) {
+        try {
+          console.log(
+            "[DEBUG] Thử lấy clinical result theo appointmentId:",
+            appointmentId
+          );
+          existingResult =
+            await clinicalResultsAPI.getExaminationResultByAppointmentId(
+              appointmentId,
+              patientId
+            );
+          if (existingResult) {
+            console.log(
+              "[DEBUG] Tìm thấy clinical result theo appointmentId:",
+              existingResult
+            );
+          }
+        } catch (error) {
+          console.warn(
+            "[DEBUG] Không thể lấy theo appointmentId, thử cách khác:",
+            error
+          );
+        }
+      }
+
+      // Nếu không tìm thấy theo appointmentId, lấy theo patientId
+      if (!existingResult) {
+        const existingResults = await clinicalResultsAPI.getExaminationResults(
+          patientId
+        );
+        console.log(
+          "[DEBUG] existingResults clinical result:",
+          existingResults
+        );
+        if (existingResults && existingResults.length > 0) {
+          existingResult = existingResults[0];
+        }
+      }
+
+      if (existingResult) {
         const examinationData = {
           ...existingResult,
           patientId,
           doctorId: user?.id || "defaultDoctor",
           doctorName: user?.fullName || "Bác sĩ",
+          appointmentId: appointmentId, // Thêm appointmentId vào data
           examinationDate:
             existingResult.examinationDate ||
             new Date().toISOString().split("T")[0],
@@ -495,9 +601,15 @@ const ExaminationForm = ({
         }
       } else {
         // Không có clinical result nào để cập nhật
-        message.error(
-          "Không tìm thấy kết quả khám lâm sàng để cập nhật. Vui lòng liên hệ quản trị viên!"
-        );
+        if (appointmentId) {
+          message.error(
+            `Không tìm thấy kết quả khám lâm sàng cho appointment ${appointmentId}. Vui lòng liên hệ quản trị viên!`
+          );
+        } else {
+          message.error(
+            "Không tìm thấy kết quả khám lâm sàng để cập nhật. Vui lòng liên hệ quản trị viên!"
+          );
+        }
         setLoading(false);
         return;
       }
@@ -530,6 +642,15 @@ const ExaminationForm = ({
                 Khám Lâm Sàng & Nhập Kết Quả
               </Space>
             </Title>
+            {appointmentId && (
+              <Alert
+                message={`Appointment ID: ${appointmentId}`}
+                description="Đã tìm thấy lịch hẹn cho bệnh nhân này. Kết quả khám sẽ được liên kết với appointment này."
+                type="info"
+                showIcon
+                style={{ marginBottom: 16 }}
+              />
+            )}
           </div>
 
           <div className="examination-body">
@@ -715,20 +836,14 @@ const ExaminationForm = ({
                 {/* Chuẩn đoán lâm sàng */}
                 <Row gutter={24}>
                   <Col span={24}>
-                    <Form.Item
-                      label="🔍 Chuẩn đoán lâm sàng"
-                      name="diagnosis"
-                      rules={[
-                        { required: true, message: "Vui lòng nhập chuẩn đoán" },
-                      ]}
-                    >
+                    <div style={{ marginBottom: 8 }}>
                       <div
                         style={{
-                          marginBottom: 8,
                           display: "flex",
                           alignItems: "center",
                           flexWrap: "wrap",
                           gap: 8,
+                          marginBottom: 8,
                         }}
                       >
                         <Select
@@ -987,6 +1102,14 @@ const ExaminationForm = ({
                           🔴 AMH thấp
                         </Button>
                       </div>
+                    </div>
+                    <Form.Item
+                      label="🔍 Chuẩn đoán lâm sàng"
+                      name="diagnosis"
+                      rules={[
+                        { required: true, message: "Vui lòng nhập chuẩn đoán" },
+                      ]}
+                    >
                       <TextArea
                         rows={3}
                         placeholder="Nhập chuẩn đoán..."

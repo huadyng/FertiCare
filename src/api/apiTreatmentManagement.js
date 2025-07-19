@@ -205,10 +205,24 @@ const apiTreatmentManagement = {
     treatmentPlanRequest
   ) => {
     try {
+      console.log(
+        "🔍 [apiTreatmentManagement] Creating treatment plan from clinical result:",
+        {
+          resultId,
+          requestData: treatmentPlanRequest,
+        }
+      );
+
       const response = await axiosClient.post(
         `/api/treatment-workflow/treatment-plan/from-clinical-result/${resultId}`,
         treatmentPlanRequest
       );
+
+      console.log(
+        "✅ [apiTreatmentManagement] Treatment plan created successfully:",
+        response.data
+      );
+
       return {
         success: true,
         data: response.data,
@@ -216,14 +230,25 @@ const apiTreatmentManagement = {
       };
     } catch (error) {
       console.error(
-        "Error creating treatment plan from clinical result:",
+        "❌ [apiTreatmentManagement] Error creating treatment plan from clinical result:",
         error
       );
+      console.error(
+        "❌ [apiTreatmentManagement] Error response:",
+        error.response?.data
+      );
+      console.error(
+        "❌ [apiTreatmentManagement] Error status:",
+        error.response?.status
+      );
+
       return {
         success: false,
         data: null,
         message:
           error.response?.data?.message || "Không thể tạo phác đồ điều trị",
+        error: error.response?.data,
+        status: error.response?.status,
       };
     }
   },
@@ -1123,48 +1148,130 @@ const apiTreatmentManagement = {
             permissionDenied: true,
           };
         }
+
         // Gọi API lấy phases của bác sĩ
         const response = await axiosClient.get(
           `/api/treatment-workflow/doctor/${doctorId}/treatment-phases`
         );
-        if (response.data && Array.isArray(response.data)) {
-          // Lọc phases theo patientId
-          const patientPhases = response.data.filter(
-            (phase) =>
-              phase.patientId === patientId || phase.patient?.id === patientId
+
+        if (!response.data || !Array.isArray(response.data)) {
+          console.error(
+            "❌ [apiTreatmentManagement] Doctor phases API returned invalid data:",
+            response.data
           );
-          if (patientPhases.length > 0) {
-            // Ưu tiên phase active/draft
-            const activePhase =
-              patientPhases.find(
-                (phase) =>
-                  phase.status === "active" ||
-                  phase.status === "In Progress" ||
-                  phase.status === "draft"
-              ) || patientPhases[0];
-            if (activePhase && activePhase.planId) {
-              // Gọi API lấy chi tiết plan
-              const planResponse = await axiosClient.get(
-                `/api/treatment-workflow/treatment-plan/${activePhase.planId}`
-              );
-              if (planResponse.data) {
-                return {
-                  success: true,
-                  data: planResponse.data,
-                  message: "Lấy phác đồ điều trị thành công cho doctor",
-                };
-              }
-            }
-          }
+          return {
+            success: false,
+            data: null,
+            message:
+              "API trả về dữ liệu không hợp lệ. Vui lòng kiểm tra backend.",
+            apiError: true,
+          };
         }
+
+        // Lọc phases theo patientId
+        const patientPhases = response.data.filter(
+          (phase) =>
+            phase.patientId === patientId || phase.patient?.id === patientId
+        );
+
+        if (patientPhases.length === 0) {
+          return {
+            success: false,
+            data: null,
+            message: "Không tìm thấy phác đồ điều trị cho bệnh nhân này",
+            noData: true,
+          };
+        }
+
+        // Ưu tiên phase active/draft
+        const activePhase =
+          patientPhases.find(
+            (phase) =>
+              phase.status === "active" ||
+              phase.status === "In Progress" ||
+              phase.status === "draft"
+          ) || patientPhases[0];
+
+        if (!activePhase || !activePhase.planId) {
+          console.error(
+            "❌ [apiTreatmentManagement] No valid phase found with planId:",
+            patientPhases
+          );
+          return {
+            success: false,
+            data: null,
+            message: "Không tìm thấy phác đồ điều trị hợp lệ cho bệnh nhân này",
+            invalidData: true,
+          };
+        }
+
+        // Gọi API lấy chi tiết plan
+        const planResponse = await axiosClient.get(
+          `/api/treatment-workflow/treatment-plan/${activePhase.planId}`
+        );
+
+        if (!planResponse.data) {
+          console.error(
+            "❌ [apiTreatmentManagement] Treatment plan API returned no data for planId:",
+            activePhase.planId
+          );
+          return {
+            success: false,
+            data: null,
+            message:
+              "Không thể lấy chi tiết phác đồ điều trị. Vui lòng kiểm tra backend.",
+            apiError: true,
+          };
+        }
+
+        return {
+          success: true,
+          data: planResponse.data,
+          message: "Lấy phác đồ điều trị thành công cho doctor",
+        };
+
         return {
           success: false,
           data: null,
           message: "Không tìm thấy phác đồ điều trị cho bệnh nhân này (doctor)",
         };
       }
-      // ... giữ nguyên logic cũ cho CUSTOMER/PATIENT ...
-      // ... existing code ...
+
+      // Logic cho CUSTOMER/PATIENT
+      try {
+        const response = await axiosClient.get(
+          `/api/treatment-workflow/patient/${patientId}/treatment-plans`
+        );
+        if (response.data && Array.isArray(response.data)) {
+          // Tìm plan active
+          const activePlan = response.data.find(
+            (plan) =>
+              plan.status === "active" ||
+              plan.status === "draft" ||
+              plan.status === "In Progress"
+          );
+          if (activePlan) {
+            return {
+              success: true,
+              data: activePlan,
+              message: "Lấy phác đồ điều trị thành công cho patient",
+            };
+          }
+        }
+        return {
+          success: false,
+          data: null,
+          message:
+            "Không tìm thấy phác đồ điều trị cho bệnh nhân này (patient)",
+        };
+      } catch (patientError) {
+        console.error("Error fetching patient treatment plans:", patientError);
+        return {
+          success: false,
+          data: null,
+          message: "Không thể lấy phác đồ điều trị cho bệnh nhân",
+        };
+      }
     } catch (error) {
       console.error("Error fetching active treatment plan:", error);
 
@@ -1191,7 +1298,7 @@ const apiTreatmentManagement = {
     }
   },
 
-  // Lấy treatment plans theo doctor ID
+  // Lấy treatment plans theo doctor ID (sử dụng phases API)
   getTreatmentPlansByDoctor: async (doctorId) => {
     try {
       // Sử dụng doctor treatment phases API thay vì API chưa tồn tại
@@ -1209,6 +1316,30 @@ const apiTreatmentManagement = {
       };
     } catch (error) {
       console.error("Error fetching treatment plans by doctor:", error);
+      return {
+        success: false,
+        data: [],
+        message:
+          error.response?.data?.message ||
+          "Không thể lấy danh sách phác đồ điều trị của bác sĩ",
+      };
+    }
+  },
+
+  // Lấy treatment plans thực sự theo doctor ID (khi có endpoint mới)
+  getDoctorTreatmentPlans: async (doctorId) => {
+    try {
+      const response = await axiosClient.get(
+        `/api/treatment-workflow/doctor/${doctorId}/treatment-plans`
+      );
+
+      return {
+        success: true,
+        data: response.data || [],
+        message: "Lấy danh sách phác đồ điều trị của bác sĩ thành công",
+      };
+    } catch (error) {
+      console.error("Error fetching doctor treatment plans:", error);
       return {
         success: false,
         data: [],
