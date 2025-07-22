@@ -15,3 +15,9 @@ export const createWorkShift = async (data) => {
 export const updateWorkShift = (id, data) => axiosClient.put(`${BASE_URL}/${id}`, data);
 export const deleteWorkShift = (id) => axiosClient.delete(`${BASE_URL}/${id}`);
 export const getWorkShiftById = (id) => axiosClient.get(`${BASE_URL}/${id}`);
+export const assignStaffToShift = (payload) => {
+  return axiosClient.post("/api/manager/work-shifts/assign-staff", payload);
+};
+export const deleteStaffFromShift = async (shiftId, staffId) => {
+  return axiosClient.delete(`/api/manager/work-shifts/${shiftId}/staff/${staffId}`);
+};

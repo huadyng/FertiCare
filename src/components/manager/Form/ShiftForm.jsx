@@ -1,124 +1,249 @@
-import React from "react";
-import { Form, Input, DatePicker, TimePicker, Button, Select } from "antd";
+import React, { useEffect, useState } from "react";
+import {
+  Form,
+  Input,
+  DatePicker,
+  TimePicker,
+  Select,
+  Button,
+  message,
+  Spin,
+} from "antd";
+import { getDoctors } from "../../../api/apiManager";
 import dayjs from "dayjs";
+
+const { Option } = Select;
 
 const ShiftForm = ({ mode, initialValues, onSubmit, onCancel }) => {
   const [form] = Form.useForm();
-
-  const handleFinish = (values) => {
-  const payload = {
-    name: values.name,
-    department: values.department,
-    date: values.date.format("YYYY-MM-DD"),
-    startTime: values.timeRange[0].format("HH:mm"),
-    endTime: values.timeRange[1].format("HH:mm"),
-    priority: values.priority,
-    note: values.note,
-    requiredDoctors: values.requiredDoctors,
-    requiredNurses: values.requiredNurses,
-    requiredTechnicians: values.requiredTechnicians,
-  };
-  onSubmit(payload);
-};
+  const [doctors, setDoctors] = useState([]);
+  const [loadingDoctors, setLoadingDoctors] = useState(false);
 
   const isReadOnly = mode === "detail";
 
+  // Fetch danh sách bác sĩ
+  const fetchDoctors = async () => {
+    setLoadingDoctors(true);
+    try {
+      const res = await getDoctors();
+      const doctorData = Array.isArray(res.data) ? res.data : [];
+      setDoctors(doctorData);
+    } catch (err) {
+      console.error("❌ Lỗi lấy danh sách bác sĩ:", err);
+      message.error("Không thể tải danh sách bác sĩ");
+    } finally {
+      setLoadingDoctors(false);
+    }
+  };
+
+  // Preload dữ liệu khi mở modal
+  useEffect(() => {
+    if (mode === "assign") {
+      fetchDoctors();
+    }
+    if (initialValues) {
+      form.setFieldsValue({
+        ...initialValues,
+        date: initialValues.date ? dayjs(initialValues.date) : null,
+        startTime: initialValues.startTime
+          ? dayjs(initialValues.startTime, "HH:mm")
+          : null,
+        endTime: initialValues.endTime
+          ? dayjs(initialValues.endTime, "HH:mm")
+          : null,
+        staffIds: initialValues.assignedStaff?.map((s) => s.staffId),
+        status: initialValues.status || "active",
+      });
+    } else {
+      form.resetFields();
+    }
+  }, [initialValues, mode]);
+
+  // Submit form
+  const handleFinish = (values) => {
+    let payload = {};
+    if (mode === "assign") {
+      payload = {
+        shiftId: initialValues.id,
+        staffIds: values.staffIds,
+        note: values.note,
+        status: values.status,
+      };
+    } else {
+      payload = {
+        name: values.name,
+        department: values.department,
+        date: values.date.format("YYYY-MM-DD"),
+        startTime: values.startTime.format("HH:mm"),
+        endTime: values.endTime.format("HH:mm"),
+        priority: values.priority,
+        note: values.note,
+        requiredDoctors: values.requiredDoctors,
+        requiredNurses: values.requiredNurses,
+        requiredTechnicians: values.requiredTechnicians,
+      };
+    }
+    onSubmit(payload);
+  };
+
   return (
-    <Form
-      form={form}
-      layout="vertical"
-      initialValues={
-        initialValues
-          ? {
-              ...initialValues,
-              date: dayjs(initialValues.date),
-              timeRange: [
-                dayjs(initialValues.startTime, "HH:mm"),
-                dayjs(initialValues.endTime, "HH:mm"),
-              ],
-            }
-          : {}
-      }
-      onFinish={handleFinish}
-    >
-      <Form.Item
-        label="Tên ca"
-        name="name"
-        rules={[{ required: true, message: "Nhập tên ca" }]}
+    <Spin spinning={loadingDoctors && mode === "assign"}>
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleFinish}
+        initialValues={initialValues}
       >
-        <Input disabled={isReadOnly} />
-      </Form.Item>
+        {/* 🟢 Form Tạo/Sửa ca */}
+        {mode !== "assign" && (
+          <>
+            <Form.Item
+              label="Tên ca"
+              name="name"
+              rules={[{ required: true, message: "Nhập tên ca" }]}
+            >
+              <Input disabled={isReadOnly} />
+            </Form.Item>
 
-      <Form.Item
-        label="Phòng ban"
-        name="department"
-        rules={[{ required: true, message: "Nhập phòng ban" }]}
-      >
-        <Input disabled={isReadOnly} />
-      </Form.Item>
+            <Form.Item
+              label="Phòng ban"
+              name="department"
+              rules={[{ required: true, message: "Nhập phòng ban" }]}
+            >
+              <Input disabled={isReadOnly} />
+            </Form.Item>
 
-      <Form.Item
-        label="Ngày"
-        name="date"
-        rules={[{ required: true, message: "Chọn ngày" }]}
-      >
-        <DatePicker
-          format="YYYY-MM-DD"
-          style={{ width: "100%" }}
-          disabled={isReadOnly}
-        />
-      </Form.Item>
+            <Form.Item
+              label="Ngày"
+              name="date"
+              rules={[{ required: true, message: "Chọn ngày" }]}
+            >
+              <DatePicker
+                disabled={isReadOnly}
+                style={{ width: "100%" }}
+                format="YYYY-MM-DD"
+              />
+            </Form.Item>
 
-      <Form.Item
-        label="Thời gian"
-        name="timeRange"
-        rules={[{ required: true, message: "Chọn thời gian" }]}
-      >
-        <TimePicker.RangePicker
-          format="HH:mm"
-          style={{ width: "100%" }}
-          disabled={isReadOnly}
-        />
-      </Form.Item>
+            <Form.Item label="Thời gian" style={{ marginBottom: 0 }}>
+              <Form.Item
+                name="startTime"
+                rules={[{ required: true, message: "Chọn giờ bắt đầu" }]}
+                style={{ display: "inline-block", width: "48%" }}
+              >
+                <TimePicker
+                  disabled={isReadOnly}
+                  style={{ width: "100%" }}
+                  format="HH:mm"
+                />
+              </Form.Item>
+              <span
+                style={{
+                  display: "inline-block",
+                  width: "4%",
+                  textAlign: "center",
+                }}
+              >
+                -
+              </span>
+              <Form.Item
+                name="endTime"
+                rules={[{ required: true, message: "Chọn giờ kết thúc" }]}
+                style={{ display: "inline-block", width: "48%" }}
+              >
+                <TimePicker
+                  disabled={isReadOnly}
+                  style={{ width: "100%" }}
+                  format="HH:mm"
+                />
+              </Form.Item>
+            </Form.Item>
 
-      <Form.Item
-        label="Loại ca"
-        name="type"
-        rules={[{ required: true, message: "Nhập loại ca" }]}
-      >
-        <Input disabled={isReadOnly} />
-      </Form.Item>
+            <Form.Item
+              label="Ưu tiên"
+              name="priority"
+              rules={[{ required: true, message: "Chọn mức ưu tiên" }]}
+            >
+              <Select disabled={isReadOnly}>
+                <Option value="high">Cao</Option>
+                <Option value="medium">Trung bình</Option>
+                <Option value="low">Thấp</Option>
+              </Select>
+            </Form.Item>
 
-      <Form.Item
-        label="Mức ưu tiên"
-        name="priority"
-        rules={[{ required: true, message: "Vui lòng chọn mức ưu tiên" }]}
-      >
-        <Select placeholder="Chọn mức ưu tiên">
-        <Option value="low">Thấp</Option>
-        <Option value="medium">Trung bình</Option>
-        <Option value="high">Cao</Option>
-        </Select>
-    </Form.Item>
+            <Form.Item label="Số bác sĩ cần" name="requiredDoctors">
+              <Input type="number" disabled={isReadOnly} />
+            </Form.Item>
+            <Form.Item label="Số y tá cần" name="requiredNurses">
+              <Input type="number" disabled={isReadOnly} />
+            </Form.Item>
+            <Form.Item label="Số kỹ thuật viên cần" name="requiredTechnicians">
+              <Input type="number" disabled={isReadOnly} />
+            </Form.Item>
 
-      <Form.Item
-        label="Ghi chú"
-        name="note"
-      >
-        <Input.TextArea rows={3} disabled={isReadOnly} />
-      </Form.Item>
+            <Form.Item label="Ghi chú" name="note">
+              <Input.TextArea rows={3} disabled={isReadOnly} />
+            </Form.Item>
+          </>
+        )}
 
-      {!isReadOnly && (
-        <Form.Item>
-          <Button type="primary" htmlType="submit" block>
-            {mode === "create" ? "Thêm mới" : "Cập nhật"}
-          </Button>
-          <Button block onClick={onCancel} style={{ marginTop: 8 }}>
-            Hủy
-          </Button>
-        </Form.Item>
-      )}
-    </Form>
+        {/* 🟡 Form Phân ca */}
+        {mode === "assign" && (
+          <>
+            <Form.Item
+              label="Chọn bác sĩ"
+              name="staffIds"
+              rules={[
+                { required: true, message: "Chọn ít nhất 1 bác sĩ" },
+              ]}
+            >
+              <Select
+                mode="multiple"
+                placeholder="Chọn bác sĩ"
+                optionFilterProp="children"
+              >
+                {doctors.map((doc) => (
+                  <Option key={doc.id} value={doc.id}>
+                    {doc.fullName}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+
+            <Form.Item
+              label="Trạng thái"
+              name="status"
+              rules={[
+                { required: true, message: "Chọn trạng thái" },
+              ]}
+            >
+              <Select placeholder="Chọn trạng thái">
+                <Option value="active">Hoạt động</Option>
+                <Option value="pending">Chờ</Option>
+              </Select>
+            </Form.Item>
+
+            <Form.Item label="Ghi chú" name="note">
+              <Input.TextArea rows={3} />
+            </Form.Item>
+          </>
+        )}
+
+        {/* 🟣 Action buttons */}
+        {!isReadOnly && (
+          <Form.Item>
+            <Button type="primary" htmlType="submit" style={{ marginRight: 8 }}>
+              {mode === "assign"
+                ? "👥 Xác nhận phân ca"
+                : mode === "edit"
+                ? "💾 Lưu"
+                : "➕ Tạo"}
+            </Button>
+            <Button onClick={onCancel}>Hủy</Button>
+          </Form.Item>
+        )}
+      </Form>
+    </Spin>
   );
 };
 

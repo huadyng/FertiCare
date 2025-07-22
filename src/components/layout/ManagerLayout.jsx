@@ -72,18 +72,6 @@ const ManagerLayout = () => {
       label: "Phân ca làm việc",
       onClick: () => navigate("/manager/shift-management"),
     },
-    {
-      key: "/manager/treatment-approval",
-      icon: <FileTextOutlined />,
-      label: "Duyệt phác đồ điều trị",
-      onClick: () => navigate("/manager/treatment-approval"),
-    },
-    {
-      key: "/manager/reports",
-      icon: <BarChartOutlined />,
-      label: "Báo cáo nhóm",
-      onClick: () => navigate("/manager/reports"),
-    },
   ];
 
   return (

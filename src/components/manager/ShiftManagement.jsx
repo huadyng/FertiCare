@@ -7,14 +7,19 @@ import {
   message,
   Popconfirm,
   Spin,
+  Select,
 } from "antd";
 import {
   getAllWorkShifts,
   createWorkShift,
   updateWorkShift,
   deleteWorkShift,
+  assignStaffToShift,
+  deleteStaffFromShift,
 } from "../../api/apiShift";
+import { getDoctors } from "../../api/apiManager";
 import ShiftForm from "./Form/ShiftForm";
+const { Option } = Select;
 
 const ShiftManagement = () => {
   const [workShifts, setWorkShifts] = useState([]);
@@ -23,24 +28,47 @@ const ShiftManagement = () => {
   const [modalMode, setModalMode] = useState("create"); // create | edit | detail
   const [currentShift, setCurrentShift] = useState(null);
 
-  // 🔄 Fetch danh sách ca làm việc
+  // Phân ca
+  const [assignModalVisible, setAssignModalVisible] = useState(false);
+  const [doctorList, setDoctorList] = useState([]);
+  const [selectedDoctorIds, setSelectedDoctorIds] = useState([]);
+  const [assignLoading, setAssignLoading] = useState(false);
+
   const fetchWorkShifts = async () => {
-  setLoading(true);
-  try {
-    const data = await getAllWorkShifts(); // ✅ lấy mảng từ API
-    console.log("✅ Work Shifts:", data);
-    setWorkShifts(data || []);
-  } catch (err) {
-    console.error("❌ Lỗi API:", err);
-    message.error("Không thể tải danh sách ca làm việc!");
-  } finally {
-    setLoading(false);
-  }
-};
+    setLoading(true);
+    try {
+      const data = await getAllWorkShifts();
+      console.log("✅ Work Shifts:", data);
+      setWorkShifts(data || []);
+    } catch (err) {
+      console.error("❌ Lỗi API:", err);
+      message.error("Không thể tải danh sách ca làm việc!");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchWorkShifts();
   }, []);
+
+  // Fetch danh sách bác sĩ
+  const fetchDoctors = async () => {
+  try {
+    const res = await getDoctors();
+    console.log("✅ Doctors API:", res);
+
+    // Nếu API trả về { data: [...] }
+    const doctors = Array.isArray(res.data) ? res.data : res.data?.data || [];
+    setDoctorList(doctors);
+
+    console.log("👨‍⚕️ Doctors list đã xử lý:", doctors);
+  } catch (err) {
+    console.error("❌ Lỗi API bác sĩ:", err);
+    message.error("Không thể tải danh sách bác sĩ");
+    setDoctorList([]);
+  }
+};
 
   const handleCreate = async (formData) => {
     try {
@@ -77,6 +105,62 @@ const ShiftManagement = () => {
     }
   };
 
+  const handleAssignClick = async (shift) => {
+  console.log("👥 Shift được chọn:", shift);
+  setCurrentShift(shift);
+
+  // ✅ Preload danh sách bác sĩ đã gán
+  const preloadIds = shift.assignedStaff?.map((staff) => String(staff.staffId)) || [];
+  setSelectedDoctorIds(preloadIds);
+
+  setAssignModalVisible(true);
+
+  // ✅ Gọi API lấy bác sĩ
+  await fetchDoctors();
+};
+
+  const handleAssign = async () => {
+    if (selectedDoctorIds.length === 0) {
+      message.warning("⚠️ Vui lòng chọn ít nhất 1 bác sĩ");
+      return;
+    }
+    setAssignLoading(true);
+    try {
+      const payload = {
+        shiftId: currentShift.id,
+        staffIds: selectedDoctorIds,
+        note: "Phân ca tự động",
+        status: "active",
+      };
+      console.log("📤 Payload phân ca:", payload);
+      await assignStaffToShift(payload);
+      message.success("✅ Phân ca thành công!");
+      setAssignModalVisible(false);
+      fetchWorkShifts();
+    } catch (err) {
+      console.error("❌ Lỗi phân ca:", err);
+      message.error("Phân ca thất bại!");
+    } finally {
+      setAssignLoading(false);
+    }
+  };
+const handleDoctorChange = async (newValues) => {
+    const removedDoctors = selectedDoctorIds.filter(
+      (id) => !newValues.includes(id),
+    );
+    if (removedDoctors.length > 0) {
+      for (const staffId of removedDoctors) {
+        try {
+          await deleteStaffFromShift(currentShift.id, staffId); // 🆕 GỌI API XÓA
+          message.success("🗑 Đã xóa nhân viên khỏi ca");
+        } catch (err) {
+          console.error("❌ Lỗi xóa nhân viên:", err);
+          message.error("Xóa nhân viên khỏi ca thất bại!");
+        }
+      }
+    }
+    setSelectedDoctorIds(newValues);
+  };
   const columns = [
     {
       title: "Tên ca",
@@ -135,6 +219,13 @@ const ShiftManagement = () => {
           >
             ✏️ Sửa
           </Button>
+          <Button
+            size="small"
+            type="link"
+            onClick={() => handleAssignClick(record)}
+          >
+            👥 Phân ca
+          </Button>
           <Popconfirm
             title="Bạn có chắc muốn xóa ca này?"
             onConfirm={() => handleDelete(record.id)}
@@ -168,35 +259,63 @@ const ShiftManagement = () => {
         <Spin tip="Đang tải danh sách..." size="large" />
       ) : (
         <Table
-  rowKey="id"
-  dataSource={Array.isArray(workShifts) ? workShifts : []}
-  columns={columns}
-  pagination={{ pageSize: 5 }}
-/>
-      )}
-
-      <Modal
-        title={
-          modalMode === "create"
-            ? "➕ Thêm ca làm việc"
-            : modalMode === "edit"
-            ? "✏️ Cập nhật ca làm việc"
-            : "📖 Chi tiết ca làm việc"
-        }
-        open={showModal}
-        onCancel={() => setShowModal(false)}
-        footer={null}
-        width={600}
-      >
-        <ShiftForm
-          mode={modalMode}
-          initialValues={currentShift}
-          onSubmit={
-            modalMode === "create" ? handleCreate : handleUpdate
-          }
-          onCancel={() => setShowModal(false)}
+          rowKey="id"
+          dataSource={Array.isArray(workShifts) ? workShifts : []}
+          columns={columns}
+          pagination={{ pageSize: 5 }}
         />
-      </Modal>
+      )}
+      <Modal
+  title={
+    modalMode === "create"
+      ? "➕ Thêm ca làm việc"
+      : modalMode === "edit"
+      ? "✏️ Cập nhật ca làm việc"
+      : modalMode === "assign"
+      ? "👩‍⚕️ Phân ca làm việc"
+      : "📖 Chi tiết ca làm việc"
+  }
+  open={showModal}
+  onCancel={() => setShowModal(false)}
+  footer={null}
+  width={600}
+>
+  <ShiftForm
+    mode={modalMode} // 🛠 SỬA: truyền cả mode phân ca
+    initialValues={currentShift}
+    onSubmit={
+      modalMode === "create"
+        ? handleCreate
+        : modalMode === "edit"
+        ? handleUpdate
+        : handleAssign // 🛠 SỬA: xử lý phân ca
+    }
+    onCancel={() => setShowModal(false)}
+  />
+</Modal>
+
+<Modal
+  title="👩‍⚕️ Phân ca làm việc"
+  open={assignModalVisible}
+  onCancel={() => setAssignModalVisible(false)}
+  onOk={handleAssign}
+  okButtonProps={{ loading: assignLoading }}
+  okText="Xác nhận"
+>
+  <Select
+    mode="multiple"
+    placeholder="Chọn bác sĩ"
+    style={{ width: "100%" }}
+    value={selectedDoctorIds}
+    onChange={handleDoctorChange} // 🆕 SỬ DỤNG FUNCTION MỚI
+  >
+    {doctorList.map((doc) => (
+      <Option key={doc.id} value={String(doc.id)}>
+        {doc.fullName}
+      </Option>
+    ))}
+  </Select>
+</Modal>
     </div>
   );
 };
