@@ -443,6 +443,45 @@ export const generateId = () => {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
 };
 
+/**
+ * Decode JWT token to extract user information
+ * @param {string} token - JWT token
+ * @returns {object|null} - Decoded token payload or null if invalid
+ */
+export const decodeJwtToken = (token) => {
+  try {
+    if (!token) return null;
+
+    // JWT token has 3 parts separated by dots
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+
+    // Decode the payload (second part)
+    const payload = parts[1];
+    const decodedPayload = JSON.parse(atob(payload));
+
+    return decodedPayload;
+  } catch (error) {
+    console.error("Error decoding JWT token:", error);
+    return null;
+  }
+};
+
+/**
+ * Extract role from JWT token
+ * @param {string} token - JWT token
+ * @returns {string|null} - Role from token or null if not found
+ */
+export const getRoleFromToken = (token) => {
+  try {
+    const decoded = decodeJwtToken(token);
+    return decoded?.role || null;
+  } catch (error) {
+    console.error("Error extracting role from token:", error);
+    return null;
+  }
+};
+
 export default {
   // Date utilities
   formatDate,

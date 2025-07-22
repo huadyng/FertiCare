@@ -33,7 +33,7 @@ const Achievements = lazy(() =>
 
 const Login = lazy(() => import("./components/Pages/Login/Login"));
 const Register = lazy(() => import("./components/Pages/Register/Register"));
-const RegisterPage = lazy(() => import("./components/pages/Register/Register"));
+const RegisterPage = lazy(() => import("./components/Pages/Register/Register"));
 const DoctorDetail = lazy(() =>
   import("./components/pages/DoctorTeam/Card/DoctorDetail/DoctorDetail")
 );
@@ -78,6 +78,17 @@ const DoctorDashboard = lazy(() =>
 );
 const PatientDashboard = lazy(() =>
   import("./components/dashboards/PatientDashboard")
+);
+const TreatmentProcess = lazy(() =>
+  import("./components/Pages/Patient/TreatmentProcess")
+);
+const Schedule = lazy(() => import("./components/Pages/Patient/Schedule"));
+const MedicalRecords = lazy(() =>
+  import("./components/Pages/Patient/MedicalRecords")
+);
+const History = lazy(() => import("./components/Pages/Patient/History"));
+const Notifications = lazy(() =>
+  import("./components/Pages/Patient/Notifications")
 );
 
 const UserManagement = lazy(() => import("./components/admin/UserManagement"));
@@ -546,20 +557,11 @@ function AppContent() {
         >
           <Route index element={<Navigate to="/patient/dashboard" replace />} />
           <Route path="dashboard" element={<PatientDashboard />} />
-          <Route
-            path="treatment-process"
-            element={<ComingSoon title="Tiến trình điều trị" />}
-          />
-          <Route path="schedule" element={<ComingSoon title="Lịch khám" />} />
-          <Route
-            path="medical-records"
-            element={<ComingSoon title="Hồ sơ y tế" />}
-          />
-          <Route path="history" element={<ComingSoon title="Lịch sử khám" />} />
-          <Route
-            path="notifications"
-            element={<ComingSoon title="Thông báo" />}
-          />
+          <Route path="treatment-process" element={<TreatmentProcess />} />
+          <Route path="schedule" element={<Schedule />} />
+          <Route path="medical-records" element={<MedicalRecords />} />
+          <Route path="history" element={<History />} />
+          <Route path="notifications" element={<Notifications />} />
           <Route path="profile" element={<UserProfile />} />
           <Route path="settings" element={<ComingSoon title="Cài đặt" />} />
         </Route>

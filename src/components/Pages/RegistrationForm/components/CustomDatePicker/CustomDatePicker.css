@@ -397,6 +397,28 @@ body.custom-datepicker-open .registration-form-container {
   box-shadow: none;
 }
 
+/* Sunday - ngày nghỉ */
+.custom-datepicker__day--sunday {
+  color: #ff6b6b !important;
+  background: rgba(255, 107, 107, 0.1) !important;
+  position: relative;
+}
+
+.custom-datepicker__day--sunday::after {
+  content: "🏖️";
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 8px;
+  opacity: 0.7;
+}
+
+.custom-datepicker__day--sunday:hover {
+  background: rgba(255, 107, 107, 0.15) !important;
+  transform: none;
+  box-shadow: none;
+}
+
 /* Selected day indicator */
 .custom-datepicker__day--selected .custom-datepicker-day-indicator {
   color: rgba(255, 255, 255, 0.8);

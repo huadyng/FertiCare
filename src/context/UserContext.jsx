@@ -1,4 +1,5 @@
 import { createContext, useState, useEffect } from "react";
+import { getRoleFromToken } from "../utils";
 
 // 1. Định nghĩa các vai trò và quyền
 export const USER_ROLES = {
@@ -93,8 +94,21 @@ export const UserProvider = ({ children }) => {
           "🔄 [UserContext] Loading user from localStorage:",
           userData
         );
-        setUser(userData);
+
+        // 🔄 Tự động cập nhật hasRegisteredService dựa trên role hiện tại
+        const updatedUserData = {
+          ...userData,
+          hasRegisteredService:
+            userData.role === USER_ROLES.PATIENT ||
+            userData.hasRegisteredService ||
+            false,
+        };
+
+        setUser(updatedUserData);
         setIsLoggedIn(true);
+
+        // Cập nhật localStorage với data đã được cập nhật
+        localStorage.setItem("user", JSON.stringify(updatedUserData));
       }
     } catch (error) {
       console.error("❌ Lỗi parse user từ localStorage:", error);
@@ -132,6 +146,26 @@ export const UserProvider = ({ children }) => {
       }
     }
 
+    // 🔧 FALLBACK: Nếu backend không trả về role, thử lấy từ JWT token
+    if (!finalRole) {
+      console.warn(
+        "⚠️ [UserContext] Backend didn't return role, trying to extract from JWT token"
+      );
+      const tokenRole = getRoleFromToken(userData.token);
+      if (tokenRole) {
+        finalRole = tokenRole;
+        console.log(
+          "🔍 [UserContext] Extracted role from JWT token:",
+          tokenRole
+        );
+      } else {
+        console.warn(
+          "⚠️ [UserContext] Could not extract role from token, defaulting to CUSTOMER"
+        );
+        finalRole = "CUSTOMER";
+      }
+    }
+
     // Map role from backend to frontend
     const mappedRole = ROLE_MAPPING[finalRole] || USER_ROLES.CUSTOMER;
 
@@ -143,11 +177,17 @@ export const UserProvider = ({ children }) => {
       console.warn("Available mappings:", Object.keys(ROLE_MAPPING));
     }
 
+    // 🔄 Tự động cập nhật hasRegisteredService dựa trên role
+    const hasRegisteredService =
+      mappedRole === USER_ROLES.PATIENT ||
+      userData.hasRegisteredService ||
+      false;
+
     const dataToStore = {
       ...userData,
       role: mappedRole,
       token: userData.token,
-      hasRegisteredService: userData.hasRegisteredService || false,
+      hasRegisteredService: hasRegisteredService,
     };
 
     console.log("🔍 [UserContext] Data to store:", dataToStore);

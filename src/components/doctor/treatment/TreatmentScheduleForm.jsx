@@ -898,7 +898,6 @@ const TreatmentScheduleForm = ({
           cost: treatmentPlan.estimatedCost || 0,
           successRate: treatmentPlan.successProbability || "N/A",
           phases: treatmentPlan.treatmentSteps.map((step, idx) => ({
-            phaseName: `phase_${idx + 1}`,
             phaseName: step.name || `Giai đoạn ${idx + 1}`,
             expectedDuration: step.duration || "",
             description: step.description || "",
@@ -1341,7 +1340,6 @@ const TreatmentScheduleForm = ({
     const uniqueId = `custom_${timestamp}_${randomSuffix}`;
     const newSession = {
       id: uniqueId,
-      phaseName: "custom",
       phaseName: "Tùy chỉnh bác sĩ",
       date: dayjs().add(1, "day").format("YYYY-MM-DD"),
       activity: "",

@@ -10,6 +10,10 @@ import {
   Tag,
   Avatar,
   Button,
+  Empty,
+  Statistic,
+  Spin,
+  Typography,
 } from "antd";
 import {
   HeartOutlined,
@@ -23,6 +27,10 @@ import {
   BellOutlined,
 } from "@ant-design/icons";
 import { UserContext } from "../../context/UserContext";
+import apiTreatmentManagement from "../../api/apiTreatmentManagement";
+import axiosClient from "../../services/axiosClient";
+
+const { Text } = Typography;
 
 const PatientDashboard = () => {
   const { user } = useContext(UserContext);
@@ -30,16 +38,92 @@ const PatientDashboard = () => {
   const [treatmentData, setTreatmentData] = useState(null);
 
   useEffect(() => {
-    // Simulate API call to get patient data
-    setTimeout(() => {
+    if (user?.id) {
+      loadPatientData();
+    }
+  }, [user]);
+
+  const loadPatientData = async () => {
+    try {
+      setLoading(true);
+
+      console.log("🏥 [PatientDashboard] Loading patient data for:", user.id);
+
+      // Load all patient data in parallel
+      const [phasesResponse, appointmentsResponse, clinicalResponse] =
+        await Promise.allSettled([
+          apiTreatmentManagement.getPatientTreatmentPhases(user.id),
+          axiosClient.get(`/api/appointments/customer/${user.id}`),
+          apiTreatmentManagement.getPatientClinicalResults(user.id),
+        ]);
+
+      // Process treatment phases
+      let treatmentProgress = 0;
+      let currentPhase = "Chưa bắt đầu";
+      let totalSessions = 0;
+      let completedSessions = 0;
+
+      if (
+        phasesResponse.status === "fulfilled" &&
+        phasesResponse.value?.success
+      ) {
+        const phases = phasesResponse.value.data || [];
+        totalSessions = phases.length;
+        completedSessions = phases.filter(
+          (phase) => phase.status === "Completed"
+        ).length;
+        const inProgressPhase = phases.find(
+          (phase) => phase.status === "In Progress"
+        );
+        currentPhase = inProgressPhase?.phaseName || "Chưa bắt đầu";
+        treatmentProgress =
+          totalSessions > 0
+            ? Math.round((completedSessions / totalSessions) * 100)
+            : 0;
+      }
+
+      // Process appointments
+      const appointments =
+        appointmentsResponse.status === "fulfilled"
+          ? appointmentsResponse.value.data || []
+          : [];
+
+      const upcomingAppts = appointments
+        .filter((apt) => new Date(apt.appointmentTime) > new Date())
+        .sort(
+          (a, b) => new Date(a.appointmentTime) - new Date(b.appointmentTime)
+        )
+        .slice(0, 2)
+        .map((apt) => ({
+          date: formatDateTime(apt.appointmentTime).date,
+          time: formatDateTime(apt.appointmentTime).time,
+          type: apt.serviceName || "Khám tổng quát",
+          doctor: "BS. Điều trị",
+          status: "confirmed",
+        }));
+
+      setUpcomingAppointments(upcomingAppts);
+
+      // Process clinical results
+      const clinicalResults =
+        clinicalResponse.status === "fulfilled" &&
+        clinicalResponse.value?.success
+          ? clinicalResponse.value.data || []
+          : [];
+
       setTreatmentData({
-        treatmentProgress: 65,
-        currentPhase: "Kích thích buồng trứng",
-        nextAppointment: "2024-01-15 09:00",
-        doctorName: "BS. Nguyễn Thị Lan",
-        totalSessions: 12,
-        completedSessions: 8,
-        upcomingTests: ["Siêu âm kiểm tra", "Xét nghiệm hormone"],
+        treatmentProgress,
+        currentPhase,
+        nextAppointment:
+          upcomingAppts.length > 0 ? upcomingAppts[0].appointmentTime : null,
+        doctorName:
+          upcomingAppts.length > 0 ? "BS. Điều trị" : "Chưa phân công",
+        totalSessions,
+        completedSessions,
+        upcomingTests:
+          clinicalResults.length > 0
+            ? ["Siêu âm kiểm tra", "Xét nghiệm hormone"]
+            : [],
         medications: [
           { name: "Gonal-F", dosage: "150 IU", time: "Tối", status: "active" },
           {
@@ -50,9 +134,25 @@ const PatientDashboard = () => {
           },
         ],
       });
+
+      console.log("✅ [PatientDashboard] Patient data loaded successfully");
+    } catch (error) {
+      console.error("❌ [PatientDashboard] Error loading patient data:", error);
+      // Fallback to default data
+      setTreatmentData({
+        treatmentProgress: 0,
+        currentPhase: "Chưa bắt đầu",
+        nextAppointment: null,
+        doctorName: "Chưa phân công",
+        totalSessions: 0,
+        completedSessions: 0,
+        upcomingTests: [],
+        medications: [],
+      });
+    } finally {
       setLoading(false);
-    }, 1000);
-  }, []);
+    }
+  };
 
   const treatmentTimeline = [
     {
@@ -136,22 +236,23 @@ const PatientDashboard = () => {
     },
   ];
 
-  const upcomingAppointments = [
-    {
-      date: "15/01/2024",
-      time: "09:00",
-      type: "Siêu âm kiểm tra",
-      doctor: "BS. Nguyễn Thị Lan",
-      status: "confirmed",
-    },
-    {
-      date: "18/01/2024",
-      time: "14:00",
-      type: "Tái khám",
-      doctor: "BS. Nguyễn Thị Lan",
-      status: "pending",
-    },
-  ];
+  const [upcomingAppointments, setUpcomingAppointments] = useState([]);
+
+  const formatDateTime = (dateTimeString) => {
+    if (!dateTimeString) return { date: "Chưa có", time: "" };
+    try {
+      const date = new Date(dateTimeString);
+      return {
+        date: date.toLocaleDateString("vi-VN"),
+        time: date.toLocaleTimeString("vi-VN", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      };
+    } catch (error) {
+      return { date: "Không hợp lệ", time: "" };
+    }
+  };
 
   if (loading) {
     return (
@@ -250,44 +351,51 @@ const PatientDashboard = () => {
         {/* Upcoming Appointments */}
         <Col xs={24} lg={12}>
           <Card title="Lịch khám sắp tới" className="dashboard-card">
-            {upcomingAppointments.map((appointment, index) => (
-              <div
-                key={index}
-                className="appointment-item"
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "12px 0",
-                  borderBottom:
-                    index < upcomingAppointments.length - 1
-                      ? "1px solid #f0f0f0"
-                      : "none",
-                }}
-              >
-                <div>
-                  <div style={{ fontWeight: 500 }}>{appointment.type}</div>
-                  <div style={{ color: "#8c8c8c", fontSize: "12px" }}>
-                    {appointment.doctor}
+            {upcomingAppointments.length > 0 ? (
+              upcomingAppointments.map((appointment, index) => (
+                <div
+                  key={index}
+                  className="appointment-item"
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "12px 0",
+                    borderBottom:
+                      index < upcomingAppointments.length - 1
+                        ? "1px solid #f0f0f0"
+                        : "none",
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 500 }}>{appointment.type}</div>
+                    <div style={{ color: "#8c8c8c", fontSize: "12px" }}>
+                      {appointment.doctor}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontWeight: 500 }}>{appointment.date}</div>
+                    <div style={{ color: "#8c8c8c", fontSize: "12px" }}>
+                      {appointment.time}
+                    </div>
+                    <Tag
+                      color={
+                        appointment.status === "confirmed" ? "green" : "orange"
+                      }
+                    >
+                      {appointment.status === "confirmed"
+                        ? "Đã xác nhận"
+                        : "Chờ xác nhận"}
+                    </Tag>
                   </div>
                 </div>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontWeight: 500 }}>{appointment.date}</div>
-                  <div style={{ color: "#8c8c8c", fontSize: "12px" }}>
-                    {appointment.time}
-                  </div>
-                  <Tag
-                    color={
-                      appointment.status === "confirmed" ? "green" : "orange"
-                    }
-                  >
-                    {appointment.status === "confirmed"
-                      ? "Đã xác nhận"
-                      : "Chờ xác nhận"}
-                  </Tag>
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <Empty
+                description="Không có lịch khám sắp tới"
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+              />
+            )}
           </Card>
         </Col>
       </Row>

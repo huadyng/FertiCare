@@ -39,7 +39,7 @@ const CustomDatePicker = ({
     "Tháng 12",
   ];
 
-  const weekdays = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+  const weekdays = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
   // Update input value when selected date changes
   useEffect(() => {
@@ -135,6 +135,11 @@ const CustomDatePicker = ({
 
   // Check if date is selectable
   const isDateSelectable = (date) => {
+    // Disable Sundays (day 0) - ngày nghỉ
+    if (date.getDay() === 0) {
+      return false;
+    }
+
     // Check minimum date
     if (minDate && date < minDate) {
       return false;
@@ -172,13 +177,17 @@ const CustomDatePicker = ({
     // Last day of the month
     const lastDay = new Date(year, month + 1, 0);
 
-    // Start from Sunday of the week containing first day
+    // Start from Monday of the week containing first day
     const startDate = new Date(firstDay);
-    startDate.setDate(startDate.getDate() - firstDay.getDay());
+    const firstDayOfWeek = firstDay.getDay();
+    const daysToSubtract = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1; // 0 = Sunday, 1 = Monday, etc.
+    startDate.setDate(startDate.getDate() - daysToSubtract);
 
-    // End at Saturday of the week containing last day
+    // End at Sunday of the week containing last day
     const endDate = new Date(lastDay);
-    endDate.setDate(endDate.getDate() + (6 - lastDay.getDay()));
+    const lastDayOfWeek = lastDay.getDay();
+    const daysToAdd = lastDayOfWeek === 0 ? 0 : 7 - lastDayOfWeek; // 0 = Sunday, 1 = Monday, etc.
+    endDate.setDate(endDate.getDate() + daysToAdd);
 
     const days = [];
     const currentDate = new Date(startDate);
@@ -329,6 +338,11 @@ const CustomDatePicker = ({
       classes.push("custom-datepicker__day--selected");
     }
 
+    // Sunday - ngày nghỉ
+    if (date.getDay() === 0) {
+      classes.push("custom-datepicker__day--sunday");
+    }
+
     // Available/unavailable dates
     const selectable = isDateSelectable(date);
     if (selectable) {
@@ -375,7 +389,7 @@ const CustomDatePicker = ({
         {/* Header Info */}
         <div className="custom-datepicker-header-info">
           <span className="custom-datepicker-info-text">
-            📅 Chọn ngày phù hợp với lịch trình của bạn
+            📅 Chọn ngày từ Thứ 2 đến Thứ 7 (Chủ nhật nghỉ)
           </span>
           <span className="custom-datepicker-available-count">
             {availableCount} ngày có sẵn
@@ -503,7 +517,11 @@ const CustomDatePicker = ({
                 }}
                 disabled={!isSelectable}
                 title={`${formatDate(date)}${
-                  isSelectable ? " - Có thể đặt lịch" : " - Không có lịch"
+                  date.getDay() === 0
+                    ? " - Chủ nhật (ngày nghỉ)"
+                    : isSelectable
+                    ? " - Có thể đặt lịch"
+                    : " - Không có lịch"
                 }`}
                 aria-label={`${formatDate(date)}${
                   selected && date.toDateString() === selected.toDateString()
@@ -555,7 +573,7 @@ const CustomDatePicker = ({
             ❌ Đóng
           </button>
           <span className="custom-datepicker-hint" aria-hidden="true">
-            💡 Chỉ hiển thị ngày có lịch trống
+            💡 Chỉ hiển thị ngày từ T2-T7 có lịch trống
           </span>
         </div>
       </div>

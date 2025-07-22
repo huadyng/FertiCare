@@ -112,9 +112,11 @@ const RegistrationForm = () => {
           const res = await axiosClient.get(
             `/api/service-request/available-dates/${autoDoctorId}`
           );
-          const dateList = res.data.map((dateStr) => ({
-            date: dateStr,
-            slots: [],
+          const dateList = res.data.map((dateObj) => ({
+            date: dateObj.date,
+            dayOfWeek: dateObj.dayOfWeek,
+            dayName: dateObj.dayName,
+            timeSlots: dateObj.timeSlots || [],
           }));
 
           setAvailableDates(dateList);
@@ -154,9 +156,11 @@ const RegistrationForm = () => {
       const res = await axiosClient.get(
         `/api/service-request/available-dates/${doctorId}`
       );
-      const dateList = res.data.map((dateStr) => ({
-        date: dateStr,
-        slots: [],
+      const dateList = res.data.map((dateObj) => ({
+        date: dateObj.date,
+        dayOfWeek: dateObj.dayOfWeek,
+        dayName: dateObj.dayName,
+        timeSlots: dateObj.timeSlots || [],
       }));
       console.log("[DEBUG] API trả về availableDates:", dateList);
       setAvailableDates(dateList);
@@ -178,8 +182,11 @@ const RegistrationForm = () => {
       return;
     }
 
-    // Format date to YYYY-MM-DD
-    const formattedDate = date.toISOString().split("T")[0];
+    // Format date to YYYY-MM-DD using local timezone
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const formattedDate = `${year}-${month}-${day}`;
     console.log("[DEBUG] Ngày đã format:", formattedDate);
 
     setFormData((prev) => {
@@ -253,15 +260,25 @@ const RegistrationForm = () => {
   // Tạo danh sách các ngày có thể chọn
   const getAvailableDatesArray = () => {
     if (!Array.isArray(availableDates)) return [];
-    const dateArray = availableDates.map((d) => new Date(d.date.date));
+    const dateArray = availableDates.map((d) => {
+      // Parse date string properly to avoid timezone issues
+      const [year, month, day] = d.date.split("-").map(Number);
+      return new Date(year, month - 1, day); // month is 0-indexed
+    });
     return dateArray;
   };
 
   // Kiểm tra ngày có available không
   const isDateAvailable = (date) => {
     if (!Array.isArray(availableDates)) return false;
-    const dateStr = date.toISOString().split("T")[0];
-    const isAvailable = availableDates.some((d) => d.date.date === dateStr);
+
+    // Normalize date to local timezone to avoid timezone issues
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const dateStr = `${year}-${month}-${day}`;
+
+    const isAvailable = availableDates.some((d) => d.date === dateStr);
     return isAvailable;
   };
 
@@ -295,6 +312,7 @@ const RegistrationForm = () => {
       return;
     }
 
+    // Gửi datetime không có timezone để tránh vấn đề timezone
     const appointmentTime = `${formData.appointmentDate}T${formData.appointmentTime}:00`;
 
     const dataToSubmit = {
@@ -425,53 +443,20 @@ const RegistrationForm = () => {
   };
 
   const getDisplayDateTime = () => {
-    console.log("=== DEBUG getDisplayDateTime ===");
-    console.log(
-      "registerInfo?.appointmentTime:",
-      registerInfo?.appointmentTime
-    );
-    console.log("submittedFormData:", submittedFormData);
-
     // Ưu tiên hiển thị từ API response
-    if (registerInfo?.appointmentTime) {
-      console.log("Using API response time");
-
-      // Kiểm tra xem appointmentTime có phải là full datetime hay chỉ là time
-      const timeValue = registerInfo.appointmentTime;
-      console.log("API time value:", timeValue);
-
-      // Nếu chỉ là time format (HH:mm:ss), kết hợp với ngày từ submitted data
-      if (timeValue.match(/^\d{2}:\d{2}:\d{2}$/)) {
-        console.log(
-          "API time is time-only format, combining with submitted date"
-        );
-        if (submittedFormData?.appointmentDate) {
-          try {
-            const date = new Date(submittedFormData.appointmentDate);
-            const vietnamDate = date.toLocaleDateString("vi-VN", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            });
-            const timeOnly = timeValue.substring(0, 5); // Remove seconds, get HH:mm
-            const result = `${vietnamDate} - ${timeOnly}`;
-            console.log("Combined datetime result:", result);
-            return result;
-          } catch (error) {
-            console.error("Error combining date and time:", error);
-          }
-        } else {
-          // Nếu không có ngày từ submitted data, chỉ hiển thị time
-          console.log("No submitted date available, showing time only");
-          const timeOnly = timeValue.substring(0, 5);
-          return `Hôm nay lúc ${timeOnly}`;
-        }
-      } else {
-        // Nếu là full datetime, format bình thường
-        console.log("API time is full datetime format");
-        const result = formatDateTime(timeValue);
-        console.log("Formatted API time:", result);
-        return result;
+    if (registerInfo?.appointmentDate && registerInfo?.appointmentTime) {
+      try {
+        // Sử dụng ngày và giờ từ API response
+        const date = new Date(registerInfo.appointmentDate);
+        const vietnamDate = date.toLocaleDateString("vi-VN", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        });
+        const timeOnly = registerInfo.appointmentTime.substring(0, 5); // Remove seconds, get HH:mm
+        return `${vietnamDate} lúc ${timeOnly}`;
+      } catch (error) {
+        console.error("Error formatting API response:", error);
       }
     }
 
@@ -480,11 +465,6 @@ const RegistrationForm = () => {
       submittedFormData?.appointmentDate &&
       submittedFormData?.appointmentTime
     ) {
-      console.log("Using submitted form data");
-      console.log("appointmentDate:", submittedFormData.appointmentDate);
-      console.log("appointmentTime:", submittedFormData.appointmentTime);
-
-      // Thử cách đơn giản hơn
       try {
         const date = new Date(submittedFormData.appointmentDate);
         const vietnamDate = date.toLocaleDateString("vi-VN", {
@@ -492,9 +472,7 @@ const RegistrationForm = () => {
           month: "2-digit",
           year: "numeric",
         });
-        const result = `${vietnamDate} lúc ${submittedFormData.appointmentTime}`;
-        console.log("Simple formatted result:", result);
-        return result;
+        return `${vietnamDate} lúc ${submittedFormData.appointmentTime}`;
       } catch (error) {
         console.error("Error in simple format:", error);
         return `${submittedFormData.appointmentDate} lúc ${submittedFormData.appointmentTime}`;
@@ -507,7 +485,6 @@ const RegistrationForm = () => {
       if (backupData) {
         const parsedData = JSON.parse(backupData);
         if (parsedData?.appointmentDate && parsedData?.appointmentTime) {
-          console.log("Using localStorage backup:", parsedData);
           const date = new Date(parsedData.appointmentDate);
           const vietnamDate = date.toLocaleDateString("vi-VN", {
             day: "2-digit",
@@ -522,7 +499,6 @@ const RegistrationForm = () => {
     }
 
     // Fallback cuối cùng
-    console.log("Using fallback");
     return "Đang cập nhật thông tin";
   };
 
