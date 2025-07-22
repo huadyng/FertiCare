@@ -21,7 +21,14 @@ const ShiftForm = ({ mode, initialValues, onSubmit, onCancel }) => {
 
   const isReadOnly = mode === "detail";
 
-  // Fetch danh sách bác sĩ
+  // ✅ Convert safely string -> dayjs or return null
+  const safeDayjs = (value, format) => {
+    if (!value) return null;
+    const parsed = format ? dayjs(value, format) : dayjs(value);
+    return parsed.isValid() ? parsed : null;
+  };
+
+  // 📥 Fetch doctors list
   const fetchDoctors = async () => {
     setLoadingDoctors(true);
     try {
@@ -36,22 +43,17 @@ const ShiftForm = ({ mode, initialValues, onSubmit, onCancel }) => {
     }
   };
 
-  // Preload dữ liệu khi mở modal
+  // ⏳ Preload form data
   useEffect(() => {
-    if (mode === "assign") {
-      fetchDoctors();
-    }
+    if (mode === "assign") fetchDoctors();
+
     if (initialValues) {
       form.setFieldsValue({
         ...initialValues,
-        date: initialValues.date ? dayjs(initialValues.date) : null,
-        startTime: initialValues.startTime
-          ? dayjs(initialValues.startTime, "HH:mm")
-          : null,
-        endTime: initialValues.endTime
-          ? dayjs(initialValues.endTime, "HH:mm")
-          : null,
-        staffIds: initialValues.assignedStaff?.map((s) => s.staffId),
+        date: safeDayjs(initialValues.date, "YYYY-MM-DD"),
+        startTime: safeDayjs(initialValues.startTime, "HH:mm"),
+        endTime: safeDayjs(initialValues.endTime, "HH:mm"),
+        staffIds: initialValues.assignedStaff?.map((s) => s.staffId) || [],
         status: initialValues.status || "active",
       });
     } else {
@@ -59,28 +61,28 @@ const ShiftForm = ({ mode, initialValues, onSubmit, onCancel }) => {
     }
   }, [initialValues, mode]);
 
-  // Submit form
+  // 📝 Submit
   const handleFinish = (values) => {
     let payload = {};
     if (mode === "assign") {
       payload = {
-        shiftId: initialValues.id,
+        shiftId: initialValues?.id,
         staffIds: values.staffIds,
-        note: values.note,
+        note: values.note || "",
         status: values.status,
       };
     } else {
       payload = {
         name: values.name,
         department: values.department,
-        date: values.date.format("YYYY-MM-DD"),
-        startTime: values.startTime.format("HH:mm"),
-        endTime: values.endTime.format("HH:mm"),
+        date: values.date?.format("YYYY-MM-DD"),
+        startTime: values.startTime?.format("HH:mm"),
+        endTime: values.endTime?.format("HH:mm"),
         priority: values.priority,
         note: values.note,
         requiredDoctors: values.requiredDoctors,
-        requiredNurses: values.requiredNurses,
-        requiredTechnicians: values.requiredTechnicians,
+        requiredNurses: 0, // Mặc định
+        requiredTechnicians: 0, // Mặc định
       };
     }
     onSubmit(payload);
@@ -88,12 +90,7 @@ const ShiftForm = ({ mode, initialValues, onSubmit, onCancel }) => {
 
   return (
     <Spin spinning={loadingDoctors && mode === "assign"}>
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={handleFinish}
-        initialValues={initialValues}
-      >
+      <Form form={form} layout="vertical" onFinish={handleFinish}>
         {/* 🟢 Form Tạo/Sửa ca */}
         {mode !== "assign" && (
           <>
@@ -171,13 +168,11 @@ const ShiftForm = ({ mode, initialValues, onSubmit, onCancel }) => {
               </Select>
             </Form.Item>
 
-            <Form.Item label="Số bác sĩ cần" name="requiredDoctors">
-              <Input type="number" disabled={isReadOnly} />
-            </Form.Item>
-            <Form.Item label="Số y tá cần" name="requiredNurses">
-              <Input type="number" disabled={isReadOnly} />
-            </Form.Item>
-            <Form.Item label="Số kỹ thuật viên cần" name="requiredTechnicians">
+            <Form.Item
+              label="Số bác sĩ cần"
+              name="requiredDoctors"
+              rules={[{ required: true, message: "Nhập số bác sĩ cần" }]}
+            >
               <Input type="number" disabled={isReadOnly} />
             </Form.Item>
 
@@ -193,9 +188,7 @@ const ShiftForm = ({ mode, initialValues, onSubmit, onCancel }) => {
             <Form.Item
               label="Chọn bác sĩ"
               name="staffIds"
-              rules={[
-                { required: true, message: "Chọn ít nhất 1 bác sĩ" },
-              ]}
+              rules={[{ required: true, message: "Chọn ít nhất 1 bác sĩ" }]}
             >
               <Select
                 mode="multiple"
@@ -213,9 +206,7 @@ const ShiftForm = ({ mode, initialValues, onSubmit, onCancel }) => {
             <Form.Item
               label="Trạng thái"
               name="status"
-              rules={[
-                { required: true, message: "Chọn trạng thái" },
-              ]}
+              rules={[{ required: true, message: "Chọn trạng thái" }]}
             >
               <Select placeholder="Chọn trạng thái">
                 <Option value="active">Hoạt động</Option>
