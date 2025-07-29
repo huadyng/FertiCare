@@ -9,7 +9,7 @@ const DoctorDetail = () => {
 
   useEffect(() => {
     axios
-      .get(`https://6836811f664e72d28e4105f7.mockapi.io/api/doctor/${id}`)
+      .get(`/api/doctors/${id}`) // TODO: Replace with actual API endpoint
       .then((response) => {
         setDoctor(response.data);
       })

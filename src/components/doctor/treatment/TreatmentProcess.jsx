@@ -50,6 +50,7 @@ import { clinicalResultsAPI } from "../../../api/apiClinicalResults";
 import apiDoctor from "../../../api/apiDoctor";
 import { treatmentPlanAPI } from "../../../api/treatmentPlanAPI";
 import { debugUtils } from "../../../utils/debugUtils";
+import { refreshTokenFromContext } from "../../../services/axiosClient.js";
 
 const { Title, Text, Paragraph } = Typography;
 const { Step } = Steps;
@@ -145,11 +146,11 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
         patientInfo = {
           id: patientId,
           name: `Bệnh nhân ${patientId}`,
-          gender: "unknown",
-          age: null,
-          contact: null,
-          email: null,
-          address: null,
+          gender: "Chưa có",
+          age: "Chưa có",
+          contact: "Chưa có",
+          email: "Chưa có",
+          address: "Chưa có",
           status: "active",
         };
         console.log("✅ Using fallback patient info:", patientInfo);
@@ -185,11 +186,11 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
       const fallbackPatientInfo = {
         id: patientId,
         name: `Bệnh nhân ${patientId}`,
-        gender: "unknown",
-        age: null,
-        contact: null,
-        email: null,
-        address: null,
+        gender: "Chưa có",
+        age: "Chưa có",
+        contact: "Chưa có",
+        email: "Chưa có",
+        address: "Chưa có",
         status: "active",
       };
 
@@ -209,6 +210,12 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
 
   // Load patient info and sync with treatment state on mount
   useEffect(() => {
+    // Chỉ load khi có patientId hợp lệ
+    if (!patientId) {
+      setLoading(false);
+      return;
+    }
+
     console.log(
       "🔄 TreatmentProcess: Loading patient info for patientId:",
       patientId
@@ -243,6 +250,11 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
 
   // Cải thiện sync với state manager - thêm auto progress
   const syncWithStateManager = () => {
+    // Chỉ sync khi có patientId
+    if (!patientId) {
+      return;
+    }
+
     const state = treatmentStateManager.getCurrentState(patientId);
     if (state.patientId === patientId) {
       console.log("🔄 Syncing TreatmentProcess with state manager:", state);
@@ -284,6 +296,11 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
 
   // Thêm useEffect để theo dõi thay đổi trong localStorage và cập nhật real-time
   useEffect(() => {
+    // Chỉ check localStorage khi có patientId
+    if (!patientId) {
+      return;
+    }
+
     const checkLocalStorageUpdates = () => {
       // Kiểm tra examination data
       const examinationKey = `examination_completed_${patientId}`;
@@ -459,6 +476,11 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
 
   // Cải thiện event listeners - thêm real-time progress updates
   useEffect(() => {
+    // Chỉ check khi có patientId
+    if (!patientId) {
+      return;
+    }
+
     const checkExaminationSync = () => {
       const completedExam = localStorage.getItem(
         `examination_completed_${patientId}`
@@ -786,6 +808,9 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
         patientId
       );
 
+      // 🔄 Try to refresh token before making request
+      refreshTokenFromContext();
+
       // Import API module
       const { default: apiTreatmentManagement } = await import(
         "../../../api/apiTreatmentManagement"
@@ -851,9 +876,9 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
     }
   };
 
-  // Clear old test data from localStorage
+  // Clear old test data and mock data from localStorage
   useEffect(() => {
-    // Clear any old test data
+    // Clear any old test data and mock data
     const keysToRemove = [
       `patient_info_${patientId}`,
       `examination_completed_${patientId}`,
@@ -865,15 +890,18 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
       if (storedData) {
         try {
           const parsed = JSON.parse(storedData);
-          // Remove if it contains test data
+          // Remove if it contains test data or mock data
           if (
             parsed.name &&
             (parsed.name.includes("Test") ||
               parsed.name.includes("Trần Thị B") ||
-              parsed.name.includes("Nguyễn Văn A"))
+              parsed.name.includes("Nguyễn Văn A") ||
+              parsed.name.includes("Doctor Son") ||
+              parsed.name.includes("BS.") ||
+              parsed.name.includes("Dr."))
           ) {
             localStorage.removeItem(key);
-            console.log(`🧹 Removed test data from localStorage: ${key}`);
+            console.log(`🧹 Removed test/mock data from localStorage: ${key}`);
           }
         } catch (e) {
           // If parsing fails, remove anyway
@@ -881,6 +909,26 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
         }
       }
     });
+
+    // Also clear any mock user data
+    const user = localStorage.getItem("user");
+    if (user) {
+      try {
+        const userData = JSON.parse(user);
+        if (userData.fullName && (
+          userData.fullName.includes("Doctor Son") ||
+          userData.fullName.includes("BS.") ||
+          userData.fullName.includes("Dr.") ||
+          userData.token?.includes("mock")
+        )) {
+          localStorage.removeItem("user");
+          localStorage.removeItem("token");
+          console.log("🧹 Removed mock user data from localStorage");
+        }
+      } catch (e) {
+        console.warn("⚠️ Error parsing user data:", e);
+      }
+    }
   }, [patientId]);
 
   // Debug authentication status
@@ -912,15 +960,18 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
         patientId
       );
 
+      // 🔄 Try to refresh token before making request
+      refreshTokenFromContext();
+
       // Debug authentication status
       debugAuthStatus();
       console.log("🔍 [TreatmentProcess] Current user:", user);
 
       // Priority 1: Try to load from API
       try {
-        const examinationData = await clinicalResultsAPI.getExaminationResults(
-          patientId
-        );
+              const examinationData = await clinicalResultsAPI.getClinicalResultsByPatient(
+        patientId
+      );
         console.log(
           "🔍 [TreatmentProcess] Examination data received from API:",
           examinationData
@@ -1020,6 +1071,11 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
   };
 
   useEffect(() => {
+    // Chỉ load data khi có patientId
+    if (!patientId) {
+      return;
+    }
+    
     loadTreatmentProgress();
     loadExaminationData();
     loadTreatmentPlanFromAPI(); // Also load treatment plan from API
@@ -1027,6 +1083,11 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
 
   // Thêm useEffect để force refresh state manager định kỳ
   useEffect(() => {
+    // Chỉ force refresh khi có patientId
+    if (!patientId) {
+      return;
+    }
+
     const forceRefreshState = () => {
       console.log("🔄 [TreatmentProcess] Force refreshing state manager...");
       treatmentStateManager.forceRefresh(patientId);
@@ -1046,6 +1107,11 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
 
   // Auto-save examination data to localStorage when it changes
   useEffect(() => {
+    // Chỉ auto-save khi có patientId
+    if (!patientId) {
+      return;
+    }
+
     if (processData.examination && processData.examination.fromStandalonePage) {
       try {
         const localStorageKey = `examination_completed_${patientId}`;
@@ -1196,6 +1262,57 @@ const TreatmentProcess = ({ patientId, mode = "doctor", patientInfo }) => {
       console.error("❌ Error in delete confirmation:", error);
     }
   };
+
+  // Kiểm tra xem có patientId hợp lệ không
+  if (!patientId) {
+    return (
+      <div className="treatment-process-container">
+        <div className="treatment-process-content">
+          <Card className="examination-main-card">
+            <div className="examination-header">
+              <Title level={2} className="examination-title">
+                <Space>
+                  <HeartOutlined className="title-icon" />
+                  Quy Trình Điều Trị
+                </Space>
+              </Title>
+            </div>
+            <div style={{
+              textAlign: 'center',
+              padding: '60px 20px',
+              background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+              borderRadius: '12px',
+              margin: '20px 0'
+            }}>
+              <div style={{ fontSize: '64px', marginBottom: '20px', opacity: 0.6 }}>
+                🩺
+              </div>
+              <Title level={3} style={{ color: '#666', marginBottom: '16px' }}>
+                Không có quy trình điều trị
+              </Title>
+              <Text style={{ fontSize: '16px', color: '#888', display: 'block', marginBottom: '24px' }}>
+                Vui lòng chọn bệnh nhân để bắt đầu quy trình điều trị
+              </Text>
+              <Button
+                type="primary"
+                size="large"
+                icon={<UserOutlined />}
+                style={{
+                  background: 'linear-gradient(135deg, #ff6b9d 0%, #ff758c 100%)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '12px 24px',
+                  height: 'auto'
+                }}
+              >
+                Chọn bệnh nhân
+              </Button>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="treatment-process-container">

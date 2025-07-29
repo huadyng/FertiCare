@@ -1,0 +1,442 @@
+/* TreatmentScheduleForm.css - Style giống clinical result */
+
+.treatment-schedule-form {
+  background: linear-gradient(135deg, #ffeef3 0%, #ffe4e6 50%, #fff1f2 100%);
+  min-height: 100vh;
+  padding: 20px;
+  font-family: "Inter", "Segoe UI", "Poppins", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Card styling giống clinical result */
+.treatment-schedule-form .ant-card {
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 126, 179, 0.12);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(255, 107, 157, 0.08);
+  margin-bottom: 20px;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.treatment-schedule-form .ant-card:hover {
+  background: rgba(255, 255, 255, 0.99);
+  border-color: rgba(255, 126, 179, 0.2);
+  box-shadow: 0 12px 40px rgba(255, 107, 157, 0.12);
+  transform: translateY(-2px);
+}
+
+.treatment-schedule-form .ant-card-body {
+  padding: 24px;
+}
+
+/* Section cards */
+.treatment-schedule-form .section-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.9));
+  border: 1px solid rgba(255, 126, 179, 0.15);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 16px;
+  transition: all 0.3s ease;
+}
+
+.treatment-schedule-form .section-card:hover {
+  border-color: rgba(255, 126, 179, 0.25);
+  box-shadow: 0 8px 24px rgba(255, 107, 157, 0.1);
+}
+
+/* Header styling */
+.treatment-schedule-form .ant-card-head {
+  background: linear-gradient(135deg, #ff7eb3, #ff6b9d);
+  border-radius: 16px 16px 0 0;
+  border-bottom: none;
+}
+
+.treatment-schedule-form .ant-card-head-title {
+  color: white;
+  font-weight: 600;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Form inputs styling */
+.treatment-schedule-form .ant-input,
+.treatment-schedule-form .ant-input-number,
+.treatment-schedule-form .ant-select-selector,
+.treatment-schedule-form .ant-picker {
+  border-radius: 12px;
+  border: 2px solid rgba(255, 126, 179, 0.2);
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 12px 16px;
+  font-size: 14px;
+  height: 48px;
+}
+
+.treatment-schedule-form .ant-input:hover,
+.treatment-schedule-form .ant-input-number:hover,
+.treatment-schedule-form .ant-select-selector:hover,
+.treatment-schedule-form .ant-picker:hover {
+  border-color: rgba(255, 126, 179, 0.5);
+  background: rgba(255, 255, 255, 1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 107, 157, 0.1);
+}
+
+.treatment-schedule-form .ant-input:focus,
+.treatment-schedule-form .ant-input-number:focus,
+.treatment-schedule-form .ant-select-selector:focus,
+.treatment-schedule-form .ant-picker:focus {
+  border-color: #ff6b9d;
+  box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.15);
+  background: white;
+}
+
+/* Error state styling */
+.treatment-schedule-form .ant-input.ant-input-status-error,
+.treatment-schedule-form .ant-select.ant-select-status-error .ant-select-selector,
+.treatment-schedule-form .ant-picker.ant-picker-status-error {
+  border-color: #ff4d4f;
+  background: rgba(255, 77, 79, 0.02);
+}
+
+.treatment-schedule-form .ant-input.ant-input-status-error:focus,
+.treatment-schedule-form .ant-select.ant-select-status-error .ant-select-selector:focus,
+.treatment-schedule-form .ant-picker.ant-picker-status-error:focus {
+  border-color: #ff4d4f;
+  box-shadow: 0 0 0 3px rgba(255, 77, 79, 0.15);
+}
+
+/* Form labels */
+.treatment-schedule-form .ant-form-item-label > label {
+  font-weight: 700;
+  color: #2c3e50;
+  font-size: 15px;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.treatment-schedule-form .ant-form-item-label > label::before {
+  content: "* ";
+  color: #ff4d4f;
+  font-weight: 700;
+}
+
+.treatment-schedule-form .ant-form-item-label > label.ant-form-item-required::before {
+  content: "* ";
+  color: #ff4d4f;
+  font-weight: 700;
+}
+
+/* Form item spacing */
+.treatment-schedule-form .ant-form-item {
+  margin-bottom: 24px;
+}
+
+/* Error messages */
+.treatment-schedule-form .ant-form-item-explain-error {
+  color: #ff4d4f;
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 8px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: rgba(255, 77, 79, 0.05);
+  border-radius: 8px;
+  border-left: 3px solid #ff4d4f;
+}
+
+.treatment-schedule-form .ant-form-item-explain-error::before {
+  content: "⚠️";
+  font-size: 14px;
+}
+
+/* Increase spacing between form items with errors */
+.treatment-schedule-form .ant-form-item-has-error {
+  margin-bottom: 32px;
+}
+
+.treatment-schedule-form .ant-form-item-has-error + .ant-form-item {
+  margin-top: 16px;
+}
+
+/* Button styling giống clinical result */
+.treatment-schedule-form .action-btn {
+  border-radius: 12px;
+  height: 44px;
+  padding: 0 24px;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.treatment-schedule-form .action-btn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  transition: left 0.6s ease;
+}
+
+.treatment-schedule-form .action-btn:hover::before {
+  left: 100%;
+}
+
+/* Primary button - Tạo lịch điều trị */
+.treatment-schedule-form .submit-btn {
+  background: linear-gradient(135deg, #ff7eb3, #ff6b9d);
+  border: none;
+  color: white;
+  box-shadow: 0 4px 16px rgba(255, 107, 157, 0.3);
+}
+
+.treatment-schedule-form .submit-btn:hover {
+  background: linear-gradient(135deg, #ff6b9d, #ff758c);
+  box-shadow: 0 8px 24px rgba(255, 107, 157, 0.4);
+}
+
+/* Secondary button - Đặt lại */
+.treatment-schedule-form .reset-btn {
+  border: 2px solid rgba(255, 126, 179, 0.3);
+  color: #ff6b9d;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.treatment-schedule-form .reset-btn:hover {
+  border-color: #ff6b9d;
+  color: #e91e63;
+  background: rgba(255, 255, 255, 1);
+  box-shadow: 0 4px 16px rgba(255, 107, 157, 0.15);
+}
+
+/* Reload button - Tải lại */
+.treatment-schedule-form .reload-btn {
+  border: 2px solid rgba(64, 169, 255, 0.3);
+  color: #1890ff;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.treatment-schedule-form .reload-btn:hover {
+  border-color: #1890ff;
+  color: #096dd9;
+  background: rgba(240, 249, 255, 1);
+  box-shadow: 0 4px 16px rgba(24, 144, 255, 0.15);
+}
+
+/* Secondary button */
+.treatment-schedule-form .secondary-btn {
+  border: 2px solid rgba(255, 126, 179, 0.3);
+  color: #ff6b9d;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.treatment-schedule-form .secondary-btn:hover {
+  border-color: #ff6b9d;
+  color: #e91e63;
+  background: rgba(255, 255, 255, 1);
+  box-shadow: 0 4px 16px rgba(255, 107, 157, 0.15);
+}
+
+/* Table styling */
+.treatment-schedule-form .ant-table {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.treatment-schedule-form .ant-table-thead > tr > th {
+  background: rgba(255, 126, 179, 0.1);
+  border-bottom: 2px solid rgba(255, 126, 179, 0.2);
+  font-weight: 600;
+  color: #374151;
+}
+
+.treatment-schedule-form .ant-table-tbody > tr:hover > td {
+  background: rgba(255, 126, 179, 0.05);
+}
+
+/* Tag styling */
+.treatment-schedule-form .ant-tag {
+  border-radius: 8px;
+  font-weight: 500;
+  border: none;
+}
+
+/* Time slot styling */
+.treatment-schedule-form .time-slot-tag {
+  background: linear-gradient(135deg, #52c41a, #73d13d);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  margin: 4px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(82, 196, 26, 0.2);
+}
+
+.treatment-schedule-form .time-slot-tag:hover {
+  background: linear-gradient(135deg, #389e0d, #52c41a);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(82, 196, 26, 0.3);
+}
+
+.treatment-schedule-form .time-slot-tag.selected {
+  background: linear-gradient(135deg, #ff6b9d, #ff7eb3);
+  box-shadow: 0 4px 12px rgba(255, 107, 157, 0.3);
+}
+
+/* Available time slots container */
+.treatment-schedule-form .available-times-container {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(82, 196, 26, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 12px;
+}
+
+.treatment-schedule-form .available-times-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: #52c41a;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.treatment-schedule-form .available-times-header .anticon {
+  color: #52c41a;
+  font-size: 16px;
+}
+
+.treatment-schedule-form .time-slots-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Progress bar styling */
+.treatment-schedule-form .ant-progress-bg {
+  background: linear-gradient(135deg, #ff7eb3, #ff6b9d);
+}
+
+/* Modal styling */
+.treatment-schedule-form .ant-modal-header {
+  background: linear-gradient(135deg, #ff7eb3, #ff6b9d);
+  border-radius: 12px 12px 0 0;
+}
+
+.treatment-schedule-form .ant-modal-title {
+  color: white;
+  font-weight: 600;
+}
+
+.treatment-schedule-form .ant-modal-content {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(255, 107, 157, 0.15);
+}
+
+/* Phase greyed out */
+.phase-greyed-out {
+  opacity: 0.5;
+  pointer-events: none;
+  background: #f5f5f5 !important;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .treatment-schedule-form {
+    padding: 10px;
+  }
+  
+  .treatment-schedule-form .action-btn {
+    height: 40px;
+    padding: 0 16px;
+    font-size: 14px;
+  }
+  
+  .treatment-schedule-form .ant-card-body {
+    padding: 16px;
+  }
+  
+  .treatment-schedule-form .ant-input,
+  .treatment-schedule-form .ant-input-number,
+  .treatment-schedule-form .ant-select-selector,
+  .treatment-schedule-form .ant-picker {
+    height: 44px;
+    padding: 10px 14px;
+  }
+  
+  .treatment-schedule-form .time-slots-grid {
+    gap: 6px;
+  }
+  
+  .treatment-schedule-form .time-slot-tag {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+}
+
+/* Loading states */
+.treatment-schedule-form .loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  border-radius: 20px;
+}
+
+/* Success states */
+.treatment-schedule-form .success-indicator {
+  color: #52c41a;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.treatment-schedule-form .success-indicator::before {
+  content: "✅";
+  font-size: 14px;
+}
+
+/* Form validation visual feedback */
+.treatment-schedule-form .ant-form-item-has-success .ant-input,
+.treatment-schedule-form .ant-form-item-has-success .ant-select-selector,
+.treatment-schedule-form .ant-form-item-has-success .ant-picker {
+  border-color: #52c41a;
+  background: rgba(82, 196, 26, 0.02);
+}
+
+.treatment-schedule-form .ant-form-item-has-success .ant-input:focus,
+.treatment-schedule-form .ant-form-item-has-success .ant-select-selector:focus,
+.treatment-schedule-form .ant-form-item-has-success .ant-picker:focus {
+  border-color: #52c41a;
+  box-shadow: 0 0 0 3px rgba(82, 196, 26, 0.15);
+} 

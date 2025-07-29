@@ -65,15 +65,8 @@ const ManagerDashboard = () => {
   const [isScheduleModalVisible, setIsScheduleModalVisible] = useState(false);
   const [form] = Form.useForm();
 
-  // Mock data for charts
-  const performanceData = [
-    { month: "T1", patients: 145, appointments: 180, success: 85 },
-    { month: "T2", patients: 162, appointments: 195, success: 88 },
-    { month: "T3", patients: 178, appointments: 210, success: 90 },
-    { month: "T4", patients: 156, appointments: 185, success: 87 },
-    { month: "T5", patients: 189, appointments: 225, success: 92 },
-    { month: "T6", patients: 201, appointments: 240, success: 89 },
-  ];
+  // TODO: Replace with actual API data
+  const performanceData = [];
 
   const departmentData = [
     { name: "IVF", value: 45, color: "#1890ff" },

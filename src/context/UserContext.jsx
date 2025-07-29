@@ -151,6 +151,8 @@ export const UserProvider = ({ children }) => {
     };
 
     console.log("🔍 [UserContext] Data to store:", dataToStore);
+    console.log("🔍 [UserContext] Token exists:", !!dataToStore.token);
+    console.log("🔍 [UserContext] Token preview:", dataToStore.token ? dataToStore.token.substring(0, 50) + "..." : "NO TOKEN");
     console.log(
       "🔍 [UserContext] Dashboard path will be:",
       getDashboardPathForRole(mappedRole)
@@ -163,6 +165,10 @@ export const UserProvider = ({ children }) => {
     localStorage.setItem("user", JSON.stringify(dataToStore));
     if (userData.token) {
       localStorage.setItem("token", userData.token);
+      localStorage.setItem("accessToken", userData.token); // Also save to STORAGE_KEYS format
+      console.log("✅ [UserContext] Token saved to localStorage (both formats)");
+    } else {
+      console.warn("⚠️ [UserContext] No token found in userData:", userData);
     }
 
     // 🔄 Fetch thêm profile data để lấy avatar mới nhất (skip mock tokens)
@@ -232,6 +238,12 @@ export const UserProvider = ({ children }) => {
 
           setUser(updatedUserData);
           localStorage.setItem("user", JSON.stringify(updatedUserData));
+          
+          // 🔄 Đảm bảo token vẫn được lưu riêng biệt
+          if (userData.token) {
+            localStorage.setItem("token", userData.token);
+            console.log("✅ [UserContext] Token re-saved after profile update");
+          }
         }
       } catch (error) {
         console.warn(
@@ -273,6 +285,7 @@ export const UserProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem("user");
     localStorage.removeItem("token");
+    localStorage.removeItem("accessToken"); // Also remove STORAGE_KEYS format
     setUser(null);
     setIsLoggedIn(false);
   };
@@ -363,6 +376,8 @@ export const UserProvider = ({ children }) => {
   // Có được truy cập patient area không?
   const canAccessPatientArea = () =>
     user?.role === USER_ROLES.PATIENT && user?.hasRegisteredService;
+
+
 
   return (
     <UserContext.Provider

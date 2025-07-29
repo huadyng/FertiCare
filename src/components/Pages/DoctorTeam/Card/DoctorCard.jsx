@@ -9,11 +9,9 @@ const DoctorCard = ({ id, name, expYears, cases, pic, animationDelay = 0 }) => {
     navigate(`/doctor/${id}`);
   };
 
-  // Generate specialty tags (mock data for demo)
-  const specialties = ["Sản phụ khoa", "IVF", "Nội tiết sinh sản"];
-
-  // Calculate success rate (mock calculation)
-  const successRate = Math.min(95 + Math.floor(Math.random() * 5), 99);
+  // TODO: Replace with actual data
+  const specialties = doctor.specialties || [];
+  const successRate = doctor.successRate || 0;
 
   return (
     <div

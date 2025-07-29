@@ -1,9 +1,12 @@
-import axiosClient from "./axiosClient";
+import axiosClient, { refreshTokenFromContext } from "../services/axiosClient.js";
 
 export const treatmentPlanAPI = {
   // Lưu phác đồ điều trị mới từ clinical result
   async createTreatmentPlanFromClinicalResult(resultId, planData) {
     try {
+      // 🔄 Try to refresh token before making request
+      refreshTokenFromContext();
+      
       const response = await axiosClient.post(
         `/api/treatment-workflow/treatment-plan/from-clinical-result/${resultId}`,
         planData
@@ -191,6 +194,9 @@ export const treatmentPlanAPI = {
   // Lấy template phác đồ điều trị
   async getTemplates() {
     try {
+      // 🔄 Try to refresh token before making request
+      refreshTokenFromContext();
+      
       const response = await axiosClient.get("/treatmentTemplates");
       return {
         success: true,
@@ -210,6 +216,9 @@ export const treatmentPlanAPI = {
   // Lấy template theo loại điều trị
   async getTemplateByType(treatmentType) {
     try {
+      // 🔄 Try to refresh token before making request
+      refreshTokenFromContext();
+      
       const response = await axiosClient.get(
         `/treatmentTemplates?type=${treatmentType}`
       );
@@ -256,6 +265,30 @@ export const treatmentPlanAPI = {
       isValid: errors.length === 0,
       errors,
     };
+  },
+
+  // Lấy phác đồ điều trị hiện tại (active) của bệnh nhân
+  async getActiveTreatmentPlan(patientId) {
+    try {
+      // 🔄 Try to refresh token before making request
+      refreshTokenFromContext();
+      
+      const response = await axiosClient.get(
+        `/api/treatment-workflow/patient/${patientId}/active-treatment-plan`
+      );
+      return {
+        success: true,
+        data: response.data,
+        message: "Lấy phác đồ điều trị hiện tại thành công",
+      };
+    } catch (error) {
+      console.error("Error fetching active treatment plan:", error);
+      return {
+        success: false,
+        error: error.message,
+        message: "Có lỗi xảy ra khi lấy phác đồ điều trị hiện tại",
+      };
+    }
   },
 };
 

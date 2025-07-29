@@ -55,6 +55,55 @@ const PatientTreatmentView = ({ patient, onBack }) => {
   });
   const [error, setError] = useState(null);
 
+  // Kiểm tra xem có patient hợp lệ không
+  if (!patient || !patient.id) {
+    return (
+      <div style={{ padding: '20px' }}>
+        <Card className="examination-main-card">
+          <div className="examination-header">
+            <Title level={2} className="examination-title">
+              <Space>
+                <UserOutlined className="title-icon" />
+                Thông tin điều trị
+              </Space>
+            </Title>
+          </div>
+          <div style={{
+            textAlign: 'center',
+            padding: '60px 20px',
+            background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+            borderRadius: '12px',
+            margin: '20px 0'
+          }}>
+            <div style={{ fontSize: '64px', marginBottom: '20px', opacity: 0.6 }}>
+              👨‍⚕️
+            </div>
+            <Title level={3} style={{ color: '#666', marginBottom: '16px' }}>
+              Không có bệnh nhân được chọn
+            </Title>
+            <Text style={{ fontSize: '16px', color: '#888', display: 'block', marginBottom: '24px' }}>
+              Vui lòng chọn bệnh nhân để xem thông tin điều trị
+            </Text>
+            <Button
+              type="primary"
+              size="large"
+              icon={<UserOutlined />}
+              style={{
+                background: 'linear-gradient(135deg, #ff6b9d 0%, #ff758c 100%)',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '12px 24px',
+                height: 'auto'
+              }}
+            >
+              Chọn bệnh nhân
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   useEffect(() => {
     if (patient?.id) {
       loadTreatmentData();

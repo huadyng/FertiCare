@@ -1294,3 +1294,332 @@
 .min-width-120 {
   min-width: 120px !important;
 }
+
+.treatment-plan-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  background: linear-gradient(135deg, #fce4ec 0%, #f8bbd9 100%);
+  min-height: 100vh;
+}
+
+.treatment-plan-container .ant-card {
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: none;
+  overflow: hidden;
+}
+
+.treatment-plan-container .ant-card-head {
+  background: linear-gradient(135deg, #e91e63 0%, #ad1457 100%);
+  border-bottom: none;
+  padding: 24px 32px;
+}
+
+.treatment-plan-container .ant-card-head-title {
+  color: white;
+  font-size: 24px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.section-card {
+  border-radius: 12px;
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.section-card .ant-card-head {
+  background: linear-gradient(135deg, #e91e63 0%, #ad1457 100%);
+  padding: 16px 24px;
+  border-bottom: none;
+}
+
+.section-card .ant-card-head-title {
+  color: white;
+  font-size: 16px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-card .ant-card-body {
+  padding: 24px;
+  background: #fafafa;
+}
+
+.treatment-plan-form {
+  background: white;
+  border-radius: 12px;
+  padding: 0;
+}
+
+.treatment-plan-form .ant-form-item {
+  margin-bottom: 20px;
+}
+
+.treatment-plan-form .ant-form-item-label > label {
+  font-weight: 500;
+  color: #333;
+  font-size: 14px;
+}
+
+.treatment-plan-form .ant-input,
+.treatment-plan-form .ant-input-number,
+.treatment-plan-form .ant-select-selector {
+  border-radius: 8px;
+  border: 1px solid #d9d9d9;
+  transition: all 0.3s ease;
+}
+
+.treatment-plan-form .ant-input:focus,
+.treatment-plan-form .ant-input-number:focus,
+.treatment-plan-form .ant-select-focused .ant-select-selector {
+  border-color: #ff7eb3;
+  box-shadow: 0 0 0 2px rgba(255, 126, 179, 0.2);
+}
+
+.treatment-plan-form .ant-input-number {
+  width: 100%;
+}
+
+.treatment-plan-form .ant-input-number-input {
+  border-radius: 8px;
+}
+
+.treatment-plan-form .ant-textarea {
+  border-radius: 8px;
+  resize: vertical;
+}
+
+.treatment-plan-form .ant-textarea:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+/* Treatment Steps Styling */
+.treatment-steps-section .ant-card {
+  border-radius: 8px;
+  border: 1px solid #e8e8e8;
+  margin-bottom: 12px;
+  background: white;
+}
+
+.treatment-steps-section .ant-card-body {
+  padding: 16px;
+}
+
+.treatment-steps-section .ant-form-item {
+  margin-bottom: 12px;
+}
+
+/* Medication Plan Styling */
+.medication-plan-section .ant-card {
+  border-radius: 8px;
+  border: 1px solid #e8e8e8;
+  margin-bottom: 12px;
+  background: white;
+}
+
+.medication-plan-section .ant-card-body {
+  padding: 16px;
+}
+
+.medication-plan-section .ant-form-item {
+  margin-bottom: 8px;
+}
+
+/* Monitoring Schedule Styling */
+.monitoring-schedule-section .ant-card {
+  border-radius: 8px;
+  border: 1px solid #e8e8e8;
+  margin-bottom: 12px;
+  background: white;
+}
+
+.monitoring-schedule-section .ant-card-body {
+  padding: 16px;
+}
+
+/* Buttons Styling */
+.treatment-plan-container .ant-btn {
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.treatment-plan-container .ant-btn-primary {
+  background: linear-gradient(135deg, #ff7eb3 0%, #ff758c 100%);
+  border: none;
+  color: white;
+  box-shadow: 0 4px 12px rgba(255, 126, 179, 0.3);
+}
+
+.treatment-plan-container .ant-btn-primary:hover {
+  background: linear-gradient(135deg, #ff6b9d 0%, #ff5a8a 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(255, 126, 179, 0.4);
+}
+
+.treatment-plan-container .ant-btn-default {
+  border: 1px solid #d9d9d9;
+  color: #666;
+  background: white;
+}
+
+.treatment-plan-container .ant-btn-default:hover {
+  border-color: #ff7eb3;
+  color: #ff7eb3;
+  transform: translateY(-1px);
+}
+
+.treatment-plan-container .ant-btn-dashed {
+  border: 2px dashed #d9d9d9;
+  color: #666;
+  background: #fafafa;
+  border-radius: 8px;
+  height: 48px;
+  font-weight: 500;
+}
+
+.treatment-plan-container .ant-btn-dashed:hover {
+  border-color: #667eea;
+  color: #667eea;
+  background: #f0f8ff;
+}
+
+.treatment-plan-container .ant-btn-danger {
+  border: none;
+  background: #ff4d4f;
+  color: white;
+}
+
+.treatment-plan-container .ant-btn-danger:hover {
+  background: #ff7875;
+  transform: translateY(-1px);
+}
+
+/* Delete buttons */
+.treatment-plan-container .ant-btn-text.ant-btn-dangerous {
+  color: #ff4d4f;
+  border: none;
+  background: transparent;
+  padding: 4px 8px;
+  height: auto;
+  border-radius: 4px;
+}
+
+.treatment-plan-container .ant-btn-text.ant-btn-dangerous:hover {
+  background: #fff1f0;
+  color: #ff7875;
+}
+
+/* Form List Styling */
+.treatment-plan-form .ant-form-item-list {
+  margin-bottom: 16px;
+}
+
+.treatment-plan-form .ant-form-item-list .ant-form-item {
+  margin-bottom: 8px;
+}
+
+/* Actions Section */
+.actions-section {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  padding: 24px;
+  border-radius: 12px;
+  margin-top: 24px;
+  text-align: right;
+  border: 1px solid #e8e8e8;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* Info Display */
+.info-display {
+  background: linear-gradient(135deg, #ffeef3 0%, #ffe4e6 100%);
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  border-left: 4px solid #ff7eb3;
+}
+
+.info-display p {
+  margin: 8px 0;
+  color: #333;
+  font-size: 14px;
+}
+
+.info-display b {
+  color: #ff758c;
+  font-weight: 600;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .treatment-plan-container {
+    padding: 10px;
+  }
+  
+  .treatment-plan-container .ant-card-head {
+    padding: 16px 20px;
+  }
+  
+  .treatment-plan-container .ant-card-head-title {
+    font-size: 20px;
+  }
+  
+  .section-card .ant-card-body {
+    padding: 16px;
+  }
+  
+  .actions-section {
+    padding: 16px;
+    text-align: center;
+  }
+  
+  .actions-section .ant-btn {
+    margin: 4px;
+  }
+}
+
+/* Loading State */
+.treatment-plan-container .ant-spin {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+/* Success/Error Messages */
+.treatment-plan-container .ant-message {
+  z-index: 1000;
+}
+
+/* Custom Scrollbar */
+.treatment-plan-container ::-webkit-scrollbar {
+  width: 6px;
+}
+
+.treatment-plan-container ::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.treatment-plan-container ::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.treatment-plan-container ::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
