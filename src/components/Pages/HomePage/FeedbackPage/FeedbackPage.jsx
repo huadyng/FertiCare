@@ -1,27 +1,27 @@
 import React from "react";
 import "./FeedbackPage.css";
 
-import avatar1 from "../../../../assets/img/customer.png";
-import avatar2 from "../../../../assets/img/customer.png";
-import avatar3 from "../../../../assets/img/customer.png";
+import avatar1 from "../../../../assets/img/phúc.png";
+import avatar2 from "../../../../assets/img/thiên.png";
+import avatar3 from "../../../../assets/img/sơn.png";
 
 const feedbacks = [
   {
-    name: "Nguyễn Thị Lan",
+    name: "Phúc Đẹp Trai",
     rating: 5,
     comment:
       "Tôi rất hài lòng với dịch vụ ở đây. Nhân viên tận tình, bác sĩ giỏi và máy móc hiện đại.",
     avatar: avatar1,
   },
   {
-    name: "Trần Văn Hùng",
+    name: "Thiên Bé'ss",
     rating: 4,
     comment:
       "Quy trình điều trị rõ ràng, được theo dõi sát sao. Rất tin tưởng trung tâm này.",
     avatar: avatar2,
   },
   {
-    name: "Lê Thu Hà",
+    name: "Lil Sơn",
     rating: 5,
     comment:
       "Sau nhiều năm chờ đợi, nhờ sự hỗ trợ từ đội ngũ ở đây mà tôi đã có tin vui. Cảm ơn rất nhiều!",

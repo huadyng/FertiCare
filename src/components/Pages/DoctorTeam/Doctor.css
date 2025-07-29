@@ -9,10 +9,10 @@
 .doctor-container {
   background: linear-gradient(
     135deg,
-    #ff7eb3 0%,
-    #ff758c 25%,
+    #ffffff 0%,
+    #d86c7e 25%,
     #ff6b9d 50%,
-    #e91e63 100%
+    #913855 100%
   );
   min-height: 100vh;
   position: relative;
@@ -51,7 +51,7 @@
   position: absolute;
   top: 10%;
   right: 10%;
-  width: 100px;
+  width: 100%;
   height: 100px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 50%;
@@ -78,6 +78,7 @@
   max-width: 1200px;
   margin: 0 auto;
   width: 100%;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .hero-section::before {
@@ -116,7 +117,7 @@
   color: white;
   margin-bottom: 1.5rem;
   text-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-  background: linear-gradient(45deg, #ffffff, #f8f9fa, #ffffff);
+  background: linear-gradient(45deg, #856464, #5692ce, #7c5f5f);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -147,7 +148,7 @@
 .doctor-intro {
   max-width: 800px;
   margin: 0 auto;
-  color: rgba(255, 255, 255, 0.95);
+  color: rgba(8, 8, 8, 0.95);
   font-size: 1.2rem;
   line-height: 1.8;
   font-weight: 400;
@@ -238,13 +239,12 @@
 }
 
 .stats-title {
-  font-size: 2.5rem;
-  color: white;
-  margin-bottom: 50px;
+   font-size: 3.5rem;
   font-weight: 800;
+  color: #ffffff;
+  text-shadow: 0 4px 20px rgba(255, 107, 157, 0.25);
+  line-height: 1.1;
   text-align: center;
-  text-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
-  position: relative;
 }
 
 .stats-title::after {
@@ -266,10 +266,9 @@
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 35px;
-  justify-content: center;
-  align-items: stretch;
+  grid-template-columns: repeat(2, 1fr); /* 2 cột */
+  gap: 2rem;
+  margin-top: 2rem;
 }
 
 .stat-item {
@@ -377,15 +376,12 @@
 /* Doctor List */
 .doctor-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 40px;
-  justify-content: center;
   justify-items: center;
-  position: relative;
-  z-index: 2;
-  margin: 0 auto 80px;
-  padding: 40px 0;
-  max-width: 1200px;
+  width: 100%;
+  padding: 40px 60px; /* Cho rộng hơn 1 chút về hai bên */
+  box-sizing: border-box;
 }
 
 /* Pagination */
@@ -754,6 +750,7 @@
   }
 
   .stats-title {
+    flex: 1;
     font-size: 2rem;
   }
 
@@ -828,8 +825,9 @@
   }
 
   .doctor-stats {
-    margin: 50px auto 30px;
-    padding: 40px 20px;
+      display: flex;
+  flex-direction: column;
+  align-items: center;
   }
 
   .stats-grid {

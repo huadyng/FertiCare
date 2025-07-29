@@ -60,7 +60,7 @@ const HomePage = () => {
       <Service />
       {/* {showServiceRegistration && <ServiceRegistration />} */}
       <DoctorCarousel />
-      <AchievementsPreview />
+      
       <ArticlePreview />
       <FeedbackPage />
     </>

@@ -27,11 +27,11 @@ const Doctor = () => {
   // Tính toán thống kê
   const totalExperience = doctor.reduce(
     (sum, doc) => sum + (parseInt(doc.expyears) || 0),
-    0
+    0,
   );
   const totalCases = doctor.reduce(
     (sum, doc) => sum + (parseInt(doc.cases) || 0),
-    0
+    0,
   );
   const avgExperience =
     doctor.length > 0 ? Math.round(totalExperience / doctor.length) : 0;
@@ -73,7 +73,7 @@ const Doctor = () => {
           onClick={() => handlePageChange(currentPage - 1)}
         >
           <i className="fas fa-chevron-left"></i>
-        </button>
+        </button>,
       );
     }
 
@@ -86,13 +86,13 @@ const Doctor = () => {
           onClick={() => handlePageChange(1)}
         >
           1
-        </button>
+        </button>,
       );
       if (startPage > 2) {
         pageNumbers.push(
           <span key="dots1" className="pagination-dots">
             ...
-          </span>
+          </span>,
         );
       }
     }
@@ -106,7 +106,7 @@ const Doctor = () => {
           onClick={() => handlePageChange(i)}
         >
           {i}
-        </button>
+        </button>,
       );
     }
 
@@ -116,7 +116,7 @@ const Doctor = () => {
         pageNumbers.push(
           <span key="dots2" className="pagination-dots">
             ...
-          </span>
+          </span>,
         );
       }
       pageNumbers.push(
@@ -126,7 +126,7 @@ const Doctor = () => {
           onClick={() => handlePageChange(totalPages)}
         >
           {totalPages}
-        </button>
+        </button>,
       );
     }
 
@@ -139,7 +139,7 @@ const Doctor = () => {
           onClick={() => handlePageChange(currentPage + 1)}
         >
           <i className="fas fa-chevron-right"></i>
-        </button>
+        </button>,
       );
     }
 
@@ -201,11 +201,7 @@ const Doctor = () => {
 
         {/* Pagination Info */}
         <div className="pagination-info">
-          <p>
-            Hiển thị {indexOfFirstDoctor + 1}-
-            {Math.min(indexOfLastDoctor, doctor.length)} trong {doctor.length}{" "}
-            bác sĩ
-          </p>
+          
         </div>
 
         {/* Doctor Cards */}
