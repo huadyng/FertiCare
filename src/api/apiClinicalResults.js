@@ -5,7 +5,9 @@ export const clinicalResultsAPI = {
   // Lấy clinical result theo ID
   getClinicalResultById: async (resultId) => {
     try {
-      const response = await axiosClient.get(`/api/clinical-results/${resultId}`);
+      const response = await axiosClient.get(
+        `/api/clinical-results/${resultId}`
+      );
       return transformBackendToFrontend(response.data);
     } catch (error) {
       console.error("Error fetching examination result by ID:", error);
@@ -16,7 +18,6 @@ export const clinicalResultsAPI = {
   // Cập nhật clinical result theo ID
   updateExaminationResult: async (id, examinationData) => {
     try {
-      
       // Transform frontend data format to backend format
       const backendData = {
         patientId: examinationData.patientId,
@@ -29,7 +30,7 @@ export const clinicalResultsAPI = {
         symptoms: JSON.stringify(examinationData.symptoms || []),
         symptomsDetail: Array.isArray(examinationData.symptoms)
           ? examinationData.symptoms.join(", ")
-          : (examinationData.symptomsDetail || ""),
+          : examinationData.symptomsDetail || "",
         bloodPressureSystolic: examinationData.bloodPressureSystolic || null,
         bloodPressureDiastolic: examinationData.bloodPressureDiastolic || null,
         temperature: examinationData.temperature || null,
@@ -56,18 +57,29 @@ export const clinicalResultsAPI = {
         diagnosis: examinationData.diagnosis || "",
         diagnosisCode: examinationData.diagnosisCode || "",
         severityLevel: examinationData.severityLevel || "",
-        infertilityDurationMonths: examinationData.infertilityDurationMonths || null,
+        infertilityDurationMonths:
+          examinationData.infertilityDurationMonths || null,
         previousTreatments: examinationData.previousTreatments || "",
         recommendations: examinationData.recommendations || "",
         treatmentPriority: examinationData.treatmentPriority || "",
-        completionDate: examinationData.completionDate ? new Date(examinationData.completionDate) : null,
-        nextAppointmentDate: examinationData.nextAppointmentDate ? new Date(examinationData.nextAppointmentDate) : null,
+        completionDate: examinationData.completionDate
+          ? new Date(examinationData.completionDate)
+          : null,
+        nextAppointmentDate: examinationData.nextAppointmentDate
+          ? new Date(examinationData.nextAppointmentDate)
+          : null,
         notes: examinationData.notes || "",
         attachedFileUrl: examinationData.attachedFileUrl || null,
         bloodType: examinationData.bloodType || null,
-        isCompleted: examinationData.isCompleted !== undefined ? examinationData.isCompleted : true,
+        isCompleted:
+          examinationData.isCompleted !== undefined
+            ? examinationData.isCompleted
+            : true,
       };
-      const response = await axiosClient.put(`/api/clinical-results/${id}`, backendData);
+      const response = await axiosClient.put(
+        `/api/clinical-results/${id}`,
+        backendData
+      );
       return transformBackendToFrontend(response.data);
     } catch (error) {
       console.error("Error updating examination result:", error);
@@ -78,7 +90,9 @@ export const clinicalResultsAPI = {
   // Lấy danh sách clinical result của bệnh nhân
   getClinicalResultsByPatient: async (patientId) => {
     try {
-      const response = await axiosClient.get(`/api/clinical-results/patient/${patientId}`);
+      const response = await axiosClient.get(
+        `/api/clinical-results/patient/${patientId}`
+      );
       if (response.data && Array.isArray(response.data)) {
         return response.data.map(transformBackendToFrontend);
       }
@@ -96,7 +110,8 @@ const transformBackendToFrontend = (backendData) => {
     id: backendData.resultId,
     patientId: backendData.patientId,
     doctorId: backendData.doctorId,
-    examinationDate: backendData.examinationDate || backendData.examination_date,
+    examinationDate:
+      backendData.examinationDate || backendData.examination_date,
     resultType: backendData.resultType || backendData.result_type,
     notes: backendData.notes || backendData.note || backendData.ghi_chu,
     symptoms: (() => {

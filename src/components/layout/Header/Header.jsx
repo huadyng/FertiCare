@@ -201,6 +201,16 @@ export default function Header() {
                   <span>Lịch hẹn của tôi</span>
                 </div>
                 <div
+                  className="dropdown-item"
+                  onClick={() => {
+                    setShowDropdown(false);
+                    navigate("/clinical-results");
+                  }}
+                >
+                  <span className="dropdown-icon">🩺</span>
+                  <span>Khám lâm sàng</span>
+                </div>
+                <div
                   className="dropdown-item logout-item"
                   onClick={handleLogoutClick}
                 >
