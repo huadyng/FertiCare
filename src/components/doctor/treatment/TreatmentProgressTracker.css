@@ -1,10 +1,24 @@
 .treatment-progress-tracker {
+  max-width: 1200px;
+  margin: 0 auto;
   padding: 20px;
 }
 
 .treatment-progress-tracker .ant-card {
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(255, 126, 179, 0.1);
+  border: 1px solid rgba(255, 126, 179, 0.2);
+}
+
+.treatment-progress-tracker .ant-card-head {
+  background: linear-gradient(135deg, #ffeef3 0%, #ffe4e6 100%);
+  border-bottom: 1px solid rgba(255, 126, 179, 0.2);
+  border-radius: 16px 16px 0 0;
+}
+
+.treatment-progress-tracker .ant-card-head-title {
+  font-weight: 600;
+  color: #ad1457;
 }
 
 .treatment-progress-tracker .ant-statistic {
@@ -21,9 +35,9 @@
 }
 
 .treatment-progress-tracker .ant-table-thead > tr > th {
-  background: rgba(255, 126, 179, 0.05);
-  border-bottom: 2px solid rgba(255, 126, 179, 0.1);
-  color: #2c3e50;
+  background: linear-gradient(135deg, #ffeef3 0%, #ffe4e6 100%);
+  border-bottom: 2px solid rgba(255, 126, 179, 0.2);
+  color: #ad1457;
   font-weight: 600;
 }
 
@@ -45,7 +59,7 @@
 
 .treatment-progress-tracker .ant-descriptions-item-label {
   font-weight: 600;
-  color: #2c3e50;
+  color: #ad1457;
 }
 
 .treatment-progress-tracker .ant-alert {
@@ -58,6 +72,45 @@
 
 .treatment-progress-tracker .ant-modal-content {
   border-radius: 12px;
+}
+
+/* Button Styling */
+.treatment-progress-tracker .ant-btn-primary {
+  background: linear-gradient(135deg, #ff7eb3 0%, #ff758c 100%);
+  border: none;
+  color: white;
+  box-shadow: 0 4px 12px rgba(255, 126, 179, 0.3);
+  border-radius: 8px;
+  font-weight: 500;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.treatment-progress-tracker .ant-btn-primary:hover {
+  background: linear-gradient(135deg, #ff6b9d 0%, #ff5a8a 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(255, 126, 179, 0.4);
+}
+
+.treatment-progress-tracker .ant-btn-default {
+  border-radius: 8px;
+  font-weight: 500;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-color: rgba(255, 126, 179, 0.3);
+  color: #ff7eb3;
+}
+
+.treatment-progress-tracker .ant-btn-default:hover {
+  border-color: #ff7eb3;
+  color: #ff7eb3;
+  transform: translateY(-1px);
 }
 
 /* Animation for status updates */

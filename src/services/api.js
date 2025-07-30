@@ -1,6 +1,6 @@
 // Mock API Service - Dễ dàng thay thế bằng API thật
 const API_BASE_URL = "http://localhost:3001";
-const USE_MOCK = true; // Đặt false khi có API thật
+const USE_MOCK = false; // Đặt false khi có API thật
 
 // Utility function để simulate API delay
 const delay = (ms = 1000) => new Promise((resolve) => setTimeout(resolve, ms));

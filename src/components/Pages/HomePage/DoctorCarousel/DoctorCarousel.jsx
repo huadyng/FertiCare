@@ -13,7 +13,7 @@ export default function DoctorCarousel() {
 
   useEffect(() => {
     axios
-      .get("https://6836811f664e72d28e4105f7.mockapi.io/api/doctor")
+      .get("/api/doctors") // TODO: Replace with actual API endpoint
       .then((res) => setDoctors(res.data))
       .catch((err) => console.error("Lỗi khi gọi API:", err));
   }, []);

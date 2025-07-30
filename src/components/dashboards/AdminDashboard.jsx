@@ -41,37 +41,13 @@ const AdminDashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setDashboardData({
-        totalUsers: 1247,
-        totalDoctors: 45,
-        totalPatients: 1168,
-        totalDepartments: 8,
-        monthlyGrowth: 12.5,
-        activeUsers: 892,
-        pendingApprovals: 23,
-        systemHealth: 98.5,
-      });
-      setLoading(false);
-    }, 1000);
+    // TODO: Replace with actual API call
+    setLoading(false);
   }, []);
 
-  // Sample data for charts
-  const userGrowthData = [
-    { month: "Jan", users: 980 },
-    { month: "Feb", users: 1045 },
-    { month: "Mar", users: 1123 },
-    { month: "Apr", users: 1187 },
-    { month: "May", users: 1247 },
-  ];
-
-  const departmentData = [
-    { department: "IVF", patients: 456, color: "#1890ff" },
-    { department: "Khám tổng quát", patients: 312, color: "#52c41a" },
-    { department: "Siêu âm", patients: 234, color: "#722ed1" },
-    { department: "Xét nghiệm", patients: 166, color: "#fa8c16" },
-  ];
+  // TODO: Replace with actual API data
+  const userGrowthData = [];
+  const departmentData = [];
 
   const recentActivities = [
     {

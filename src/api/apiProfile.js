@@ -43,10 +43,11 @@ const apiProfile = {
             "gender",
             "dateOfBirth",
             "address",
-            "avatarUrl",
             "specialty",
             "qualification",
             "experienceYears",
+            "notes",
+            "status"
           ];
           break;
         case "CUSTOMER":
@@ -131,70 +132,6 @@ const apiProfile = {
     } catch (error) {
       console.error(
         "❌ [apiProfile] Lỗi khi cập nhật profile:",
-        error.response?.data || error.message
-      );
-      throw error;
-    }
-  },
-
-  // Upload avatar - sử dụng endpoint có sẵn
-  uploadAvatar: async (file) => {
-    try {
-      console.log("📷 [apiProfile] Đang upload avatar...");
-
-      // Debug token
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        const userData = JSON.parse(storedUser);
-        console.log(
-          "🔍 [apiProfile] Token exists:",
-          userData.token ? "YES" : "NO"
-        );
-      } else {
-        console.log("🔍 [apiProfile] No user data in localStorage");
-      }
-
-      const formData = new FormData();
-      formData.append("avatar", file);
-
-      const response = await axiosClient.post(
-        "/api/profiles/me/avatar",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-
-      console.log("✅ [apiProfile] Upload avatar thành công:", response.data);
-      return response.data;
-    } catch (error) {
-      console.error(
-        "❌ [apiProfile] Lỗi khi upload avatar:",
-        error.response?.data || error.message
-      );
-      throw error;
-    }
-  },
-
-  // Cập nhật avatar URL - sử dụng endpoint generic cho tất cả role
-  updateAvatarUrl: async (avatarUrl) => {
-    try {
-      console.log("🌐 [apiProfile] Đang cập nhật avatar URL:", avatarUrl);
-
-      const response = await axiosClient.put("/api/profiles/me", {
-        avatarUrl: avatarUrl,
-      });
-
-      console.log(
-        "✅ [apiProfile] Cập nhật avatar URL thành công:",
-        response.data
-      );
-      return response.data;
-    } catch (error) {
-      console.error(
-        "❌ [apiProfile] Lỗi khi cập nhật avatar URL:",
         error.response?.data || error.message
       );
       throw error;

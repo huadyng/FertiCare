@@ -14,6 +14,9 @@ const apiLogin = {
       });
 
       console.log("✅ [apiLogin] Phản hồi từ server:", response.data);
+      console.log("✅ [apiLogin] Token trong response:", !!response.data.token);
+      console.log("✅ [apiLogin] Token preview:", response.data.token ? response.data.token.substring(0, 50) + "..." : "NO TOKEN");
+      console.log("✅ [apiLogin] Response keys:", Object.keys(response.data));
       return response.data;
     } catch (error) {
       console.error(

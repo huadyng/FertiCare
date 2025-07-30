@@ -14,7 +14,7 @@ import "./App.css";
 // Lazy load các components/pages chính
 const Footer = lazy(() => import("./components/layout/Footer/Footer"));
 const Header = lazy(() => import("./components/layout/Header/Header"));
-const Doctor = lazy(() => import("./components/pages/DoctorTeam/Doctor"));
+const Doctor = lazy(() => import("./components/Pages/DoctorTeam/Doctor"));
 const Services = lazy(() => import("./components/Pages/Services/ServicesList"));
 
 const ServiceDetail = lazy(() =>
@@ -33,21 +33,21 @@ const Achievements = lazy(() =>
 
 const Login = lazy(() => import("./components/Pages/Login/Login"));
 const Register = lazy(() => import("./components/Pages/Register/Register"));
-const RegisterPage = lazy(() => import("./components/pages/Register/Register"));
+const RegisterPage = lazy(() => import("./components/Pages/Register/Register"));
 const DoctorDetail = lazy(() =>
-  import("./components/pages/DoctorTeam/Card/DoctorDetail/DoctorDetail")
+  import("./components/Pages/DoctorTeam/Card/DoctorDetail/DoctorDetail")
 );
 const HomePage = lazy(() =>
   import("./components/Pages/HomePage/index/HomePage")
 );
 const RegistrationForm = lazy(() =>
-  import("./components/pages/RegistrationForm/RegistrationForm")
+  import("./components/Pages/RegistrationForm/RegistrationForm")
 );
-const Pie = lazy(() => import("./components/pages/ChartsForm/Pie"));
-const Contact = lazy(() => import("./components/pages/Contact/ContactForm"));
-const BlogPublic = lazy(() => import("./components/pages/Blog/BlogPublic"));
-const BlogManager = lazy(() => import("./components/pages/Blog/BlogManager"));
-const BlogDetail = lazy(() => import("./components/pages/Blog/BlogDetail"));
+const Pie = lazy(() => import("./components/Pages/ChartsForm/pie"));
+const Contact = lazy(() => import("./components/Pages/Contact/ContactForm"));
+const BlogPublic = lazy(() => import("./components/Pages/Blog/BlogPublic"));
+const BlogManager = lazy(() => import("./components/Pages/Blog/BlogManager"));
+const BlogDetail = lazy(() => import("./components/Pages/Blog/BlogDetail"));
 const ForgotPassword = lazy(() =>
   import("./components/Pages/ForgotPassword/ForgotPassword")
 );
@@ -55,10 +55,10 @@ const ResetPassword = lazy(() =>
   import("./components/Pages/ForgotPassword/ResetPassword")
 );
 const VerifyEmail = lazy(() =>
-  import("./components/pages/VerifyEmail/VerifyEmail")
+  import("./components/Pages/VerifyEmail/VerifyEmail")
 );
 const UserProfile = lazy(() =>
-  import("./components/pages/Profile/UserProfile")
+  import("./components/Pages/Profile/UserProfile")
 );
 
 // Lazy load layouts và dashboard
@@ -96,7 +96,7 @@ const ScheduleManagement = lazy(() =>
 const ShiftManagement = lazy(() =>
   import("./components/manager/ShiftManagement")
 );
-const MockLogin = lazy(() => import("./components/auth/MockLogin"));
+
 
 // Import auth routes (hoặc dùng component cũ cũng được)
 import {
@@ -408,8 +408,8 @@ function AppContent() {
           }
         />
 
-        {/* Mock Login for testing */}
-        <Route path="/mock-login" element={<MockLogin />} />
+        
+
 
         {/* User Profile - Test Route (No Auth Required for Testing) */}
         <Route

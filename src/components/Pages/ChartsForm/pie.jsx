@@ -18,7 +18,7 @@ export default function RatingsPieChart() {
 
   useEffect(() => {
     axios
-      .get("https://6846f5f97dbda7ee7ab10825.mockapi.io/ratings")
+      .get("/api/ratings") // TODO: Replace with actual API endpoint
       .then(res => {
         const all = res.data;
         const likeList = all.filter(item => item.feedbacks === true || item.feedbacks === "true");
