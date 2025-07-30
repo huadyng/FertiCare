@@ -12,6 +12,7 @@ import { UserProvider, UserContext } from "./context/UserContext";
 import "./App.css";
 import PatientAppointments from "./components/Pages/PatientAppointments/PatientAppointments";
 import ClinicalResultsPage from "./components/Pages/ClinicalResults/ClinicalResultsPage";
+import TreatmentProcess from "./components/Pages/TreatmentProcess/TreatmentProcess";
 
 // Lazy load các components/pages chính
 const Footer = lazy(() => import("./components/layout/Footer/Footer"));
@@ -391,6 +392,16 @@ function AppContent() {
             <LayoutWrapper>
               <ClinicalResultsPage />
             </LayoutWrapper>
+          }
+        />
+        <Route
+          path="/treatment-process"
+          element={
+            <AuthRequiredRoute>
+              <LayoutWrapper>
+                <TreatmentProcess />
+              </LayoutWrapper>
+            </AuthRequiredRoute>
           }
         />
 

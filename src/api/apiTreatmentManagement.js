@@ -715,9 +715,23 @@ const apiTreatmentManagement = {
           "✅ [apiTreatmentManagement] Treatment phases từ patient API:",
           response.data
         );
+
+        // Backend trả về Map với key "tablePhases" chứa array
+        let phasesArray = [];
+        if (response.data && typeof response.data === "object") {
+          if (
+            response.data.tablePhases &&
+            Array.isArray(response.data.tablePhases)
+          ) {
+            phasesArray = response.data.tablePhases;
+          } else if (Array.isArray(response.data)) {
+            phasesArray = response.data;
+          }
+        }
+
         return {
           success: true,
-          data: response.data,
+          data: phasesArray,
           message: "Lấy phases điều trị thành công",
         };
       }
@@ -1106,39 +1120,56 @@ const apiTreatmentManagement = {
   // Lấy active treatment plan của patient (tối ưu nhất)
   getActiveTreatmentPlan: async (patientId) => {
     try {
-      console.log("🔍 [apiTreatmentManagement] Getting active treatment plan for patient:", patientId);
-      
+      console.log(
+        "🔍 [apiTreatmentManagement] Getting active treatment plan for patient:",
+        patientId
+      );
+
       // Sử dụng endpoint trực tiếp từ backend
       const response = await axiosClient.get(
         `/api/treatment-workflow/patient/${patientId}/active-treatment-plan`
       );
-      
-      console.log("✅ [apiTreatmentManagement] Active treatment plan response:", response.data);
-      
+
+      console.log(
+        "✅ [apiTreatmentManagement] Active treatment plan response:",
+        response.data
+      );
+
       return {
         success: true,
         data: response.data,
         message: "Lấy phác đồ điều trị thành công",
       };
     } catch (error) {
-      console.error("❌ [apiTreatmentManagement] Error fetching active treatment plan:", error);
+      console.error(
+        "❌ [apiTreatmentManagement] Error fetching active treatment plan:",
+        error
+      );
 
       // Handle 404 - No active treatment plan found
       if (error.response?.status === 404) {
-        console.log("ℹ️ [apiTreatmentManagement] No active treatment plan found for patient:", patientId);
-        
+        console.log(
+          "ℹ️ [apiTreatmentManagement] No active treatment plan found for patient:",
+          patientId
+        );
+
         // Thử lấy treatment plan mới nhất từ treatment history
         try {
-          console.log("🔄 [apiTreatmentManagement] Trying to get latest treatment plan from history...");
+          console.log(
+            "🔄 [apiTreatmentManagement] Trying to get latest treatment plan from history..."
+          );
           const historyResponse = await axiosClient.get(
             `/api/treatment-workflow/patient/${patientId}/treatment-history`
           );
-          
+
           if (historyResponse.data && historyResponse.data.length > 0) {
             // Lấy plan mới nhất
             const latestPlan = historyResponse.data[0];
-            console.log("✅ [apiTreatmentManagement] Found latest treatment plan from history:", latestPlan);
-            
+            console.log(
+              "✅ [apiTreatmentManagement] Found latest treatment plan from history:",
+              latestPlan
+            );
+
             return {
               success: true,
               data: latestPlan,
@@ -1147,9 +1178,12 @@ const apiTreatmentManagement = {
             };
           }
         } catch (historyError) {
-          console.warn("⚠️ [apiTreatmentManagement] Could not get treatment history:", historyError);
+          console.warn(
+            "⚠️ [apiTreatmentManagement] Could not get treatment history:",
+            historyError
+          );
         }
-        
+
         return {
           success: false,
           data: null,
@@ -1631,8 +1665,10 @@ const apiTreatmentManagement = {
         `🔄 [apiTreatmentManagement] Getting treatment schedules for patient: ${patientId}`
       );
 
-      const response = await axiosClient.get(`/api/treatment-schedule/patient/${patientId}`);
-      
+      const response = await axiosClient.get(
+        `/api/treatment-schedule/patient/${patientId}`
+      );
+
       console.log(
         "✅ [apiTreatmentManagement] Treatment schedules retrieved:",
         response.data
@@ -1648,7 +1684,8 @@ const apiTreatmentManagement = {
       return {
         success: false,
         data: [],
-        message: error.response?.data?.message || "Không thể lấy danh sách lịch hẹn",
+        message:
+          error.response?.data?.message || "Không thể lấy danh sách lịch hẹn",
       };
     }
   },
@@ -1660,8 +1697,11 @@ const apiTreatmentManagement = {
         `🔄 [apiTreatmentManagement] Updating schedule status: ${scheduleId} to ${statusData.status}`
       );
 
-      const response = await axiosClient.put(`/api/treatment-schedule/${scheduleId}/status`, statusData);
-      
+      const response = await axiosClient.put(
+        `/api/treatment-schedule/${scheduleId}/status`,
+        statusData
+      );
+
       console.log(
         "✅ [apiTreatmentManagement] Schedule status updated:",
         response.data
@@ -1677,7 +1717,8 @@ const apiTreatmentManagement = {
       return {
         success: false,
         data: null,
-        message: error.response?.data?.message || "Không thể cập nhật trạng thái",
+        message:
+          error.response?.data?.message || "Không thể cập nhật trạng thái",
       };
     }
   },
