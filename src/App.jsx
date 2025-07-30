@@ -13,6 +13,7 @@ import "./App.css";
 import PatientAppointments from "./components/Pages/PatientAppointments/PatientAppointments";
 import ClinicalResultsPage from "./components/Pages/ClinicalResults/ClinicalResultsPage";
 import TreatmentProcess from "./components/Pages/TreatmentProcess/TreatmentProcess";
+import TreatmentHistory from "./components/Pages/TreatmentHistory/TreatmentHistory";
 
 // Lazy load các components/pages chính
 const Footer = lazy(() => import("./components/layout/Footer/Footer"));
@@ -400,6 +401,16 @@ function AppContent() {
             <AuthRequiredRoute>
               <LayoutWrapper>
                 <TreatmentProcess />
+              </LayoutWrapper>
+            </AuthRequiredRoute>
+          }
+        />
+        <Route
+          path="/treatment-history"
+          element={
+            <AuthRequiredRoute>
+              <LayoutWrapper>
+                <TreatmentHistory />
               </LayoutWrapper>
             </AuthRequiredRoute>
           }

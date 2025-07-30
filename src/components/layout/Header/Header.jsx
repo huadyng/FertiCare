@@ -221,6 +221,16 @@ export default function Header() {
                   <span>Quy trình điều trị</span>
                 </div>
                 <div
+                  className="dropdown-item"
+                  onClick={() => {
+                    setShowDropdown(false);
+                    navigate("/treatment-history");
+                  }}
+                >
+                  <span className="dropdown-icon">📋</span>
+                  <span>Lịch sử điều trị</span>
+                </div>
+                <div
                   className="dropdown-item logout-item"
                   onClick={handleLogoutClick}
                 >

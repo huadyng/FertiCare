@@ -41,10 +41,7 @@ const apiTreatmentManagement = {
     }
 
     // Kiểm tra quyền và doctorId trước khi trả về endpoint cho bác sĩ
-    if (
-      endpointType === "treatment-phases" ||
-      endpointType === "treatment-history"
-    ) {
+    if (endpointType === "treatment-phases") {
       if (userRole === "DOCTOR") {
         if (!doctorId) {
           // Không tìm thấy doctorId, trả về null để báo lỗi
@@ -762,74 +759,23 @@ const apiTreatmentManagement = {
         `📋 [apiTreatmentManagement] Lấy treatment history cho patient ${patientId}...`
       );
 
-      const userRole = apiTreatmentManagement.getCurrentUserRole();
+      // Tất cả roles đều sử dụng API treatment-history
+      const historyEndpoint = apiTreatmentManagement.getRoleAppropriateEndpoint(
+        patientId,
+        "treatment-history"
+      );
 
-      if (userRole === "DOCTOR") {
-        // DOCTOR: Lấy từ phases tổng hợp và lọc theo patientId
-        const user = localStorage.getItem("user");
-        let doctorId = null;
-        if (user) {
-          const userData = JSON.parse(user);
-          doctorId = userData.id || userData.userId;
-        }
-
-        const response = await axiosClient.get(
-          `/api/treatment-workflow/doctor/${doctorId}/treatment-phases`
+      if (historyEndpoint) {
+        const response = await axiosClient.get(historyEndpoint);
+        console.log(
+          "✅ [apiTreatmentManagement] Treatment history từ API:",
+          response.data
         );
-
-        if (response.data && Array.isArray(response.data)) {
-          // Lọc phases theo patientId
-          const patientPhases = response.data.filter(
-            (phase) =>
-              phase.patientId === patientId || phase.patient?.id === patientId
-          );
-
-          // Chuyển đổi phases thành treatment history format
-          const treatmentHistory = patientPhases.map((phase) => ({
-            planId: phase.treatmentPlan?.planId || phase.planId,
-            planName: phase.treatmentPlan?.planName || phase.planName,
-            treatmentType:
-              phase.treatmentPlan?.treatmentType || phase.treatmentType,
-            startDate: phase.treatmentPlan?.startDate || phase.startDate,
-            endDate: phase.treatmentPlan?.endDate || phase.endDate,
-            status: phase.status || phase.treatmentPlan?.status,
-            doctorId: phase.treatmentPlan?.doctorId || phase.doctorId,
-            successProbability: phase.treatmentPlan?.successProbability,
-            estimatedCost: phase.treatmentPlan?.estimatedCost,
-            phaseName: phase.phaseName,
-            phaseStatus: phase.status,
-          }));
-
-          console.log(
-            "✅ [apiTreatmentManagement] Treatment history từ doctor phases:",
-            treatmentHistory
-          );
-          return {
-            success: true,
-            data: treatmentHistory,
-            message: "Lấy lịch sử điều trị từ phases của bác sĩ thành công",
-          };
-        }
-      } else {
-        // CUSTOMER/PATIENT: Sử dụng API riêng
-        const historyEndpoint =
-          apiTreatmentManagement.getRoleAppropriateEndpoint(
-            patientId,
-            "treatment-history"
-          );
-
-        if (historyEndpoint) {
-          const response = await axiosClient.get(historyEndpoint);
-          console.log(
-            "✅ [apiTreatmentManagement] Treatment history từ patient API:",
-            response.data
-          );
-          return {
-            success: true,
-            data: response.data,
-            message: "Lấy lịch sử điều trị thành công",
-          };
-        }
+        return {
+          success: true,
+          data: response.data,
+          message: "Lấy lịch sử điều trị thành công",
+        };
       }
 
       return {
