@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from "react";
 import { UserContext } from "../../../context/UserContext";
 import apiProfile from "../../../api/apiProfile";
 import "./UserProfile.css";
+import { validateDateOfBirth } from "../../../utils/dateValidation";
 
 const UserProfile = () => {
   const { user, USER_ROLES, setUser } = useContext(UserContext);
@@ -13,15 +14,6 @@ const UserProfile = () => {
   const [updateLoading, setUpdateLoading] = useState(false);
   const [updateMessage, setUpdateMessage] = useState("");
   const [validationErrors, setValidationErrors] = useState({});
-  const [avatarFile, setAvatarFile] = useState(null);
-  const [avatarPreview, setAvatarPreview] = useState(null);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
-
-  // Thêm state mới cho việc chọn phương thức cập nhật avatar
-  const [avatarMethod, setAvatarMethod] = useState("file"); // 'file' hoặc 'url'
-  const [avatarUrl, setAvatarUrl] = useState("");
-  const [avatarUrlValid, setAvatarUrlValid] = useState(true);
-  const [avatarUpdateTime, setAvatarUpdateTime] = useState(Date.now());
 
   useEffect(() => {
     fetchProfile().catch((error) => {
@@ -66,7 +58,14 @@ const UserProfile = () => {
             profileData = await apiProfile.getCustomerProfile();
             break;
           case "DOCTOR":
-            profileData = await apiProfile.getDoctorProfile();
+            // ✅ Luôn lấy profile của bác sĩ đang đăng nhập
+            console.log("🔍 [UserProfile] Lấy profile cho doctor ID:", user?.id);
+            profileData = await apiProfile.getDoctorProfile(user?.id);
+            // Đảm bảo ID của bác sĩ được set
+            if (profileData && user?.id) {
+              profileData.id = user.id;
+              console.log("✅ [UserProfile] Đã set doctor ID:", user.id);
+            }
             break;
           case "MANAGER":
           case "ADMIN":
@@ -80,7 +79,15 @@ const UserProfile = () => {
         console.log(
           "⚠️ [UserProfile] Role-specific endpoint failed, trying generic endpoint"
         );
-        profileData = await apiProfile.getMyProfile();
+        try {
+          profileData = await apiProfile.getMyProfile();
+        } catch (genericError) {
+          console.log(
+            "⚠️ [UserProfile] Generic endpoint also failed, using user context data"
+          );
+          // Sử dụng dữ liệu từ user context nếu cả hai API đều thất bại
+          profileData = null;
+        }
       }
 
       console.log(
@@ -90,9 +97,11 @@ const UserProfile = () => {
       setProfile(profileData);
       setFormData({
         ...profileData,
+        gender: convertGenderForForm(profileData.gender),
         maritalStatus: convertMaritalStatusForForm(profileData.maritalStatus),
+        // ✅ Bỏ avatarUrl vì không có chức năng upload
+        avatarUrl: undefined,
       }); // Initialize form with current data (converted for display)
-      setAvatarUpdateTime(Date.now()); // Force image refresh
 
       return profileData; // Return profile data để có thể sử dụng ngay
     } catch (err) {
@@ -124,6 +133,7 @@ const UserProfile = () => {
         setProfile(fallbackProfile);
         setFormData({
           ...fallbackProfile,
+          gender: convertGenderForForm(fallbackProfile.gender),
           maritalStatus: convertMaritalStatusForForm(
             fallbackProfile.maritalStatus
           ),
@@ -148,23 +158,18 @@ const UserProfile = () => {
       // Reset form data when canceling
       setFormData({
         ...profile,
+        gender: convertGenderForForm(profile.gender),
         maritalStatus: convertMaritalStatusForForm(profile.maritalStatus),
       });
       setValidationErrors({});
       setUpdateMessage("");
-      setAvatarFile(null);
-      setAvatarPreview(null);
-      // Reset avatar states
-      setAvatarMethod("file");
-      setAvatarUrl("");
-      setAvatarUrlValid(true);
     } else {
       // Khi bắt đầu edit, đảm bảo customer chỉ có thể dùng file upload
       if (
         user?.role?.toUpperCase() === USER_ROLES.CUSTOMER ||
         user?.role?.toUpperCase() === USER_ROLES.PATIENT
       ) {
-        setAvatarMethod("file");
+        // No avatar logic to reset here as avatar states are removed
       }
     }
     setIsEditing(!isEditing);
@@ -205,137 +210,15 @@ const UserProfile = () => {
       errors.phone = "Số điện thoại không đúng định dạng";
     }
 
+    // Validate date of birth
+    if (formData.dateOfBirth) {
+      const dateValidation = validateDateOfBirth(formData.dateOfBirth);
+      if (!dateValidation.isValid) {
+        errors.dateOfBirth = dateValidation.message;
+      }
+    }
+
     return errors;
-  };
-
-  const handleAvatarChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Kiểm tra định dạng file
-      if (!file.type.startsWith("image/")) {
-        setUpdateMessage("❌ Vui lòng chọn file hình ảnh!");
-        return;
-      }
-
-      // Kiểm tra kích thước file (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setUpdateMessage("❌ File quá lớn! Vui lòng chọn file nhỏ hơn 5MB.");
-        return;
-      }
-
-      setAvatarFile(file);
-
-      // Tạo preview
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setAvatarPreview(e.target.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleUploadAvatar = async () => {
-    console.log("🚀 [UserProfile] Starting avatar upload...");
-    console.log("📁 [UserProfile] Avatar file:", avatarFile);
-
-    if (!avatarFile) {
-      setUpdateMessage("❌ Vui lòng chọn file avatar!");
-      return;
-    }
-
-    try {
-      setUploadingAvatar(true);
-      setUpdateMessage("");
-
-      console.log("📤 [UserProfile] Calling apiProfile.uploadAvatar...");
-      const result = await apiProfile.uploadAvatar(avatarFile);
-      console.log("✅ [UserProfile] Upload result:", result);
-
-      // Hiển thị message phù hợp
-      const resultMessage =
-        result?.message?.messageDetail || result?.message || "";
-      if (resultMessage.includes("mock")) {
-        setUpdateMessage("✅ Upload avatar thành công (chế độ demo)!");
-      } else {
-        setUpdateMessage("✅ Upload avatar thành công!");
-      }
-
-      // Đợi một chút để server xử lý xong, sau đó fetch lại profile
-      console.log("⏰ [UserProfile] Waiting 500ms before refetch...");
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      console.log("🔄 [UserProfile] Fetching updated profile...");
-      const updatedProfileData = await fetchProfile();
-
-      // Cập nhật timestamp để force reload image
-      console.log("🖼️ [UserProfile] Force refresh image with new timestamp");
-      setAvatarUpdateTime(Date.now());
-
-      setAvatarFile(null);
-      setAvatarPreview(null);
-
-      console.log("✅ [UserProfile] Avatar upload process completed!");
-
-      // BƯỚC 7: Cập nhật user context để Header hiển thị avatar mới
-      if (updatedProfileData?.avatarUrl) {
-        const updatedUser = {
-          ...user,
-          avatarUrl: updatedProfileData.avatarUrl,
-        };
-        setUser(updatedUser);
-        // Cập nhật localStorage
-        localStorage.setItem("user", JSON.stringify(updatedUser));
-        console.log("🔄 [UserProfile] Updated user context with new avatar");
-      }
-
-      // Clear success message after 3 seconds
-      setTimeout(() => setUpdateMessage(""), 3000);
-    } catch (err) {
-      setUpdateMessage(
-        "❌ Upload avatar thất bại: " +
-          (err.response?.data?.message || err.message)
-      );
-    } finally {
-      setUploadingAvatar(false);
-    }
-  };
-
-  // Xử lý thay đổi phương thức avatar (file hoặc URL)
-  const handleAvatarMethodChange = (method) => {
-    setAvatarMethod(method);
-    // Reset states khi chuyển đổi phương thức
-    if (method === "file") {
-      setAvatarUrl("");
-      setAvatarUrlValid(true);
-    } else {
-      setAvatarFile(null);
-      setAvatarPreview(null);
-    }
-    setUpdateMessage("");
-  };
-
-  // Xử lý thay đổi URL avatar
-  const handleAvatarUrlChange = (e) => {
-    const url = e.target.value;
-    setAvatarUrl(url);
-
-    // Validate URL đơn giản
-    if (url && url.trim()) {
-      const urlPattern =
-        /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
-      const isValidUrl = urlPattern.test(url);
-      setAvatarUrlValid(isValidUrl);
-
-      // Tạo preview cho URL (nếu hợp lệ)
-      if (isValidUrl) {
-        setAvatarPreview(url);
-      } else {
-        setAvatarPreview(null);
-      }
-    } else {
-      setAvatarUrlValid(true);
-      setAvatarPreview(null);
-    }
   };
 
   const handleUpdateProfile = async (e) => {
@@ -347,114 +230,62 @@ const UserProfile = () => {
       return;
     }
 
-    // Validate avatar URL nếu có
-    if (avatarMethod === "url" && avatarUrl && !avatarUrlValid) {
-      setUpdateMessage("❌ URL hình ảnh không hợp lệ!");
-      return;
-    }
-
     try {
       setUpdateLoading(true);
       setUpdateMessage("");
 
-      // BƯỚC 1: Upload avatar nếu có file được chọn
-      if (avatarFile) {
-        console.log("📤 [UserProfile] Uploading avatar first...");
-        setUpdateMessage("🔄 Đang upload hình ảnh...");
-
-        try {
-          const uploadResult = await apiProfile.uploadAvatar(avatarFile);
-          console.log(
-            "✅ [UserProfile] Avatar uploaded successfully:",
-            uploadResult
-          );
-          setUpdateMessage("🔄 Đang cập nhật thông tin...");
-        } catch (avatarError) {
-          console.error("❌ [UserProfile] Avatar upload failed:", avatarError);
-          setUpdateMessage(
-            "❌ Upload hình ảnh thất bại: " +
-              (avatarError.response?.data?.message || avatarError.message)
-          );
-          setUpdateLoading(false);
-          return;
-        }
-      }
-
-      // BƯỚC 2: Chuẩn bị data để cập nhật profile
+      // Chuẩn bị data để cập nhật profile
       let dataToUpdate = { ...formData };
 
-      // Chỉ thêm avatarUrl cho Doctor/Admin/Manager (Customer không được phép)
-      if (
-        avatarMethod === "url" &&
-        avatarUrl &&
-        avatarUrlValid &&
-        (user?.role?.toUpperCase() === USER_ROLES.DOCTOR ||
-          user?.role?.toUpperCase() === USER_ROLES.ADMIN ||
-          user?.role?.toUpperCase() === USER_ROLES.MANAGER)
-      ) {
-        dataToUpdate.avatarUrl = avatarUrl;
+      // ✅ Đảm bảo ID được giữ nguyên cho doctor
+      if (user?.role?.toUpperCase() === "DOCTOR" && user?.id) {
+        dataToUpdate.id = user.id;
+        console.log("✅ [UserProfile] Giữ nguyên doctor ID:", user.id);
       }
 
-      // BƯỚC 3: Cập nhật profile
+      // Cập nhật profile
       console.log("📝 [UserProfile] Updating profile...");
       const updatedProfile = await apiProfile.updateProfile(
         dataToUpdate,
         user?.role
       );
 
-      // BƯỚC 4: Hiển thị message thành công
+      // Hiển thị message thành công
       const messageDetail = updatedProfile?.message?.messageDetail || "";
       let successMessage = "";
 
       if (messageDetail.includes("mock")) {
         successMessage = "✅ Cập nhật thông tin thành công (chế độ demo)!";
       } else {
-        // Xác định message dựa trên việc có upload avatar hay không
-        if (avatarFile) {
-          successMessage = "✅ Cập nhật thông tin và hình ảnh thành công!";
-        } else if (
-          avatarMethod === "url" &&
-          avatarUrl &&
-          avatarUrlValid &&
-          (user?.role?.toUpperCase() === USER_ROLES.DOCTOR ||
-            user?.role?.toUpperCase() === USER_ROLES.ADMIN ||
-            user?.role?.toUpperCase() === USER_ROLES.MANAGER)
-        ) {
-          successMessage = "✅ Cập nhật thông tin và hình ảnh thành công!";
-        } else {
-          successMessage = "✅ Cập nhật thông tin thành công!";
-        }
+        successMessage = "✅ Cập nhật thông tin thành công!";
       }
 
       setUpdateMessage(successMessage);
       setIsEditing(false);
 
-      // BƯỚC 5: Reset states
-      setAvatarMethod("file");
-      setAvatarUrl("");
-      setAvatarUrlValid(true);
-      setAvatarFile(null);
-      setAvatarPreview(null);
+      // Reset states
+      // No avatar states to reset
 
-      // BƯỚC 6: Fetch lại profile và force refresh image
+      // Fetch lại profile
       console.log("🔄 [UserProfile] Fetching updated profile...");
       const updatedProfileData = await fetchProfile();
 
       // Force refresh image timestamp
-      setAvatarUpdateTime(Date.now());
+      // No avatar update time to force refresh
       console.log("✅ [UserProfile] Update process completed!");
 
-      // BƯỚC 7: Cập nhật user context để Header hiển thị avatar mới
-      if (updatedProfileData?.avatarUrl) {
-        const updatedUser = {
-          ...user,
-          avatarUrl: updatedProfileData.avatarUrl,
-        };
-        setUser(updatedUser);
-        // Cập nhật localStorage
-        localStorage.setItem("user", JSON.stringify(updatedUser));
-        console.log("🔄 [UserProfile] Updated user context with new avatar");
-      }
+      // ✅ Bỏ logic cập nhật avatar vì không có chức năng upload
+      // Cập nhật user context để Header hiển thị avatar mới
+      // if (updatedProfileData?.avatarUrl) {
+      //   const updatedUser = {
+      //     ...user,
+      //     avatarUrl: updatedProfileData.avatarUrl,
+      //   };
+      //   setUser(updatedUser);
+      //   // Cập nhật localStorage
+      //   localStorage.setItem("user", JSON.stringify(updatedUser));
+      //   console.log("🔄 [UserProfile] Updated user context with new avatar");
+      // }
 
       // Clear success message after 3 seconds
       setTimeout(() => setUpdateMessage(""), 3000);
@@ -519,6 +350,12 @@ const UserProfile = () => {
       default:
         return maritalStatus; // Giữ nguyên nếu không match
     }
+  };
+
+  // Function để convert gender từ backend format (MALE/FEMALE/OTHER) sang frontend format (male/female/other)
+  const convertGenderForForm = (gender) => {
+    if (!gender) return "";
+    return gender.toLowerCase();
   };
 
   const getRoleDisplay = () => {
@@ -650,11 +487,7 @@ const UserProfile = () => {
       <div className="profile-header">
         <div className="profile-avatar">
           <img
-            src={
-              profile.avatarUrl
-                ? `${profile.avatarUrl}?t=${avatarUpdateTime}`
-                : "/src/assets/img/default-avatar.png"
-            }
+            src="/src/assets/img/default-avatar.png"
             alt="Avatar"
             onError={(e) => {
               e.target.src = "/src/assets/img/default-avatar.png";
@@ -751,6 +584,7 @@ const UserProfile = () => {
                     value={formData.email || ""}
                     onChange={handleInputChange}
                     className={validationErrors.email ? "error" : ""}
+                    disabled={true}
                   />
                   {validationErrors.email && (
                     <span className="error-text">{validationErrors.email}</span>
@@ -803,136 +637,32 @@ const UserProfile = () => {
                         : ""
                     }
                     onChange={handleInputChange}
+                    className={validationErrors.dateOfBirth ? "error" : ""}
+                    min={(() => {
+                      const today = new Date();
+                      return new Date(today.getFullYear() - 50, today.getMonth(), today.getDate()).toISOString().split('T')[0];
+                    })()}
+                    max={(() => {
+                      const today = new Date();
+                      return new Date(today.getFullYear() - 18, today.getMonth(), today.getDate()).toISOString().split('T')[0];
+                    })()}
+                  />
+                  {validationErrors.dateOfBirth && (
+                    <p className="field-error">{validationErrors.dateOfBirth}</p>
+                  )}
+                </div>
+
+                <div className="form-group full-width">
+                  <label htmlFor="address">Địa chỉ</label>
+                  <textarea
+                    id="address"
+                    name="address"
+                    value={formData.address || ""}
+                    onChange={handleInputChange}
+                    rows="3"
+                    placeholder="Nhập địa chỉ đầy đủ..."
                   />
                 </div>
-
-                <div className="form-group">
-                  <label>Cập nhật Avatar</label>
-                  <div className="avatar-upload-section">
-                    {/* Lựa chọn phương thức - chỉ hiển thị cho Doctor/Admin */}
-                    {(user?.role?.toUpperCase() === USER_ROLES.DOCTOR ||
-                      user?.role?.toUpperCase() === USER_ROLES.ADMIN ||
-                      user?.role?.toUpperCase() === USER_ROLES.MANAGER) && (
-                      <div className="avatar-method-selection">
-                        <div className="method-option">
-                          <input
-                            type="radio"
-                            id="avatar-file"
-                            name="avatarMethod"
-                            value="file"
-                            checked={avatarMethod === "file"}
-                            onChange={() => handleAvatarMethodChange("file")}
-                          />
-                          <label htmlFor="avatar-file">
-                            📁 Upload từ máy tính
-                          </label>
-                        </div>
-                        <div className="method-option">
-                          <input
-                            type="radio"
-                            id="avatar-url"
-                            name="avatarMethod"
-                            value="url"
-                            checked={avatarMethod === "url"}
-                            onChange={() => handleAvatarMethodChange("url")}
-                          />
-                          <label htmlFor="avatar-url">
-                            🌐 Nhập URL từ mạng
-                          </label>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Thông báo cho customer */}
-                    {(user?.role?.toUpperCase() === USER_ROLES.CUSTOMER ||
-                      user?.role?.toUpperCase() === USER_ROLES.PATIENT) && (
-                      <div className="customer-avatar-notice">
-                        <p>📁 Chỉ hỗ trợ upload file từ máy tính</p>
-                        <small>
-                          Tính năng nhập URL chỉ dành cho Doctor/Admin
-                        </small>
-                      </div>
-                    )}
-
-                    {/* Upload từ file - luôn hiển thị cho customer, chỉ hiển thị khi chọn file cho các role khác */}
-                    {(avatarMethod === "file" ||
-                      user?.role?.toUpperCase() === USER_ROLES.CUSTOMER ||
-                      user?.role?.toUpperCase() === USER_ROLES.PATIENT) && (
-                      <div className="avatar-file-section">
-                        <input
-                          type="file"
-                          id="avatarFile"
-                          accept="image/*"
-                          onChange={handleAvatarChange}
-                          className="file-input"
-                        />
-                        {avatarPreview && (
-                          <div className="avatar-preview">
-                            <img
-                              src={avatarPreview}
-                              alt="Preview"
-                              className="preview-image"
-                            />
-                            <p className="preview-text">
-                              ✅ Hình ảnh đã chọn - sẽ được cập nhật khi lưu
-                            </p>
-                          </div>
-                        )}
-                        <small className="help-text">
-                          Chọn file hình ảnh (max 5MB) - sẽ tự động upload khi
-                          nhấn "Lưu thay đổi"
-                        </small>
-                      </div>
-                    )}
-
-                    {/* Nhập URL */}
-                    {avatarMethod === "url" && (
-                      <div className="avatar-url-section">
-                        <input
-                          type="url"
-                          id="avatarUrl"
-                          placeholder="Nhập URL hình ảnh (vd: https://example.com/avatar.jpg)"
-                          value={avatarUrl}
-                          onChange={handleAvatarUrlChange}
-                          className={`url-input ${
-                            !avatarUrlValid ? "error" : ""
-                          }`}
-                        />
-                        {!avatarUrlValid && (
-                          <span className="error-text">URL không hợp lệ</span>
-                        )}
-                        {avatarPreview && avatarUrlValid && (
-                          <div className="avatar-preview">
-                            <img
-                              src={avatarPreview}
-                              alt="Preview"
-                              className="preview-image"
-                              onError={() => {
-                                setAvatarPreview(null);
-                                setAvatarUrlValid(false);
-                              }}
-                            />
-                          </div>
-                        )}
-                        <small className="help-text">
-                          URL sẽ được cập nhật khi bạn ấn "Lưu thay đổi"
-                        </small>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="form-group full-width">
-                <label htmlFor="address">Địa chỉ</label>
-                <textarea
-                  id="address"
-                  name="address"
-                  value={formData.address || ""}
-                  onChange={handleInputChange}
-                  rows="3"
-                  placeholder="Nhập địa chỉ đầy đủ..."
-                />
               </div>
 
               {/* Role-specific fields */}
@@ -1058,11 +788,7 @@ const UserProfile = () => {
                   disabled={updateLoading}
                 >
                   {updateLoading
-                    ? avatarFile
-                      ? "🔄 Đang upload & lưu..."
-                      : "🔄 Đang lưu..."
-                    : avatarFile
-                    ? "💾 Lưu & Upload"
+                    ? "🔄 Đang lưu..."
                     : "💾 Lưu thay đổi"}
                 </button>
               </div>

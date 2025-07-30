@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import {
   Card,
   Row,
@@ -30,6 +30,7 @@ import {
 } from "@ant-design/icons";
 
 import { UserContext } from "../../context/UserContext";
+import axiosClient from "../../services/axiosClient";
 
 const { Title, Text, Paragraph } = Typography;
 const { TabPane } = Tabs;

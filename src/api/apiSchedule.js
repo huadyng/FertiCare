@@ -1,4 +1,4 @@
-import axiosClient from "./axiosClient";
+import axiosClient from "../services/axiosClient";
 const BASE_SCHEDULE = "/api/manager/schedule";
 
 // 📥 Lấy danh sách ca trực

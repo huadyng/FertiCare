@@ -9,7 +9,6 @@ import {
   Row,
   Col,
   Statistic,
-  Timeline,
   Modal,
   Form,
   Select,
@@ -30,8 +29,6 @@ import {
   ClockCircleOutlined,
   ExclamationCircleOutlined,
   EditOutlined,
-  HistoryOutlined,
-  ReloadOutlined,
   CalendarOutlined,
   FileTextOutlined,
   UserOutlined,
@@ -49,6 +46,7 @@ const TreatmentProgressTracker = ({
   treatmentPlanId,
   patientInfo,
   onPhaseStatusChange,
+  key, // 🆕 Thêm key prop để force re-mount
 }) => {
   const { user } = useContext(UserContext);
   const [loading, setLoading] = useState(false);
@@ -59,22 +57,84 @@ const TreatmentProgressTracker = ({
   const [editingPhase, setEditingPhase] = useState(null);
   const [statusForm] = Form.useForm();
   const [updatingStatus, setUpdatingStatus] = useState(false);
-  const [historyModal, setHistoryModal] = useState(false);
-  const [statusHistory, setStatusHistory] = useState([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [componentMounted, setComponentMounted] = useState(false);
+
+  // Kiểm tra xem có patientId hợp lệ không
+  if (!patientId) {
+    return (
+      <div style={{ padding: '20px' }}>
+        <Card className="examination-main-card">
+          <div className="examination-header">
+            <Title level={2} className="examination-title">
+              <Space>
+                <UserOutlined className="title-icon" />
+                Theo dõi tiến trình
+              </Space>
+            </Title>
+          </div>
+          <div style={{
+            textAlign: 'center',
+            padding: '60px 20px',
+            background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+            borderRadius: '12px',
+            margin: '20px 0'
+          }}>
+            <div style={{ fontSize: '64px', marginBottom: '20px', opacity: 0.6 }}>
+              📊
+            </div>
+            <Title level={3} style={{ color: '#666', marginBottom: '16px' }}>
+              Không có bệnh nhân theo dõi
+            </Title>
+            <Text style={{ fontSize: '16px', color: '#888', display: 'block', marginBottom: '24px' }}>
+              Vui lòng chọn bệnh nhân để theo dõi tiến độ điều trị
+            </Text>
+            <Button
+              type="primary"
+              size="large"
+              icon={<UserOutlined />}
+              style={{
+                background: 'linear-gradient(135deg, #ff6b9d 0%, #ff758c 100%)',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '12px 24px',
+                height: 'auto'
+              }}
+            >
+              Chọn bệnh nhân
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   // Load all treatment data
   useEffect(() => {
     if (treatmentPlanId) {
       loadTreatmentData();
     }
-  }, [treatmentPlanId]);
+  }, [treatmentPlanId, refreshTrigger]);
+
+  // 🆕 Force load data khi component mount
+  useEffect(() => {
+    setComponentMounted(true);
+    if (treatmentPlanId) {
+      loadTreatmentData();
+    }
+  }, []); // Empty dependency array = only run on mount
+
+  // 🆕 Reload data khi component mounted và có treatmentPlanId
+  useEffect(() => {
+    if (componentMounted && treatmentPlanId) {
+      loadTreatmentData();
+    }
+  }, [componentMounted, treatmentPlanId]);
 
   const loadTreatmentData = async () => {
     setLoading(true);
     try {
-      console.log("🔄 Loading treatment progress data...");
-
       // Load phases, current phase, and progress in parallel
       const [phasesResult, currentPhaseResult, progressResult] =
         await Promise.allSettled([
@@ -86,9 +146,7 @@ const TreatmentProgressTracker = ({
       // Handle phases
       if (phasesResult.status === "fulfilled" && phasesResult.value.success) {
         setPhases(phasesResult.value.data);
-        console.log("✅ Phases loaded:", phasesResult.value.data);
       } else {
-        console.warn("⚠️ Failed to load phases");
         setPhases([]);
       }
 
@@ -98,9 +156,7 @@ const TreatmentProgressTracker = ({
         currentPhaseResult.value.success
       ) {
         setCurrentPhase(currentPhaseResult.value.data);
-        console.log("✅ Current phase loaded:", currentPhaseResult.value.data);
       } else {
-        console.warn("⚠️ No current phase found");
         setCurrentPhase(null);
       }
 
@@ -110,14 +166,26 @@ const TreatmentProgressTracker = ({
         progressResult.value.success
       ) {
         setProgress(progressResult.value.data);
-        console.log("✅ Progress loaded:", progressResult.value.data);
       } else {
-        console.warn("⚠️ Failed to load progress");
         setProgress(null);
       }
     } catch (error) {
-      console.error("❌ Error loading treatment data:", error);
-      message.error("Không thể tải dữ liệu điều trị");
+      console.error("❌ [TreatmentProgressTracker] Error loading treatment data:", error);
+      
+      // 🆕 Xử lý lỗi authentication
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        console.warn("⚠️ [TreatmentProgressTracker] Authentication error, but continuing with empty data");
+        // Không logout, chỉ hiển thị dữ liệu trống
+        setPhases([]);
+        setCurrentPhase(null);
+        setProgress(null);
+      } else {
+        // Lỗi khác - vẫn hiển thị dữ liệu trống
+        setPhases([]);
+        setCurrentPhase(null);
+        setProgress(null);
+        message.error("Không thể tải dữ liệu điều trị");
+      }
     } finally {
       setLoading(false);
     }
@@ -134,23 +202,59 @@ const TreatmentProgressTracker = ({
       );
 
       if (result.success) {
-        message.success("✅ Cập nhật trạng thái thành công");
+        message.success("✅ Cập nhật trạng thái phase thành công");
 
-        // Reload data
-        await loadTreatmentData();
+        // 🆕 Cập nhật state ngay lập tức thay vì chỉ reload
+        setPhases(prevPhases => 
+          prevPhases.map(phase => 
+            phase.phaseId === phaseId 
+              ? { ...phase, ...statusData }
+              : phase
+          )
+        );
+
+        // 🆕 Cập nhật current phase nếu cần
+        setCurrentPhase(prevCurrent => {
+          if (prevCurrent && prevCurrent.phaseId === phaseId) {
+            return { ...prevCurrent, ...statusData };
+          }
+          return prevCurrent;
+        });
+
+        // 🆕 Reload progress data để cập nhật thống kê
+        try {
+          const progressResult = await apiTreatmentManagement.getTreatmentProgress(treatmentPlanId);
+          if (progressResult.success) {
+            setProgress(progressResult.data);
+          }
+        } catch (progressError) {
+          // Silent fail for progress reload
+        }
 
         // Notify parent component
         if (onPhaseStatusChange) {
-          onPhaseStatusChange(phaseId, statusData.status);
+          onPhaseStatusChange(result.data);
         }
+
+        // 🆕 Force re-render để đảm bảo UI được cập nhật
+        setRefreshTrigger(prev => prev + 1);
+
+        // 🆕 Force re-render sau 1 giây để đảm bảo UI được cập nhật
+        setTimeout(() => {
+          setRefreshTrigger(prev => prev + 1);
+        }, 1000);
 
         return result;
       } else {
         throw new Error(result.message || "Không thể cập nhật trạng thái");
       }
     } catch (error) {
-      console.error("❌ Error updating phase status:", error);
-      message.error(`❌ Lỗi: ${error.message}`);
+      // Handle specific backend errors
+      if (error.response?.data?.message) {
+        message.error(`❌ ${error.response.data.message}`);
+      } else {
+        message.error(`❌ Lỗi: ${error.message}`);
+      }
       return { success: false, message: error.message };
     } finally {
       setUpdatingStatus(false);
@@ -171,6 +275,19 @@ const TreatmentProgressTracker = ({
   const handleSaveStatus = async (values) => {
     if (!editingPhase) return;
 
+    // Validate business rules
+    if (values.status === "In Progress" && editingPhase.status === "Pending") {
+      // Check if previous phase is completed
+      const currentPhaseOrder = editingPhase.phaseOrder;
+      if (currentPhaseOrder > 1) {
+        const previousPhase = phases.find(p => p.phaseOrder === currentPhaseOrder - 1);
+        if (previousPhase && previousPhase.status !== "Completed") {
+          message.error(`❌ Không thể bắt đầu giai đoạn ${currentPhaseOrder} vì giai đoạn ${currentPhaseOrder - 1} chưa hoàn thành`);
+          return;
+        }
+      }
+    }
+
     const statusData = {
       status: values.status,
       notes: values.notes || "",
@@ -185,59 +302,30 @@ const TreatmentProgressTracker = ({
     }
   };
 
-  // Load status history
-  const loadStatusHistory = async (phaseId) => {
-    setLoadingHistory(true);
-    try {
-      const result = await apiTreatmentManagement.getPhaseStatusHistory(
-        phaseId
-      );
-      if (result.success) {
-        setStatusHistory(result.data);
-      } else {
-        setStatusHistory([]);
-      }
-    } catch (error) {
-      console.error("❌ Error loading status history:", error);
-      setStatusHistory([]);
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
 
-  // Show status history
-  const showStatusHistory = (phase) => {
-    loadStatusHistory(phase.phaseId);
-    setHistoryModal(true);
-  };
 
   // Get status display info
   const getStatusInfo = (status) => {
     const statusMap = {
       Pending: {
-        color: "orange",
+        color: "warning",
         icon: <ClockCircleOutlined />,
         text: "Chờ thực hiện",
       },
       "In Progress": {
-        color: "blue",
+        color: "processing",
         icon: <PlayCircleOutlined />,
         text: "Đang thực hiện",
       },
       Completed: {
-        color: "green",
+        color: "success",
         icon: <CheckCircleOutlined />,
         text: "Hoàn thành",
       },
       Cancelled: {
-        color: "red",
+        color: "error",
         icon: <ExclamationCircleOutlined />,
         text: "Đã hủy",
-      },
-      "On Hold": {
-        color: "yellow",
-        icon: <PauseCircleOutlined />,
-        text: "Tạm dừng",
       },
     };
     return (
@@ -247,6 +335,58 @@ const TreatmentProgressTracker = ({
         text: status,
       }
     );
+  };
+
+  // Check if phase can be updated
+  const canUpdatePhase = (phase) => {
+    // Cannot update Completed or Cancelled phases
+    if (phase.status === "Completed" || phase.status === "Cancelled") {
+      return false;
+    }
+    return true;
+  };
+
+  // Get available status options for a phase
+  const getAvailableStatusOptions = (phase) => {
+    const currentStatus = phase.status;
+    const options = [];
+
+    switch (currentStatus) {
+      case "Pending":
+        options.push(
+          { value: "Pending", label: "Chờ thực hiện", disabled: false },
+          { value: "In Progress", label: "Đang thực hiện", disabled: false },
+          { value: "Cancelled", label: "Đã hủy", disabled: false }
+        );
+        break;
+      case "In Progress":
+        options.push(
+          { value: "In Progress", label: "Đang thực hiện", disabled: false },
+          { value: "Completed", label: "Hoàn thành", disabled: false },
+          { value: "Cancelled", label: "Đã hủy", disabled: false }
+          // 🆕 Không có option "Pending" - không thể quay lại trạng thái chờ
+        );
+        break;
+      case "Completed":
+        options.push(
+          { value: "Completed", label: "Hoàn thành", disabled: true }
+        );
+        break;
+      case "Cancelled":
+        options.push(
+          { value: "Cancelled", label: "Đã hủy", disabled: true }
+        );
+        break;
+      default:
+        options.push(
+          { value: "Pending", label: "Chờ thực hiện", disabled: false },
+          { value: "In Progress", label: "Đang thực hiện", disabled: false },
+          { value: "Completed", label: "Hoàn thành", disabled: false },
+          { value: "Cancelled", label: "Đã hủy", disabled: false }
+        );
+    }
+
+    return options;
   };
 
   // Table columns
@@ -313,26 +453,18 @@ const TreatmentProgressTracker = ({
     {
       title: "Thao tác",
       key: "actions",
-      width: 150,
+      width: 100,
       render: (_, record) => (
-        <Space size="small">
-          <Button
-            type="link"
-            size="small"
-            onClick={() => handleStatusUpdate(record)}
-            loading={updatingStatus}
-          >
-            Cập nhật
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            onClick={() => showStatusHistory(record)}
-            icon={<HistoryOutlined />}
-          >
-            Lịch sử
-          </Button>
-        </Space>
+        <Button
+          type="link"
+          size="small"
+          onClick={() => handleStatusUpdate(record)}
+          loading={updatingStatus}
+          disabled={!canUpdatePhase(record)}
+          title={!canUpdatePhase(record) ? "Không thể cập nhật phase đã hoàn thành/hủy" : "Cập nhật trạng thái"}
+        >
+          Cập nhật
+        </Button>
       ),
     },
   ];
@@ -356,15 +488,7 @@ const TreatmentProgressTracker = ({
             <span>Theo dõi tiến độ điều trị</span>
           </div>
         }
-        extra={
-          <Button
-            icon={<ReloadOutlined />}
-            onClick={loadTreatmentData}
-            loading={loading}
-          >
-            Tải lại
-          </Button>
-        }
+        extra={null}
         style={{ marginBottom: 16 }}
       >
         {/* Patient Info */}
@@ -509,7 +633,6 @@ const TreatmentProgressTracker = ({
 
       {/* Phases Table */}
       <Card
-        title={`Danh sách giai đoạn (${phases.length})`}
         style={{ marginBottom: 16 }}
       >
         <Table
@@ -568,21 +691,15 @@ const TreatmentProgressTracker = ({
             rules={[{ required: true, message: "Vui lòng chọn trạng thái" }]}
           >
             <Select placeholder="Chọn trạng thái">
-              <Option value="Pending">
-                <ClockCircleOutlined /> Chờ thực hiện
-              </Option>
-              <Option value="In Progress">
-                <PlayCircleOutlined /> Đang thực hiện
-              </Option>
-              <Option value="Completed">
-                <CheckCircleOutlined /> Hoàn thành
-              </Option>
-              <Option value="Cancelled">
-                <ExclamationCircleOutlined /> Đã hủy
-              </Option>
-              <Option value="On Hold">
-                <PauseCircleOutlined /> Tạm dừng
-              </Option>
+              {editingPhase && getAvailableStatusOptions(editingPhase).map(option => (
+                <Option 
+                  key={option.value} 
+                  value={option.value}
+                  disabled={option.disabled}
+                >
+                  {getStatusInfo(option.value).icon} {option.label}
+                </Option>
+              ))}
             </Select>
           </Form.Item>
 
@@ -597,49 +714,7 @@ const TreatmentProgressTracker = ({
         </Form>
       </Modal>
 
-      {/* Status History Modal */}
-      <Modal
-        title="Lịch sử trạng thái"
-        open={historyModal}
-        onCancel={() => setHistoryModal(false)}
-        footer={[
-          <Button key="close" onClick={() => setHistoryModal(false)}>
-            Đóng
-          </Button>,
-        ]}
-        width={600}
-      >
-        {loadingHistory ? (
-          <div style={{ textAlign: "center", padding: "20px" }}>
-            <Spin />
-          </div>
-        ) : (
-          <Timeline>
-            {statusHistory.map((item, index) => (
-              <Timeline.Item
-                key={item.id}
-                color={getStatusInfo(item.status).color}
-                dot={getStatusInfo(item.status).icon}
-              >
-                <div>
-                  <Text strong>{getStatusInfo(item.status).text}</Text>
-                  <div style={{ marginTop: 4 }}>
-                    <Text type="secondary">
-                      {dayjs(item.updatedAt).format("DD/MM/YYYY HH:mm")} -{" "}
-                      {item.updatedBy}
-                    </Text>
-                  </div>
-                  {item.notes && (
-                    <div style={{ marginTop: 4 }}>
-                      <Text>{item.notes}</Text>
-                    </div>
-                  )}
-                </div>
-              </Timeline.Item>
-            ))}
-          </Timeline>
-        )}
-      </Modal>
+
     </div>
   );
 };

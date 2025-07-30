@@ -148,64 +148,10 @@ export const debugUtils = {
     return true;
   },
 
-  // Tạo dữ liệu test
+  // TODO: Remove test data functionality
   createTestData: (patientId) => {
-    console.log("🧪 [debugUtils] Creating test data for patient:", patientId);
-
-    // Tạo examination data
-    const examData = {
-      patientId: patientId,
-      diagnosis: "Vô sinh nguyên phát",
-      clinicalSigns: {
-        bloodPressure: "120/80",
-        temperature: "36.5",
-        heartRate: "72",
-        weight: "55",
-        height: "160",
-      },
-      labResults: {
-        bloodTest: {
-          FSH: 8.5,
-          LH: 6.2,
-          E2: 45,
-          AMH: 2.1,
-        },
-        ultrasound: "Tử cung bình thường, buồng trứng có nang trứng",
-      },
-      notes: "Bệnh nhân khỏe mạnh, có thể tiến hành điều trị",
-      fromStandalonePage: true,
-      completedAt: new Date().toISOString(),
-    };
-
-    // Tạo treatment plan data
-    const planData = {
-      id: `plan_${Date.now()}`,
-      patientId: patientId,
-      treatmentType: "IUI",
-      planName: "Phác đồ IUI chuẩn",
-      status: "active",
-      startDate: new Date().toISOString(),
-      notes: "Phác đồ điều trị IUI cho bệnh nhân",
-      completedAt: new Date().toISOString(),
-    };
-
-    // Lưu vào localStorage
-    localStorage.setItem(
-      `examination_completed_${patientId}`,
-      JSON.stringify(examData)
-    );
-    localStorage.setItem(
-      `treatment_plan_completed_${patientId}`,
-      JSON.stringify(planData)
-    );
-
-    // Cập nhật state manager
-    const { treatmentStateManager } = require("./treatmentStateManager");
-    treatmentStateManager.updateExamination(patientId, examData);
-    treatmentStateManager.updateTreatmentPlan(patientId, planData);
-
-    console.log("✅ [debugUtils] Test data created");
-    return { examData, planData };
+    console.log("🧪 [debugUtils] Test data functionality removed");
+    return {};
   },
 
   // Clean up examination data for a specific patient
@@ -277,6 +223,8 @@ export const debugUtils = {
     return { cleanedCount, hasValidData: !!validData };
   },
 };
+
+
 
 // Thêm vào window để có thể gọi từ console
 if (typeof window !== "undefined") {

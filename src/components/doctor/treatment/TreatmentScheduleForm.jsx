@@ -46,12 +46,15 @@ import {
   ReloadOutlined,
   SaveOutlined,
   PlusOutlined,
+  InfoCircleOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { generateScheduleFromTemplate } from "./data/treatmentTemplates";
 import { treatmentStateManager } from "../../../utils/treatmentStateManager";
 import apiTreatmentManagement from "../../../api/apiTreatmentManagement";
 import { UserContext } from "../../../context/UserContext";
+import axiosClient from "../../../services/axiosClient";
+import "./TreatmentScheduleForm.css";
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
@@ -88,6 +91,55 @@ const TreatmentScheduleForm = ({
   const [sessionModal, setSessionModal] = useState(false);
   const { user } = useContext(UserContext);
 
+  // Kiểm tra xem có patientId hợp lệ không
+  if (!patientId) {
+    return (
+      <div style={{ padding: '20px' }}>
+        <Card className="examination-main-card">
+          <div className="examination-header">
+            <Title level={2} className="examination-title">
+              <Space>
+                <CalendarOutlined className="title-icon" />
+                Lập lịch điều trị
+              </Space>
+            </Title>
+          </div>
+          <div style={{
+            textAlign: 'center',
+            padding: '60px 20px',
+            background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+            borderRadius: '12px',
+            margin: '20px 0'
+          }}>
+            <div style={{ fontSize: '64px', marginBottom: '20px', opacity: 0.6 }}>
+              📅
+            </div>
+            <Title level={3} style={{ color: '#666', marginBottom: '16px' }}>
+              Không có lịch điều trị
+            </Title>
+            <Text style={{ fontSize: '16px', color: '#888', display: 'block', marginBottom: '24px' }}>
+              Vui lòng chọn bệnh nhân để lập lịch điều trị
+            </Text>
+            <Button
+              type="primary"
+              size="large"
+              icon={<UserOutlined />}
+              style={{
+                background: 'linear-gradient(135deg, #ff6b9d 0%, #ff758c 100%)',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '12px 24px',
+                height: 'auto'
+              }}
+            >
+              Chọn bệnh nhân
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   // Doctor customization states
   const [doctorNotes, setDoctorNotes] = useState("");
   const [customSessions, setCustomSessions] = useState([]);
@@ -98,6 +150,11 @@ const TreatmentScheduleForm = ({
   const [loadingPhases, setLoadingPhases] = useState(false);
   const [editingPhase, setEditingPhase] = useState(null);
   const [phaseModal, setPhaseModal] = useState(false);
+  
+  // Available times states
+  const [availableTimes, setAvailableTimes] = useState([]);
+  const [loadingAvailableTimes, setLoadingAvailableTimes] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null);
   const [currentTreatmentPlan, setCurrentTreatmentPlan] = useState(null);
   const [autoImporting, setAutoImporting] = useState(false);
   const [scheduleData, setScheduleData] = useState(null);
@@ -110,6 +167,23 @@ const TreatmentScheduleForm = ({
   const [activityModal, setActivityModal] = useState(false);
   const [editingActivity, setEditingActivity] = useState(null);
   const [activityStatuses, setActivityStatuses] = useState({});
+
+  // 🆕 Function để tạo initial values với ngày hiện tại
+  const getInitialFormValues = () => ({
+    startDate: dayjs().add(3, "days"),
+    preferredTime: null,
+    planName: ""
+  });
+
+  // 🆕 State để quản lý initial values
+  const [initialFormValues] = useState(getInitialFormValues());
+
+  // 🆕 State để theo dõi validation của form
+  const [formValues, setFormValues] = useState({
+    startDate: dayjs().add(3, "days"),
+    preferredTime: null,
+    planName: ""
+  });
 
   // State để theo dõi việc đã tải dữ liệu lần đầu
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
@@ -395,6 +469,39 @@ const TreatmentScheduleForm = ({
       setApiPhases([]);
     }
   }, [currentTreatmentPlan?.planId, user]);
+
+  // Load available times for selected date
+  const loadAvailableTimes = async (date) => {
+    if (!date) return;
+    
+    // Sử dụng doctorId từ user context hoặc cố định
+    const doctorId = user?.userId || user?.id;
+    
+    if (!doctorId) {
+      console.error("❌ No doctor ID available");
+      return { success: false, message: "Không tìm thấy thông tin bác sĩ" };
+    }
+    
+    setLoadingAvailableTimes(true);
+    try {
+      console.log("🔍 Loading available times for doctor:", doctorId, "date:", date.format("YYYY-MM-DD"));
+      console.log("🔍 User context:", { user: !!user, userId: user?.userId, role: user?.role });
+      
+      const result = await getDoctorAvailableTimes(doctorId, date);
+      if (result.success) {
+        setAvailableTimes(result.data);
+        console.log("✅ Loaded available times:", result.data);
+      } else {
+        message.error("❌ Không thể lấy thời gian rảnh: " + result.message);
+        setAvailableTimes([]);
+      }
+    } catch (error) {
+      console.error("❌ Error loading available times:", error);
+      setAvailableTimes([]);
+    } finally {
+      setLoadingAvailableTimes(false);
+    }
+  };
 
   // BACKEND SYNC: Load treatment data with proper error handling
   const loadTreatmentData = useCallback(async () => {
@@ -702,10 +809,7 @@ const TreatmentScheduleForm = ({
 
         form.setFieldsValue({
           startDate: dayjs(existingSchedule.startDate),
-          preferredTime: dayjs(
-            existingSchedule.preferredTime || "09:00",
-            "HH:mm"
-          ),
+          preferredTime: existingSchedule.preferredTime ? dayjs(existingSchedule.preferredTime, "HH:mm") : null,
         });
 
         console.log("✅ Existing schedule loaded for editing");
@@ -864,7 +968,7 @@ const TreatmentScheduleForm = ({
 
         form.setFieldsValue({
           startDate: dayjs(defaultStartDate),
-          preferredTime: dayjs("09:00", "HH:mm"),
+          preferredTime: null, // Để user chọn từ available times
         });
 
         console.log("✅ Template loaded, chờ bác sĩ chủ động sinh lịch");
@@ -1024,6 +1128,180 @@ const TreatmentScheduleForm = ({
     }
   };
 
+  // Get available times for doctor
+  const getDoctorAvailableTimes = async (doctorId, date) => {
+    try {
+
+      
+      console.log("🔍 Calling API with:", { doctorId, date: date?.format("YYYY-MM-DD") });
+      const response = await axiosClient.get(`/api/service-request/doctor-available-times/${doctorId}`, {
+        params: { date: date?.format("YYYY-MM-DD") }
+      });
+      console.log("✅ Available times for doctor:", response.data);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error("❌ Failed to get available times:", error);
+      console.error("❌ Error details:", {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
+      return { 
+        success: false, 
+        message: error.response?.data?.message || error.message || "Không thể lấy thời gian rảnh"
+      };
+    }
+  };
+
+  // Create appointment for current phase
+  const createPhaseAppointment = async (phase, scheduleData) => {
+    try {
+      // Lấy doctorId từ user context
+      const doctorId = user?.userId || user?.id;
+      
+      if (!doctorId) {
+        console.error("❌ No doctor ID available");
+        return { success: false, message: "Không tìm thấy thông tin bác sĩ" };
+      }
+
+      // Lấy available times trước
+      const availableDate = selectedDate || scheduleData.startDate;
+      const selectedDateStr = dayjs(availableDate).format("YYYY-MM-DD");
+      console.log("🔍 [createPhaseAppointment] Getting available times for:", selectedDateStr);
+      
+      const availableTimesResult = await getDoctorAvailableTimes(doctorId, dayjs(selectedDateStr));
+      
+      if (!availableTimesResult.success) {
+        return { 
+          success: false, 
+          message: availableTimesResult.message || "Không thể lấy thời gian khả dụng" 
+        };
+      }
+      
+      const availableTimes = availableTimesResult.data;
+      
+      if (!availableTimes || availableTimes.length === 0) {
+        return { 
+          success: false, 
+          message: "Không có thời gian khả dụng cho bác sĩ vào ngày này" 
+        };
+      }
+
+      // Chọn thời gian đầu tiên có sẵn
+      const firstAvailableTime = availableTimes[0];
+      const scheduledDateTime = firstAvailableTime.dateTime || `${selectedDateStr}T${firstAvailableTime.time}`;
+      const roomId = firstAvailableTime.room || "Phòng khám";
+      
+      console.log("🔍 [createPhaseAppointment] Selected time:", {
+        firstAvailableTime,
+        scheduledDateTime,
+        roomId
+      });
+
+      // Lấy planId từ các nguồn khác nhau
+      console.log("🔍 [createPhaseAppointment] Debug plan ID sources:", {
+        currentTreatmentPlanPlanId: currentTreatmentPlan?.planId,
+        scheduleDataPlanId: scheduleData.planId,
+        treatmentPlanPlanId: treatmentPlan?.planId,
+        phasePlanId: phase?.planId,
+        currentTreatmentPlan: currentTreatmentPlan,
+        scheduleData: scheduleData,
+        treatmentPlan: treatmentPlan,
+        phase: phase
+      });
+      
+      let planId = currentTreatmentPlan?.planId || scheduleData.planId || treatmentPlan?.planId || phase?.planId;
+      
+      // Fallback: Sử dụng phase.phaseId nếu không có plan ID
+      if (!planId && phase?.phaseId) {
+        console.log("🔄 Using phase.phaseId as fallback plan ID:", phase.phaseId);
+        planId = phase.phaseId;
+      }
+      
+      if (!planId) {
+        console.error("❌ No plan ID available");
+        console.error("❌ Debug info:", {
+          currentTreatmentPlan: currentTreatmentPlan,
+          scheduleData: scheduleData,
+          treatmentPlan: treatmentPlan,
+          phase: phase,
+          apiPhases: apiPhases
+        });
+        return { success: false, message: "Không tìm thấy thông tin phác đồ điều trị" };
+      }
+      
+      console.log("🔍 Creating appointment with:", {
+        planId,
+        doctorId,
+        user: user,
+        currentTreatmentPlan: currentTreatmentPlan
+      });
+      
+      const appointmentData = {
+        planId: planId,
+        phaseId: phase.phaseId,
+        stepNumber: phase.phaseOrder || 1,
+        stepName: phase.phaseName || "Giai đoạn điều trị",
+        doctorId: doctorId,
+        patientId: patientId,
+        scheduledDate: scheduledDateTime,
+        roomId: roomId,
+        notes: scheduleData.notes || `Lịch hẹn cho ${phase.phaseName}`,
+        treatmentType: currentTreatmentPlan?.treatmentType || "IUI",
+        deadline: dayjs(scheduledDateTime).add(1, 'day').format("YYYY-MM-DDTHH:mm:ss"),
+        gracePeriodDays: 0
+      };
+
+      console.log("🔄 Creating phase appointment:", appointmentData);
+
+      // Gọi API tạo lịch hẹn
+      try {
+        const scheduleRequest = {
+          planId: appointmentData.planId,
+          phaseId: appointmentData.phaseId,
+          stepNumber: appointmentData.stepNumber,
+          stepName: appointmentData.stepName,
+          doctorId: appointmentData.doctorId,
+          patientId: appointmentData.patientId,
+          scheduledDate: appointmentData.scheduledDate,
+          roomId: appointmentData.roomId,
+          notes: appointmentData.notes,
+          treatmentType: appointmentData.treatmentType,
+          deadline: appointmentData.deadline,
+          gracePeriodDays: appointmentData.gracePeriodDays
+        };
+
+        console.log("🔄 Sending treatment schedule request:", scheduleRequest);
+        const response = await axiosClient.post('/api/treatment-schedule', scheduleRequest);
+        console.log("✅ Phase appointment created:", response.data);
+        return { success: true, data: response.data };
+      } catch (error) {
+        console.error("❌ Failed to create phase appointment:", error);
+        
+        let errorMessage = "Không thể tạo lịch hẹn";
+        
+        if (error.response?.status === 400) {
+          const responseData = error.response.data;
+          if (typeof responseData === 'string') {
+            errorMessage = responseData;
+          } else if (responseData?.message) {
+            errorMessage = responseData.message;
+          }
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        return { 
+          success: false, 
+          message: errorMessage
+        };
+      }
+    } catch (error) {
+      console.error("❌ Error creating phase appointment:", error);
+      return { success: false, message: error.message };
+    }
+  };
+
   // BACKEND SYNC: Handle form submission with proper validation
   const handleSubmit = async (values) => {
     try {
@@ -1035,6 +1313,7 @@ const TreatmentScheduleForm = ({
         patientId: patientId,
         planName: values.planName || template?.name || "Lịch điều trị",
         treatmentType: currentTreatmentPlan?.treatmentType || "IUI",
+        planId: currentTreatmentPlan?.planId || treatmentPlan?.planId, // Thêm planId vào scheduleData
 
         // Schedule
         startDate: values.startDate?.format("YYYY-MM-DDTHH:mm:ss"),
@@ -1085,7 +1364,33 @@ const TreatmentScheduleForm = ({
 
       // Validate required fields
       if (!scheduleData.sessions || scheduleData.sessions.length === 0) {
-        throw new Error("Lịch điều trị không được để trống");
+        // Nếu không có sessions, tạo session từ current phase
+        if (apiPhases && apiPhases.length > 0) {
+          const currentPhase = apiPhases.find(p => p.status === "In Progress") || apiPhases[0];
+          if (currentPhase) {
+            const defaultSession = {
+              id: `session_${Date.now()}`,
+              phaseId: currentPhase.phaseId,
+              phaseName: currentPhase.phaseName || "Giai đoạn điều trị",
+              activity: currentPhase.phaseName || "Khám điều trị",
+              date: values.startDate?.format("YYYY-MM-DD") || dayjs().format("YYYY-MM-DD"),
+              time: values.preferredTime?.format("HH:mm") || "10:00", // Fallback time nếu không có preferred time
+              duration: 60,
+              room: "Phòng khám",
+              notes: `Lịch hẹn cho ${currentPhase.phaseName}`,
+              status: "scheduled",
+              required: true,
+              activities: [currentPhase.phaseName || "Khám điều trị"]
+            };
+            scheduleData.sessions = [defaultSession];
+            scheduleData.totalSessions = 1;
+            console.log("✅ Created default session from current phase:", defaultSession);
+          } else {
+            throw new Error("Không tìm thấy giai đoạn điều trị để tạo lịch");
+          }
+        } else {
+          throw new Error("Lịch điều trị không được để trống");
+        }
       }
 
       // Save to API
@@ -1093,6 +1398,19 @@ const TreatmentScheduleForm = ({
 
       if (saveResult.success) {
         message.success("✅ Lưu lịch điều trị thành công!");
+
+        // Tạo appointment cho current phase nếu có
+        if (apiPhases && apiPhases.length > 0) {
+          const currentPhase = apiPhases.find(p => p.status === "In Progress") || apiPhases[0];
+          if (currentPhase) {
+            const appointmentResult = await createPhaseAppointment(currentPhase, scheduleData);
+            if (appointmentResult.success) {
+              message.success("✅ Đã tạo lịch hẹn cho giai đoạn hiện tại!");
+            } else {
+              message.warning("⚠️ Lưu lịch thành công nhưng không thể tạo lịch hẹn: " + appointmentResult.message);
+            }
+          }
+        }
 
         // Update local state
         setScheduleData(saveResult.data);
@@ -1162,8 +1480,63 @@ const TreatmentScheduleForm = ({
     return iconMap[status] || <ClockCircleOutlined />;
   };
 
+  // 🆕 Function để kiểm tra form validation
+  const isFormValid = () => {
+    return formValues.startDate && 
+           formValues.preferredTime && 
+           formValues.scheduleName && 
+           formValues.scheduleName.trim() !== "";
+  };
+
+  // 🆕 Kiểm tra xem treatment plan có bị disable không
+  const isTreatmentPlanDisabled = () => {
+    return currentTreatmentPlan && (
+      currentTreatmentPlan.status === "completed" || 
+      currentTreatmentPlan.status === "cancelled"
+    );
+  };
+
+  // 🆕 Kiểm tra xem có thể tạo lịch điều trị không
+  const canCreateSchedule = () => {
+    return isFormValid() && !isTreatmentPlanDisabled();
+  };
+
+  // 🆕 Function để cập nhật form values
+  const updateFormValues = (field, value) => {
+    setFormValues(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  // 🆕 Function để reset form về trạng thái ban đầu
+  const handleResetForm = () => {
+    // Reset form về initial values
+    form.resetFields();
+    
+    // 🆕 Set lại form fields về giá trị ban đầu
+    form.setFieldsValue(initialFormValues);
+    
+    // Reset formValues về trạng thái ban đầu
+    setFormValues(initialFormValues);
+    
+    // Reset các state liên quan đến form
+    setSelectedDate(initialFormValues.startDate);
+    setAvailableTimes([]);
+    setDoctorNotes("");
+    setCustomSessions([]);
+    setScheduleAdjustments({});
+    setGeneratedSchedule([]);
+  };
+
   const handleStartDateChange = (date) => {
-    // Không làm gì ở đây để tránh auto-generate
+    setSelectedDate(date);
+    updateFormValues('startDate', date);
+    if (date) {
+      loadAvailableTimes(date);
+    } else {
+      setAvailableTimes([]);
+    }
   };
 
   // Doctor customization functions
@@ -1277,20 +1650,50 @@ const TreatmentScheduleForm = ({
 
   // NEW: Update phase status
   const updatePhaseStatus = async (phaseId, statusData) => {
-    if (!currentTreatmentPlan?.planId) {
-      message.error("Không tìm thấy kế hoạch điều trị");
-      return;
+    console.log("🔍 [updatePhaseStatus] Debug info:", {
+      currentTreatmentPlan,
+      planId: currentTreatmentPlan?.planId,
+      treatmentPlan,
+      treatmentPlanPlanId: treatmentPlan?.planId,
+      apiPhases,
+      phaseId,
+      statusData
+    });
+
+    // Tìm planId từ nhiều nguồn khác nhau
+    let planId = currentTreatmentPlan?.planId || treatmentPlan?.planId;
+    
+    // Nếu không có planId, tìm từ phase trong apiPhases
+    if (!planId && apiPhases && apiPhases.length > 0) {
+      const phase = apiPhases.find(p => p.phaseId === phaseId);
+      if (phase && phase.planId) {
+        planId = phase.planId;
+        console.log("✅ [updatePhaseStatus] Found planId from phase:", planId);
+      }
     }
+    
+    if (!planId) {
+      console.error("❌ [updatePhaseStatus] No plan ID found from any source");
+      message.error("Không tìm thấy kế hoạch điều trị");
+      return { success: false, message: "Không tìm thấy kế hoạch điều trị" };
+    }
+
+    console.log("✅ [updatePhaseStatus] Using planId:", planId);
 
     try {
       setUpdatingPhaseStatus(true);
       console.log("🔄 Updating phase status:", phaseId, statusData);
 
       const result = await apiTreatmentManagement.updatePhaseStatus(
-        currentTreatmentPlan.planId,
+        planId,
         phaseId,
         statusData
       );
+
+      // Kiểm tra result có tồn tại không
+      if (!result) {
+        throw new Error("Không nhận được phản hồi từ server");
+      }
 
       if (result.success) {
         message.success("✅ Cập nhật trạng thái phase thành công");
@@ -1339,10 +1742,15 @@ const TreatmentScheduleForm = ({
       statusData
     );
 
-    if (result.success) {
+    // Kiểm tra result có tồn tại và có success property không
+    if (result && result.success) {
       setPhaseStatusModal(false);
       setEditingPhaseStatus(null);
       phaseStatusForm.resetFields();
+    } else {
+      // Hiển thị lỗi nếu có
+      const errorMessage = result?.message || "Không thể cập nhật trạng thái phase";
+      message.error(`❌ ${errorMessage}`);
     }
   };
 
@@ -1373,6 +1781,7 @@ const TreatmentScheduleForm = ({
               icon={<ReloadOutlined />}
               onClick={loadTreatmentData}
               loading={loadingPhases}
+              className="action-btn reload-btn"
             >
               Tải lại
             </Button>
@@ -1385,6 +1794,32 @@ const TreatmentScheduleForm = ({
           </Space>
         }
       >
+        {/* 🆕 Alert khi treatment plan đã completed hoặc cancelled */}
+        {isTreatmentPlanDisabled() && (
+          <div style={{ 
+            marginBottom: 16, 
+            padding: 12, 
+            backgroundColor: currentTreatmentPlan?.status === "completed" ? "#f6ffed" : "#fff2e8",
+            border: `1px solid ${currentTreatmentPlan?.status === "completed" ? "#b7eb8f" : "#ffbb96"}`,
+            borderRadius: 6,
+            display: "flex",
+            alignItems: "center",
+            gap: 8
+          }}>
+            <InfoCircleOutlined style={{ 
+              color: currentTreatmentPlan?.status === "completed" ? "#52c41a" : "#fa8c16",
+              fontSize: 16
+            }} />
+            <span style={{ 
+              color: currentTreatmentPlan?.status === "completed" ? "#52c41a" : "#fa8c16",
+              fontWeight: 500
+            }}>
+              Phác đồ điều trị đã {currentTreatmentPlan?.status === "completed" ? "hoàn thành" : "hủy"}. 
+              Không thể tạo lịch điều trị cho phác đồ ở trạng thái này.
+            </span>
+          </div>
+        )}
+
         {/* Current Phase Card */}
         {currentPhase && (
           <Card
@@ -1399,14 +1834,38 @@ const TreatmentScheduleForm = ({
             }
             style={{ marginBottom: 16 }}
             extra={
-              <Button
-                type="primary"
-                size="small"
-                onClick={() => handlePhaseStatusUpdate(currentPhase)}
-                loading={updatingPhaseStatus}
-              >
-                Cập nhật trạng thái
-              </Button>
+              <Space>
+                <Button
+                  type="primary"
+                  size="small"
+                  className="action-btn submit-btn"
+                  onClick={async () => {
+                    const currentPhase = apiPhases.find(p => p.status === "In Progress") || apiPhases[0];
+                    if (currentPhase) {
+                      const scheduleData = {
+                        startDate: dayjs().format("YYYY-MM-DDTHH:mm:ss"),
+                        notes: `Lịch hẹn cho ${currentPhase.phaseName}`
+                      };
+                      const result = await createPhaseAppointment(currentPhase, scheduleData);
+                      if (result.success) {
+                        message.success("✅ Đã tạo lịch hẹn cho giai đoạn hiện tại!");
+                      } else {
+                        message.error("❌ Không thể tạo lịch hẹn: " + result.message);
+                      }
+                    }
+                  }}
+                >
+                  Tạo lịch hẹn
+                </Button>
+                <Button
+                  size="small"
+                  className="action-btn secondary-btn"
+                  onClick={() => handlePhaseStatusUpdate(currentPhase)}
+                  loading={updatingPhaseStatus}
+                >
+                  Cập nhật trạng thái
+                </Button>
+              </Space>
             }
           >
             <Descriptions column={2} size="small">
@@ -1452,79 +1911,8 @@ const TreatmentScheduleForm = ({
         {apiPhases && apiPhases.length > 0 && (
           <Card
             size="small"
-            title={`Giai đoạn điều trị (${apiPhases.length})`}
             style={{ marginBottom: 16 }}
-            extra={
-              <Space>
-                <Button
-                  type="primary"
-                  size="small"
-                  onClick={() => setPhaseModal(true)}
-                >
-                  Thêm giai đoạn
-                </Button>
-                <Button
-                  size="small"
-                  onClick={loadCurrentPhase}
-                  loading={loadingCurrentPhase}
-                  icon={<ReloadOutlined />}
-                >
-                  Tải lại
-                </Button>
-                {treatmentPlan?.finalPlan?.phases && (
-                  <Button
-                    size="small"
-                    loading={loading}
-                    onClick={async () => {
-                      try {
-                        setLoading(true);
-                        // Import phases from treatment plan
-                        const templatePhases = treatmentPlan.finalPlan.phases;
-                        let importedCount = 0;
-                        // Lấy phaseOrder lớn nhất hiện có
-                        let maxOrder = apiPhases.reduce(
-                          (max, p) => Math.max(max, p.phaseOrder || 0),
-                          0
-                        );
-                        for (let i = 0; i < templatePhases.length; i++) {
-                          const phase = templatePhases[i];
-                          const phaseData = {
-                            planId: currentTreatmentPlan.planId,
-                            patientId: patientId,
-                            phaseName: phase.name || `Giai đoạn ${i + 1}`,
-                            description: phase.description || "",
-                            phaseOrder: ++maxOrder, // Đảm bảo tăng dần
-                            expectedDuration: phase.duration || "5-7 ngày",
-                            status: "Pending",
-                          };
-                          const result = await createTreatmentPhase(phaseData);
-                          if (result.success) {
-                            importedCount++;
-                          }
-                        }
-                        if (importedCount > 0) {
-                          message.success(
-                            `✅ Đã import ${importedCount} giai đoạn từ phác đồ điều trị`
-                          );
-                          await loadTreatmentData();
-                        } else {
-                          message.warning(
-                            "⚠️ Không có giai đoạn nào được import"
-                          );
-                        }
-                      } catch (error) {
-                        console.error("Error importing phases:", error);
-                        message.error("❌ Lỗi khi import giai đoạn");
-                      } finally {
-                        setLoading(false);
-                      }
-                    }}
-                  >
-                    Import từ phác đồ
-                  </Button>
-                )}
-              </Space>
-            }
+            extra={null}
           >
             <Table
               dataSource={[...apiPhases].sort(
@@ -1659,42 +2047,17 @@ const TreatmentScheduleForm = ({
                 {
                   title: "Thao tác",
                   key: "actions",
-                  width: 120,
+                  width: 100,
                   render: (_, record) => (
-                    <Space size="small">
-                      <Tooltip title="Cập nhật">
-                        <Button
-                          type="link"
-                          size="small"
-                          icon={<EditOutlined />}
-                          onClick={() => handlePhaseStatusUpdate(record)}
-                          loading={updatingPhaseStatus}
-                        />
-                      </Tooltip>
-                      <Tooltip title="Xóa">
-                        <Button
-                          type="link"
-                          size="small"
-                          danger
-                          icon={<DeleteOutlined />}
-                          onClick={() => {
-                            Modal.confirm({
-                              title: "Xác nhận xóa",
-                              content: `Bạn có chắc muốn xóa giai đoạn "${record.phaseName}"?`,
-                              onOk: async () => {
-                                try {
-                                  // Implement delete phase API call here
-                                  message.success("Đã xóa giai đoạn");
-                                  await loadTreatmentData();
-                                } catch (error) {
-                                  message.error("Lỗi khi xóa giai đoạn");
-                                }
-                              },
-                            });
-                          }}
-                        />
-                      </Tooltip>
-                    </Space>
+                    <Button
+                      type="link"
+                      size="small"
+                      onClick={() => handlePhaseStatusUpdate(record)}
+                      loading={updatingPhaseStatus}
+                      title="Cập nhật trạng thái"
+                    >
+                      Cập nhật
+                    </Button>
                   ),
                 },
               ]}
@@ -1706,9 +2069,12 @@ const TreatmentScheduleForm = ({
           form={form}
           layout="vertical"
           onFinish={handleSubmit}
-          initialValues={{
-            startDate: dayjs().add(3, "days"),
-            preferredTime: dayjs("09:00", "HH:mm"),
+          initialValues={initialFormValues}
+          onValuesChange={(changedValues, allValues) => {
+            // 🆕 Cập nhật formValues khi form thay đổi
+            Object.keys(changedValues).forEach(key => {
+              updateFormValues(key, changedValues[key]);
+            });
           }}
         >
           <Row gutter={16}>
@@ -1746,6 +2112,76 @@ const TreatmentScheduleForm = ({
             </Col>
           </Row>
 
+          {/* Available Times Display */}
+          {selectedDate && (
+            <Row style={{ marginBottom: 16 }}>
+              <Col span={24}>
+                <Card
+                  size="small"
+                  title={
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <ClockCircleOutlined style={{ color: "#ff7eb3" }} />
+                      <span>Giờ rảnh của bác sĩ ngày {selectedDate.format("DD/MM/YYYY")}</span>
+                    </div>
+                  }
+                  extra={
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      {loadingAvailableTimes ? (
+                        <span>Đang tải...</span>
+                      ) : (
+                        <span>{availableTimes.length} giờ rảnh</span>
+                      )}
+                      <Button
+                        size="small"
+                        onClick={() => loadAvailableTimes(selectedDate)}
+                        disabled={loadingAvailableTimes}
+                        style={{ fontSize: "10px", padding: "0 4px" }}
+                      >
+                        🔄
+                      </Button>
+                    </div>
+                  }
+                >
+                  {loadingAvailableTimes ? (
+                    <div style={{ textAlign: "center", padding: "20px" }}>
+                      <Spin size="small" />
+                      <p style={{ marginTop: "8px", fontSize: "12px" }}>Đang tải giờ rảnh...</p>
+                    </div>
+                  ) : availableTimes.length > 0 ? (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                      {availableTimes.map((slot, index) => (
+                        <Tag
+                          key={index}
+                          color="green"
+                          style={{ 
+                            cursor: "pointer",
+                            padding: "4px 8px",
+                            fontSize: "12px"
+                          }}
+                          onClick={() => {
+                            const time = dayjs(slot.dateTime);
+                            form.setFieldsValue({ preferredTime: time });
+                            updateFormValues('preferredTime', time);
+                          }}
+                        >
+                          {slot.time} - {slot.room}
+                        </Tag>
+                      ))}
+                    </div>
+                  ) : (
+                    <Alert
+                      message="Không có giờ rảnh"
+                      description="Bác sĩ không có lịch làm việc hoặc đã hết slot vào ngày này"
+                      type="warning"
+                      showIcon
+                      size="small"
+                    />
+                  )}
+                </Card>
+              </Col>
+            </Row>
+          )}
+
           <Form.Item
             label="Tên lịch điều trị"
             name="planName"
@@ -1768,14 +2204,23 @@ const TreatmentScheduleForm = ({
                 loading={loading || savingSchedule}
                 size="large"
                 icon={<SaveOutlined />}
+                className="action-btn submit-btn"
+                disabled={!canCreateSchedule()}
+                title={
+                  !isFormValid() 
+                    ? "Vui lòng nhập đầy đủ: Ngày điều trị, Giờ ưu tiên, Tên lịch điều trị"
+                    : isTreatmentPlanDisabled()
+                    ? `Không thể tạo lịch điều trị cho phác đồ đã ${currentTreatmentPlan?.status === "completed" ? "hoàn thành" : "hủy"}`
+                    : ""
+                }
               >
                 {isEditing ? "Cập nhật lịch điều trị" : "Tạo lịch điều trị"}
               </Button>
               <Button
-                onClick={() => {
-                  form.resetFields();
-                }}
+                onClick={handleResetForm}
                 disabled={loading}
+                size="large"
+                className="action-btn reset-btn"
               >
                 Đặt lại
               </Button>
@@ -2295,18 +2740,70 @@ const TreatmentScheduleForm = ({
               rules={[{ required: true, message: "Vui lòng chọn trạng thái" }]}
             >
               <Select placeholder="Chọn trạng thái">
-                <Option value="Pending">
-                  <ClockCircleOutlined /> Chờ thực hiện
-                </Option>
-                <Option value="In Progress">
-                  <PlayCircleOutlined /> Đang thực hiện
-                </Option>
-                <Option value="Completed">
-                  <CheckCircleOutlined /> Hoàn thành
-                </Option>
-                <Option value="Cancelled">
-                  <ExclamationCircleOutlined /> Đã hủy
-                </Option>
+                {editingPhaseStatus && (() => {
+                  const currentStatus = editingPhaseStatus.status;
+                  
+                  // 🆕 Logic hiển thị options dựa trên trạng thái hiện tại
+                  switch (currentStatus) {
+                    case "Pending":
+                      return (
+                        <>
+                          <Option value="Pending">
+                            <ClockCircleOutlined /> Chờ thực hiện
+                          </Option>
+                          <Option value="In Progress">
+                            <PlayCircleOutlined /> Đang thực hiện
+                          </Option>
+                          <Option value="Cancelled">
+                            <ExclamationCircleOutlined /> Đã hủy
+                          </Option>
+                        </>
+                      );
+                    case "In Progress":
+                      return (
+                        <>
+                          <Option value="In Progress">
+                            <PlayCircleOutlined /> Đang thực hiện
+                          </Option>
+                          <Option value="Completed">
+                            <CheckCircleOutlined /> Hoàn thành
+                          </Option>
+                          <Option value="Cancelled">
+                            <ExclamationCircleOutlined /> Đã hủy
+                          </Option>
+                        </>
+                      );
+                    case "Completed":
+                      return (
+                        <Option value="Completed" disabled>
+                          <CheckCircleOutlined /> Hoàn thành
+                        </Option>
+                      );
+                    case "Cancelled":
+                      return (
+                        <Option value="Cancelled" disabled>
+                          <ExclamationCircleOutlined /> Đã hủy
+                        </Option>
+                      );
+                    default:
+                      return (
+                        <>
+                          <Option value="Pending">
+                            <ClockCircleOutlined /> Chờ thực hiện
+                          </Option>
+                          <Option value="In Progress">
+                            <PlayCircleOutlined /> Đang thực hiện
+                          </Option>
+                          <Option value="Completed">
+                            <CheckCircleOutlined /> Hoàn thành
+                          </Option>
+                          <Option value="Cancelled">
+                            <ExclamationCircleOutlined /> Đã hủy
+                          </Option>
+                        </>
+                      );
+                  }
+                })()}
               </Select>
             </Form.Item>
             <Form.Item label="Ghi chú" name="notes">
@@ -2320,30 +2817,7 @@ const TreatmentScheduleForm = ({
           </Form>
         </Modal>
 
-        <Row gutter={16} style={{ marginBottom: 16 }}>
-          <Col>
-            <Button
-              type="primary"
-              icon={<CalendarOutlined />}
-              onClick={() => {
-                if (!template || !form.getFieldValue("startDate")) {
-                  message.warning(
-                    "Vui lòng chọn ngày bắt đầu và đảm bảo có phác đồ!"
-                  );
-                  return;
-                }
-                const schedule = generateScheduleFromTemplate(
-                  template,
-                  form.getFieldValue("startDate").format("YYYY-MM-DD")
-                );
-                setGeneratedSchedule(schedule);
-                message.success("Đã sinh lịch từ giai đoạn/phác đồ!");
-              }}
-            >
-              Sinh lịch từ giai đoạn
-            </Button>
-          </Col>
-        </Row>
+
       </Card>
       <style>{`
 .phase-greyed-out {

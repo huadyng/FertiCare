@@ -1,4 +1,4 @@
-import axiosClient from "../services/axiosClient";
+import axiosClient from "../services/axiosClient.js";
 
 const apiTreatmentManagement = {
   // Helper function to get current user role
@@ -1106,67 +1106,57 @@ const apiTreatmentManagement = {
   // Lấy active treatment plan của patient (tối ưu nhất)
   getActiveTreatmentPlan: async (patientId) => {
     try {
-      const userRole = apiTreatmentManagement.getCurrentUserRole();
-      if (userRole === "DOCTOR") {
-        // Lấy doctorId từ localStorage
-        const user = localStorage.getItem("user");
-        let doctorId = null;
-        if (user) {
-          const userData = JSON.parse(user);
-          doctorId = userData.id || userData.userId;
-        }
-        if (!doctorId) {
-          return {
-            success: false,
-            data: null,
-            message: "Không tìm thấy thông tin bác sĩ. Vui lòng đăng nhập lại!",
-            permissionDenied: true,
-          };
-        }
-        // Gọi API lấy phases của bác sĩ
-        const response = await axiosClient.get(
-          `/api/treatment-workflow/doctor/${doctorId}/treatment-phases`
-        );
-        if (response.data && Array.isArray(response.data)) {
-          // Lọc phases theo patientId
-          const patientPhases = response.data.filter(
-            (phase) =>
-              phase.patientId === patientId || phase.patient?.id === patientId
+      console.log("🔍 [apiTreatmentManagement] Getting active treatment plan for patient:", patientId);
+      
+      // Sử dụng endpoint trực tiếp từ backend
+      const response = await axiosClient.get(
+        `/api/treatment-workflow/patient/${patientId}/active-treatment-plan`
+      );
+      
+      console.log("✅ [apiTreatmentManagement] Active treatment plan response:", response.data);
+      
+      return {
+        success: true,
+        data: response.data,
+        message: "Lấy phác đồ điều trị thành công",
+      };
+    } catch (error) {
+      console.error("❌ [apiTreatmentManagement] Error fetching active treatment plan:", error);
+
+      // Handle 404 - No active treatment plan found
+      if (error.response?.status === 404) {
+        console.log("ℹ️ [apiTreatmentManagement] No active treatment plan found for patient:", patientId);
+        
+        // Thử lấy treatment plan mới nhất từ treatment history
+        try {
+          console.log("🔄 [apiTreatmentManagement] Trying to get latest treatment plan from history...");
+          const historyResponse = await axiosClient.get(
+            `/api/treatment-workflow/patient/${patientId}/treatment-history`
           );
-          if (patientPhases.length > 0) {
-            // Ưu tiên phase active/draft
-            const activePhase =
-              patientPhases.find(
-                (phase) =>
-                  phase.status === "active" ||
-                  phase.status === "In Progress" ||
-                  phase.status === "draft"
-              ) || patientPhases[0];
-            if (activePhase && activePhase.planId) {
-              // Gọi API lấy chi tiết plan
-              const planResponse = await axiosClient.get(
-                `/api/treatment-workflow/treatment-plan/${activePhase.planId}`
-              );
-              if (planResponse.data) {
-                return {
-                  success: true,
-                  data: planResponse.data,
-                  message: "Lấy phác đồ điều trị thành công cho doctor",
-                };
-              }
-            }
+          
+          if (historyResponse.data && historyResponse.data.length > 0) {
+            // Lấy plan mới nhất
+            const latestPlan = historyResponse.data[0];
+            console.log("✅ [apiTreatmentManagement] Found latest treatment plan from history:", latestPlan);
+            
+            return {
+              success: true,
+              data: latestPlan,
+              message: "Lấy phác đồ điều trị mới nhất thành công",
+              isLatest: true,
+            };
           }
+        } catch (historyError) {
+          console.warn("⚠️ [apiTreatmentManagement] Could not get treatment history:", historyError);
         }
+        
         return {
           success: false,
           data: null,
-          message: "Không tìm thấy phác đồ điều trị cho bệnh nhân này (doctor)",
+          message: "Không tìm thấy phác đồ điều trị cho bệnh nhân này",
+          notFound: true,
         };
       }
-      // ... giữ nguyên logic cũ cho CUSTOMER/PATIENT ...
-      // ... existing code ...
-    } catch (error) {
-      console.error("Error fetching active treatment plan:", error);
 
       // Handle permission errors gracefully
       if (error.response?.status === 403) {
@@ -1634,46 +1624,60 @@ const apiTreatmentManagement = {
     }
   },
 
-  // Lấy lịch điều trị theo patient ID
+  // 🆕 Lấy lịch hẹn treatment schedule theo patient ID
   getTreatmentScheduleByPatient: async (patientId) => {
     try {
       console.log(
-        `🔄 [apiTreatmentManagement] Getting treatment schedule for patient: ${patientId}`
+        `🔄 [apiTreatmentManagement] Getting treatment schedules for patient: ${patientId}`
       );
 
-      // Since we don't have a direct API endpoint for getting schedules,
-      // we'll simulate this functionality for now
-      // In a real implementation, this would make an actual API call
-
-      const response = {
-        data: {
-          id: `schedule_${patientId}`,
-          scheduleId: `schedule_${patientId}`,
-          patientId: patientId,
-          sessions: [],
-          totalSessions: 0,
-          status: "active",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      };
-
+      const response = await axiosClient.get(`/api/treatment-schedule/patient/${patientId}`);
+      
       console.log(
-        "✅ [apiTreatmentManagement] Treatment schedule retrieved:",
+        "✅ [apiTreatmentManagement] Treatment schedules retrieved:",
         response.data
       );
 
       return {
         success: true,
-        data: response.data,
-        message: "Lấy lịch điều trị thành công",
+        data: response.data.data, // Lấy data từ GenericResponse
+        message: response.data.message || "Lấy danh sách lịch hẹn thành công",
       };
     } catch (error) {
-      console.error("❌ Error getting treatment schedule:", error);
+      console.error("❌ Error getting treatment schedules:", error);
+      return {
+        success: false,
+        data: [],
+        message: error.response?.data?.message || "Không thể lấy danh sách lịch hẹn",
+      };
+    }
+  },
+
+  // 🆕 Cập nhật trạng thái lịch hẹn (chỉ bác sĩ)
+  updateScheduleStatus: async (scheduleId, statusData) => {
+    try {
+      console.log(
+        `🔄 [apiTreatmentManagement] Updating schedule status: ${scheduleId} to ${statusData.status}`
+      );
+
+      const response = await axiosClient.put(`/api/treatment-schedule/${scheduleId}/status`, statusData);
+      
+      console.log(
+        "✅ [apiTreatmentManagement] Schedule status updated:",
+        response.data
+      );
+
+      return {
+        success: true,
+        data: response.data.data, // Lấy data từ GenericResponse
+        message: response.data.message || "Cập nhật trạng thái thành công",
+      };
+    } catch (error) {
+      console.error("❌ Error updating schedule status:", error);
       return {
         success: false,
         data: null,
-        message: error.response?.data?.message || "Không thể lấy lịch điều trị",
+        message: error.response?.data?.message || "Không thể cập nhật trạng thái",
       };
     }
   },
@@ -1729,53 +1733,8 @@ const apiTreatmentManagement = {
         `🔄 [apiTreatmentManagement] Getting activities for phase: ${phaseId}, planId: ${treatmentPlanId}`
       );
 
-      // Since we don't have a direct API endpoint for phase activities yet,
-      // we'll simulate this functionality for now
-      // In a real implementation, this would make an actual API call like:
-      // const response = await axiosClient.get(`/api/treatment-workflow/phase/${phaseId}/activities`);
-
-      // For now, return simulated activities based on phase
-      const mockActivities = [
-        {
-          id: `activity_${phaseId}_1`,
-          name: "Khám sàng lọc ban đầu",
-          type: "examination",
-          estimatedDuration: 30,
-          isRequired: true,
-          status: "pending",
-          order: 1,
-          room: "Phòng khám 1",
-          assignedStaff: "BS. Chuyên khoa",
-          cost: 200000,
-          scheduledDate: null,
-        },
-        {
-          id: `activity_${phaseId}_2`,
-          name: "Xét nghiệm máu",
-          type: "test",
-          estimatedDuration: 15,
-          isRequired: true,
-          status: "pending",
-          order: 2,
-          room: "Phòng xét nghiệm",
-          assignedStaff: "KTV. Xét nghiệm",
-          cost: 150000,
-          scheduledDate: null,
-        },
-        {
-          id: `activity_${phaseId}_3`,
-          name: "Siêu âm theo dõi",
-          type: "ultrasound",
-          estimatedDuration: 20,
-          isRequired: false,
-          status: "pending",
-          order: 3,
-          room: "Phòng siêu âm",
-          assignedStaff: "BS. Siêu âm",
-          cost: 300000,
-          scheduledDate: null,
-        },
-      ];
+      // TODO: Replace with actual API call
+      const mockActivities = [];
 
       console.log(
         `✅ [apiTreatmentManagement] Mock activities for phase ${phaseId}:`,
@@ -1959,37 +1918,8 @@ const apiTreatmentManagement = {
         `🔍 [apiTreatmentManagement] Getting activities for phase: ${phaseId}`
       );
 
-      // Mock activities data - in real implementation, this would call the backend
-      const mockActivities = [
-        {
-          id: `activity_${phaseId}_1`,
-          name: "Khám sàng lọc",
-          type: "examination",
-          estimatedDuration: 30,
-          isRequired: true,
-          status: "pending",
-          order: 1,
-          room: "Phòng khám",
-          cost: 200000,
-          description: "Khám sàng lọc ban đầu",
-          scheduledDate: null,
-          assignedStaff: null,
-        },
-        {
-          id: `activity_${phaseId}_2`,
-          name: "Theo dõi tiến trình",
-          type: "consultation",
-          estimatedDuration: 20,
-          isRequired: true,
-          status: "pending",
-          order: 2,
-          room: "Phòng tư vấn",
-          cost: 150000,
-          description: "Theo dõi và đánh giá tiến trình",
-          scheduledDate: null,
-          assignedStaff: null,
-        },
-      ];
+      // TODO: Replace with actual API call
+      const mockActivities = [];
 
       return {
         success: true,
@@ -2092,24 +2022,8 @@ const apiTreatmentManagement = {
       } catch (apiError) {
         console.warn("⚠️ API call failed, using mock data:", apiError);
 
-        // Mock data fallback
-        const mockPlans = [
-          {
-            planId: `plan_${patientId}_1`,
-            patientId: patientId,
-            planName: "Kế hoạch điều trị IUI",
-            treatmentType: "IUI",
-            status: "active",
-            startDate: new Date().toISOString(),
-            endDate: null,
-            estimatedDurationDays: 21,
-            estimatedCost: 5000000,
-            treatmentCycle: 1,
-            successProbability: 75,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-        ];
+        // TODO: Handle empty treatment plans
+        const mockPlans = [];
 
         return {
           success: true,
@@ -2253,6 +2167,27 @@ const apiTreatmentManagement = {
         success: false,
         data: null,
         message: "Không thể lấy tiến độ điều trị",
+      };
+    }
+  },
+
+  // Lấy phác đồ điều trị hiện tại (active) của bệnh nhân
+  getActiveTreatmentPlan: async (patientId) => {
+    try {
+      const response = await axiosClient.get(
+        `/api/treatment-workflow/patient/${patientId}/active-treatment-plan`
+      );
+      return {
+        success: true,
+        data: response.data,
+        message: "Lấy phác đồ điều trị hiện tại thành công",
+      };
+    } catch (error) {
+      console.error("Error fetching active treatment plan:", error);
+      return {
+        success: false,
+        error: error.message,
+        message: "Có lỗi xảy ra khi lấy phác đồ điều trị hiện tại",
       };
     }
   },

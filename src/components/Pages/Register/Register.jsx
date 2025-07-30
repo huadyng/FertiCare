@@ -5,6 +5,7 @@ import "./Register.css";
 import apiRegist from "../../../api/apiRegist";
 import { UserContext } from "../../../context/UserContext";
 import registerImage from "../../../assets/img/register.jpg";
+import { validateDateOfBirth } from "../../../utils/dateValidation";
 
 // Regex lấy từ backend
 const emailRegex = /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
@@ -110,6 +111,8 @@ export default function Register() {
         break;
       case "dateOfBirth":
         if (!value) return "Vui lòng chọn ngày sinh.";
+        const dateValidation = validateDateOfBirth(value);
+        if (!dateValidation.isValid) return dateValidation.message;
         break;
       case "email":
         if (!value.trim()) return "Email không được bỏ trống.";

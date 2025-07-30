@@ -22,6 +22,8 @@ import {
   message,
   Modal,
   Timeline,
+  Calendar,
+  DatePicker,
 } from "antd";
 import "./DoctorTheme.css";
 import {
@@ -44,6 +46,7 @@ import {
   HistoryOutlined,
   StarOutlined,
   ReloadOutlined,
+  ScheduleOutlined,
 } from "@ant-design/icons";
 
 import TreatmentProcess from "./treatment/TreatmentProcess";
@@ -61,8 +64,12 @@ import { useNavigate } from "react-router-dom";
 // Import API services for real data
 import apiDoctor from "../../api/apiDoctor";
 import apiTreatmentManagement from "../../api/apiTreatmentManagement";
-import UserProfile from "../pages/Profile/UserProfile";
+import UserProfile from "../Pages/Profile/UserProfile";
 import { getScheduleSubSteps } from "./constants/treatmentSubSteps";
+import DoctorSchedule from "./DoctorSchedule";
+import { clinicalResultsAPI } from "../../api/apiClinicalResults";
+import dayjs from "dayjs";
+
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
@@ -72,6 +79,7 @@ const DoctorDashboard = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const { user, logout } = useContext(UserContext);
+  const [resultId, setResultId] = useState(null);
 
   // API data states
   const [dashboardData, setDashboardData] = useState({
@@ -87,6 +95,10 @@ const DoctorDashboard = () => {
   });
   const [loading, setLoading] = useState(true);
   const [dataError, setDataError] = useState(null);
+  
+  // 🆕 State cho DatePicker
+  const [selectedDate, setSelectedDate] = useState(dayjs());
+  const [appointmentsLoading, setAppointmentsLoading] = useState(false);
 
   // Enhanced treatment flow state with persistence
   const [treatmentFlow, setTreatmentFlow] = useState({
@@ -113,7 +125,26 @@ const DoctorDashboard = () => {
   // Load dashboard data from API
   useEffect(() => {
     loadDashboardData();
+    // 🆕 Load appointments cho ngày hôm nay khi component mount
+    loadAppointmentsByDate(selectedDate);
   }, []);
+
+  // Khi selectedPatient thay đổi, lấy resultId clinical result mới nhất
+  useEffect(() => {
+    const fetchResultId = async () => {
+      if (selectedPatient?.id) {
+        const results = await clinicalResultsAPI.getClinicalResultsByPatient(selectedPatient.id);
+        if (results && results.length > 0) {
+          setResultId(results[0].id || results[0].resultId);
+        } else {
+          setResultId(null);
+        }
+      } else {
+        setResultId(null);
+      }
+    };
+    fetchResultId();
+  }, [selectedPatient]);
 
   // Sync examination data from TreatmentProcess when selectedPatient changes
   useEffect(() => {
@@ -145,16 +176,53 @@ const DoctorDashboard = () => {
 
   // Load saved treatment flow from localStorage
   useEffect(() => {
-    const savedFlow = localStorage.getItem("treatmentFlow");
-    if (savedFlow) {
-      try {
-        const parsedFlow = JSON.parse(savedFlow);
-        setTreatmentFlow((prev) => ({ ...prev, ...parsedFlow }));
-      } catch (error) {
-        console.error("Error loading saved treatment flow:", error);
+    // 🆕 Chỉ load treatment flow sau khi user đã được xác thực
+    const loadTreatmentFlow = () => {
+      const savedFlow = localStorage.getItem("treatmentFlow");
+      if (savedFlow) {
+        try {
+          const parsedFlow = JSON.parse(savedFlow);
+          console.log("🔄 [DoctorDashboard] Loading saved treatment flow:", parsedFlow);
+          
+          // 🆕 Kiểm tra xem user có hợp lệ không trước khi load
+          const user = localStorage.getItem("user");
+          const token = localStorage.getItem("token") || localStorage.getItem("accessToken");
+          
+          if (user && token) {
+            setTreatmentFlow((prev) => ({ ...prev, ...parsedFlow }));
+            
+            // 🆕 Khôi phục selectedPatient từ treatmentFlow nếu có
+            if (parsedFlow.currentPatient) {
+              setSelectedPatient(parsedFlow.currentPatient);
+              console.log("🔄 [DoctorDashboard] Restored selected patient:", parsedFlow.currentPatient.name);
+            }
+            
+            console.log("✅ [DoctorDashboard] Treatment flow loaded successfully");
+          } else {
+            console.warn("⚠️ [DoctorDashboard] User not authenticated, clearing treatment flow");
+            localStorage.removeItem("treatmentFlow");
+          }
+        } catch (error) {
+          console.error("❌ [DoctorDashboard] Error loading saved treatment flow:", error);
+          // Clear invalid data
+          localStorage.removeItem("treatmentFlow");
+        }
       }
-    }
+    };
+    
+    // 🆕 Delay loading để đảm bảo UserContext đã khởi tạo xong
+    const timer = setTimeout(loadTreatmentFlow, 500);
+    
+    return () => clearTimeout(timer);
   }, []);
+
+  // 🆕 Sync selectedPatient với treatmentFlow.currentPatient
+  useEffect(() => {
+    if (treatmentFlow.currentPatient && !selectedPatient) {
+      setSelectedPatient(treatmentFlow.currentPatient);
+      console.log("🔄 [DoctorDashboard] Synced selectedPatient from treatmentFlow:", treatmentFlow.currentPatient.name);
+    }
+  }, [treatmentFlow.currentPatient, selectedPatient]);
 
   useEffect(() => {
     // Trigger window resize khi collapsed thay đổi để các Col/Card tự reflow
@@ -170,11 +238,10 @@ const DoctorDashboard = () => {
 
       console.log("🔄 [DoctorDashboard] Loading dashboard data...");
 
-      // Load all dashboard data in parallel
-      const [patientsResponse, todayAppointments, statistics] =
+      // Load all dashboard data in parallel (không load todayAppointments nữa)
+      const [patientsResponse, statistics] =
         await Promise.all([
           apiDoctor.getMyPatients(),
-          apiDoctor.getTodayAppointments(),
           apiDoctor.getDashboardStats(),
         ]);
 
@@ -188,13 +255,12 @@ const DoctorDashboard = () => {
 
       setDashboardData({
         patients: transformedPatients,
-        todayAppointments,
+        todayAppointments: [], // Sẽ được load riêng theo ngày
         statistics,
       });
 
       console.log("✅ [DoctorDashboard] Dashboard data loaded:", {
         patients: transformedPatients.length,
-        appointments: todayAppointments.length,
         stats: statistics,
       });
     } catch (error) {
@@ -214,17 +280,62 @@ const DoctorDashboard = () => {
     loadDashboardData();
   };
 
+  // 🆕 Load appointments theo ngày được chọn
+  const loadAppointmentsByDate = async (date) => {
+    try {
+      setAppointmentsLoading(true);
+      console.log("📅 [DoctorDashboard] Loading appointments for date:", date.format('YYYY-MM-DD'));
+      
+      const appointments = await apiDoctor.getAppointmentsByDate(date.format('YYYY-MM-DD'));
+      
+      setDashboardData(prev => ({
+        ...prev,
+        todayAppointments: appointments
+      }));
+      
+      console.log("✅ [DoctorDashboard] Appointments loaded:", appointments.length);
+    } catch (error) {
+      console.error("❌ [DoctorDashboard] Error loading appointments:", error);
+      message.error("Không thể tải lịch hẹn cho ngày này");
+    } finally {
+      setAppointmentsLoading(false);
+    }
+  };
+
+  // 🆕 Handle date change
+  const handleDateChange = (date) => {
+    if (date) {
+      setSelectedDate(date);
+      loadAppointmentsByDate(date);
+    }
+  };
+
   // Save treatment flow to localStorage whenever it changes
   useEffect(() => {
     if (treatmentFlow.currentPatient) {
-      localStorage.setItem("treatmentFlow", JSON.stringify(treatmentFlow));
+      // 🆕 Kiểm tra xem user có hợp lệ không trước khi lưu
+      const user = localStorage.getItem("user");
+      const token = localStorage.getItem("token") || localStorage.getItem("accessToken");
+      
+      if (user && token) {
+        try {
+          localStorage.setItem("treatmentFlow", JSON.stringify(treatmentFlow));
+          console.log("💾 [DoctorDashboard] Treatment flow saved to localStorage");
+        } catch (error) {
+          console.error("❌ [DoctorDashboard] Error saving treatment flow:", error);
+        }
+      } else {
+        console.warn("⚠️ [DoctorDashboard] User not authenticated, skipping treatment flow save");
+      }
     }
   }, [treatmentFlow]);
 
   const handleLogout = () => {
+    console.log("🚪 [DoctorDashboard] User initiated logout, clearing treatment data");
+    // 🆕 Chỉ clear treatment data khi user chủ động logout
     localStorage.removeItem("treatmentFlow");
     logout();
-    navigate("/mock-login");
+    navigate("/login");
   };
 
   // Enhanced treatment flow handlers with step tracking
@@ -611,10 +722,10 @@ const DoctorDashboard = () => {
                               fontSize: "14px",
                             }}
                           >
-                            Lịch hẹn hôm nay
+                            Lịch hẹn {selectedDate.format('DD/MM')}
                           </Text>
                         }
-                        value={dashboardData.statistics.todayAppointments}
+                        value={dashboardData.todayAppointments.length}
                         valueStyle={{
                           color: "var(--secondary-color)",
                           fontWeight: 700,
@@ -729,13 +840,49 @@ const DoctorDashboard = () => {
                       style={{ color: "var(--secondary-color)" }}
                     />
                     <Text strong style={{ color: "var(--secondary-color)" }}>
-                      📅 Lịch hẹn hôm nay
+                      📅 Lịch hẹn
                     </Text>
+                  </Space>
+                }
+                extra={
+                  <Space>
+                    <DatePicker
+                      value={selectedDate}
+                      onChange={handleDateChange}
+                      format="DD/MM/YYYY"
+                      placeholder="Chọn ngày"
+                      size="small"
+                      style={{ width: 120 }}
+                    />
+                    <Button
+                      size="small"
+                      icon={<ReloadOutlined />}
+                      onClick={() => loadAppointmentsByDate(selectedDate)}
+                      loading={appointmentsLoading}
+                    >
+                      Làm mới
+                    </Button>
                   </Space>
                 }
               >
                 <div className="doctor-list">
-                  {dashboardData.todayAppointments.length > 0 ? (
+                  {appointmentsLoading ? (
+                    <div style={{ textAlign: "center", padding: "40px 0" }}>
+                      <div
+                        className="loading-spinner"
+                        style={{
+                          width: "32px",
+                          height: "32px",
+                          border: "3px solid #f3f3f3",
+                          borderTop: "3px solid var(--secondary-color)",
+                          borderRadius: "50%",
+                          animation: "spin 1s linear infinite",
+                          margin: "0 auto 16px",
+                        }}
+                      ></div>
+                      <Text type="secondary">Đang tải lịch hẹn...</Text>
+                    </div>
+                  ) : dashboardData.todayAppointments.length > 0 ? (
                     <List
                       dataSource={dashboardData.todayAppointments}
                       renderItem={(item, index) => (
@@ -750,15 +897,6 @@ const DoctorDashboard = () => {
                             transition: "var(--transition-normal)",
                           }}
                           className="doctor-fade-in"
-                          actions={[
-                            <Button
-                              size="small"
-                              className="doctor-btn-secondary"
-                              icon={<FileTextOutlined />}
-                            >
-                              Chi tiết
-                            </Button>,
-                          ]}
                         >
                           <List.Item.Meta
                             avatar={
@@ -832,7 +970,9 @@ const DoctorDashboard = () => {
                         style={{ fontSize: "48px", color: "var(--text-muted)" }}
                       />
                       <div style={{ marginTop: "16px" }}>
-                        <Text type="secondary">Không có lịch hẹn hôm nay</Text>
+                        <Text type="secondary">
+                          Không có lịch hẹn vào ngày {selectedDate.format('DD/MM/YYYY')}
+                        </Text>
                       </div>
                     </div>
                   )}
@@ -995,41 +1135,51 @@ const DoctorDashboard = () => {
     "full-process": {
       title: "Quy trình điều trị",
       component: (
-        <TreatmentProcess
-          patientId={selectedPatient?.id || "1"}
-          mode="doctor"
-          patientInfo={selectedPatient}
-        />
+        treatmentFlow.currentPatient?.id || selectedPatient?.id ? (
+          <TreatmentProcess
+            patientId={treatmentFlow.currentPatient?.id || selectedPatient?.id}
+            mode="doctor"
+            patientInfo={treatmentFlow.currentPatient || selectedPatient}
+          />
+        ) : (
+          <div style={{textAlign: 'center', padding: '40px 0'}}>
+            <span>Không tìm thấy thông tin bệnh nhân để thực hiện quy trình điều trị.</span>
+          </div>
+        )
       ),
     },
     examination: {
       title: "Khám lâm sàng",
       component: (
-        <ExaminationForm
-          patientId={
-            treatmentFlow.currentPatient?.id || selectedPatient?.id || "1"
-          }
-          patientInfo={
-            treatmentFlow.currentPatient ||
-            selectedPatient || {
-              name: "Nguyễn Thị Mai",
-              gender: "female",
-              dob: "1992-03-15",
-              contact: "0909123456",
-            }
-          }
-          existingData={treatmentFlow.examinationData}
-          isEditing={treatmentFlow.isEditing}
-          onNext={handleExaminationComplete}
-        />
+        treatmentFlow.currentPatient?.id || selectedPatient?.id ? (
+          resultId ? (
+            <ExaminationForm
+              resultId={resultId}
+              patientId={treatmentFlow.currentPatient?.id || selectedPatient?.id}
+              patientInfo={treatmentFlow.currentPatient || selectedPatient}
+              onNext={handleExaminationComplete}
+            />
+          ) : (
+            <div style={{textAlign: 'center', padding: '40px 0'}}><span>Không tìm thấy clinical result cho bệnh nhân này.</span></div>
+          )
+        ) : (
+          <div style={{textAlign: 'center', padding: '40px 0'}}>
+            <span>Không tìm thấy thông tin bệnh nhân để thực hiện khám lâm sàng.</span>
+          </div>
+        )
       ),
     },
     "treatment-plan": {
       title: "Lập phác đồ điều trị",
-      component: (
-        <TreatmentPlanEditor
+      component: (() => {
+        console.log("🔍 [DoctorDashboard] treatmentFlow.examinationData:", treatmentFlow.examinationData);
+        console.log("🔍 [DoctorDashboard] treatmentFlow.currentPatient:", treatmentFlow.currentPatient);
+        console.log("🔍 [DoctorDashboard] selectedPatient:", selectedPatient);
+        
+        return treatmentFlow.currentPatient?.id || selectedPatient?.id ? (
+          <TreatmentPlanEditor
           patientId={
-            treatmentFlow.currentPatient?.id || selectedPatient?.id || "1"
+            treatmentFlow.currentPatient?.id || selectedPatient?.id
           }
           patientInfo={
             treatmentFlow.currentPatient ||
@@ -1041,6 +1191,7 @@ const DoctorDashboard = () => {
           }
           examinationData={
             treatmentFlow.examinationData || {
+              id: null, // Add id field
               diagnosis: "Vô sinh nguyên phát",
               recommendations: "Làm thêm xét nghiệm AMH, HSG",
               doctorId: user?.id || "doctor1",
@@ -1050,75 +1201,112 @@ const DoctorDashboard = () => {
           isEditing={treatmentFlow.isEditing}
           onNext={handleTreatmentPlanComplete}
         />
-      ),
+        ) : (
+          <div style={{textAlign: 'center', padding: '40px 0'}}>
+            <span>Không tìm thấy thông tin bệnh nhân để lập phác đồ điều trị.</span>
+          </div>
+        );
+      })(),
     },
     schedule: {
       title: "Lập lịch điều trị",
       component: (
-        <div>
-          {/* Sub-steps for treatment scheduling */}
-          {scheduleSubSteps.subSteps.length > 0 && (
-            <Card style={{ marginBottom: 24 }}>
-              <Title level={4}>Các giai đoạn điều trị chi tiết</Title>
-              <Steps
-                current={scheduleSubSteps.currentSubStep}
-                direction="vertical"
-                size="small"
-                items={scheduleSubSteps.subSteps.map((subStep, index) => ({
-                  title: subStep.title,
-                  description: `${subStep.description} (${subStep.duration})`,
-                  status: scheduleSubSteps.completedSubSteps.includes(index)
-                    ? "finish"
-                    : index === scheduleSubSteps.currentSubStep
-                    ? "process"
-                    : "wait",
-                  icon: scheduleSubSteps.completedSubSteps.includes(index) ? (
-                    <CheckCircleOutlined />
-                  ) : index === scheduleSubSteps.currentSubStep ? (
-                    <PlayCircleOutlined />
-                  ) : (
-                    <ClockCircleOutlined />
-                  ),
-                }))}
-              />
+        treatmentFlow.currentPatient?.id || selectedPatient?.id ? (
+          <div>
+            {/* Sub-steps for treatment scheduling */}
+            {scheduleSubSteps.subSteps.length > 0 && (
+              <Card style={{ marginBottom: 24 }}>
+                <Title level={4}>Các giai đoạn điều trị chi tiết</Title>
+                <Steps
+                  current={scheduleSubSteps.currentSubStep}
+                  direction="vertical"
+                  size="small"
+                  items={scheduleSubSteps.subSteps.map((subStep, index) => ({
+                    title: subStep.title,
+                    description: `${subStep.description} (${subStep.duration})`,
+                    status: scheduleSubSteps.completedSubSteps.includes(index)
+                      ? "finish"
+                      : index === scheduleSubSteps.currentSubStep
+                      ? "process"
+                      : "wait",
+                    icon: scheduleSubSteps.completedSubSteps.includes(index) ? (
+                      <CheckCircleOutlined />
+                    ) : index === scheduleSubSteps.currentSubStep ? (
+                      <PlayCircleOutlined />
+                    ) : (
+                      <ClockCircleOutlined />
+                    ),
+                  }))}
+                />
 
-              {/* Control buttons for sub-steps */}
-              <div style={{ marginTop: 16, textAlign: "center" }}>
-                <Space>
-                  <Button
-                    type="primary"
-                    onClick={() =>
-                      handleSubStepComplete(scheduleSubSteps.currentSubStep, {
-                        timestamp: new Date(),
-                      })
-                    }
-                    disabled={scheduleSubSteps.completedSubSteps.includes(
-                      scheduleSubSteps.currentSubStep
-                    )}
-                  >
-                    ✅ Hoàn thành giai đoạn hiện tại
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      Modal.info({
-                        title: "Chi tiết giai đoạn",
-                        content:
-                          scheduleSubSteps.subSteps[
-                            scheduleSubSteps.currentSubStep
-                          ]?.description,
-                      });
-                    }}
-                  >
-                    📋 Xem chi tiết
-                  </Button>
-                </Space>
-              </div>
-            </Card>
-          )}
+                {/* Control buttons for sub-steps */}
+                <div style={{ marginTop: 16, textAlign: "center" }}>
+                  <Space>
+                    <Button
+                      type="primary"
+                      onClick={() =>
+                        handleSubStepComplete(scheduleSubSteps.currentSubStep, {
+                          timestamp: new Date(),
+                        })
+                      }
+                      disabled={scheduleSubSteps.completedSubSteps.includes(
+                        scheduleSubSteps.currentSubStep
+                      )}
+                    >
+                      ✅ Hoàn thành giai đoạn hiện tại
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        Modal.info({
+                          title: "Chi tiết giai đoạn",
+                          content:
+                            scheduleSubSteps.subSteps[
+                              scheduleSubSteps.currentSubStep
+                            ]?.description,
+                        });
+                      }}
+                    >
+                      📋 Xem chi tiết
+                    </Button>
+                  </Space>
+                </div>
+              </Card>
+            )}
 
-          <TreatmentScheduleForm
+            <TreatmentScheduleForm
+              patientId={
+                treatmentFlow.currentPatient?.id || selectedPatient?.id
+              }
+              patientInfo={
+                treatmentFlow.currentPatient ||
+                selectedPatient || {
+                  name: "Nguyễn Thị Mai",
+                  gender: "female",
+                }
+              }
+              treatmentPlan={treatmentFlow.treatmentPlan}
+              examinationData={treatmentFlow.examinationData}
+              existingSchedule={treatmentFlow.schedule}
+              isEditing={treatmentFlow.isEditing}
+              subStepsData={scheduleSubSteps}
+              onNext={handleScheduleComplete}
+              onSubStepComplete={handleSubStepComplete}
+            />
+          </div>
+        ) : (
+          <div style={{textAlign: 'center', padding: '40px 0'}}>
+            <span>Không tìm thấy thông tin bệnh nhân để lập lịch điều trị.</span>
+          </div>
+        )
+      ),
+    },
+    "patient-view": {
+      title: "Xem lịch bệnh nhân",
+      component: (
+        treatmentFlow.currentPatient?.id || selectedPatient?.id ? (
+          <PatientScheduleView
             patientId={
-              treatmentFlow.currentPatient?.id || selectedPatient?.id || "1"
+              treatmentFlow.currentPatient?.id || selectedPatient?.id
             }
             patientInfo={
               treatmentFlow.currentPatient ||
@@ -1127,36 +1315,16 @@ const DoctorDashboard = () => {
                 gender: "female",
               }
             }
-            treatmentPlan={treatmentFlow.treatmentPlan}
-            examinationData={treatmentFlow.examinationData}
-            existingSchedule={treatmentFlow.schedule}
-            isEditing={treatmentFlow.isEditing}
-            subStepsData={scheduleSubSteps}
-            onNext={handleScheduleComplete}
-            onSubStepComplete={handleSubStepComplete}
+            schedule={treatmentFlow.schedule}
+            treatmentFlow={treatmentFlow}
+            scheduleSubSteps={scheduleSubSteps}
+            isPatientView={false}
           />
-        </div>
-      ),
-    },
-    "patient-view": {
-      title: "Xem lịch bệnh nhân",
-      component: (
-        <PatientScheduleView
-          patientId={
-            treatmentFlow.currentPatient?.id || selectedPatient?.id || "1"
-          }
-          patientInfo={
-            treatmentFlow.currentPatient ||
-            selectedPatient || {
-              name: "Nguyễn Thị Mai",
-              gender: "female",
-            }
-          }
-          schedule={treatmentFlow.schedule}
-          treatmentFlow={treatmentFlow}
-          scheduleSubSteps={scheduleSubSteps}
-          isPatientView={false}
-        />
+        ) : (
+          <div style={{textAlign: 'center', padding: '40px 0'}}>
+            <span>Không tìm thấy thông tin bệnh nhân để xem lịch điều trị.</span>
+          </div>
+        )
       ),
     },
 
@@ -1173,6 +1341,10 @@ const DoctorDashboard = () => {
     "theme-demo": {
       title: "Demo Giao Diện Mới",
       component: <ThemeDemo />,
+    },
+    "doctor-schedule": {
+      title: "Lịch làm việc",
+      component: <DoctorSchedule />,
     },
   };
 
@@ -1215,6 +1387,11 @@ const DoctorDashboard = () => {
       key: "patient-view",
       icon: <UserOutlined />,
       label: "Theo dõi BN",
+    },
+    {
+      key: "doctor-schedule",
+      icon: <ScheduleOutlined />,
+      label: "Lịch làm việc",
     },
 
     {
@@ -1405,22 +1582,22 @@ const DoctorDashboard = () => {
                           return "🌙 Chào buổi tối bác sĩ!";
                         })()}
                       </Title>
-                      <Text
-                        style={{
-                          color: "var(--text-secondary)",
-                          fontSize: "15px",
-                        }}
-                      >
-                        Hôm nay bạn có{" "}
-                        <Text strong style={{ color: "var(--primary-color)" }}>
-                          {dashboardData.statistics.todayAppointments} lịch hẹn
-                        </Text>{" "}
-                        và{" "}
-                        <Text strong style={{ color: "var(--primary-color)" }}>
-                          {dashboardData.statistics.inTreatment} bệnh nhân
-                        </Text>{" "}
-                        đang điều trị.
-                      </Text>
+                                              <Text
+                          style={{
+                            color: "var(--text-secondary)",
+                            fontSize: "15px",
+                          }}
+                        >
+                          Ngày {selectedDate.format('DD/MM/YYYY')} bạn có{" "}
+                          <Text strong style={{ color: "var(--primary-color)" }}>
+                            {dashboardData.todayAppointments.length} lịch hẹn
+                          </Text>{" "}
+                          và{" "}
+                          <Text strong style={{ color: "var(--primary-color)" }}>
+                            {dashboardData.statistics.inTreatment} bệnh nhân
+                          </Text>{" "}
+                          đang điều trị.
+                        </Text>
                     </Col>
                   </Row>
                 </Card>

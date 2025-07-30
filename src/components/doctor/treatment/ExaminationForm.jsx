@@ -45,12 +45,27 @@ import { clinicalResultsAPI } from "../../../api/apiClinicalResults";
 import { UserContext } from "../../../context/UserContext";
 import { treatmentStateManager } from "../../../utils/treatmentStateManager";
 import { debugUtils } from "../../../utils/debugUtils";
+import moment from 'moment';
 
 const { TextArea } = Input;
 const { Option } = Select;
 const { Title, Text } = Typography;
 
+// XÓA flattenNested và normalizeDates, thay bằng chuẩn hóa phẳng:
+function normalizeInitialValues(data) {
+  return {
+    ...data,
+    examinationDate: data.examinationDate ? moment(data.examinationDate) : null,
+    completionDate: data.completionDate ? moment(data.completionDate) : null,
+    nextAppointmentDate: data.nextAppointmentDate ? moment(data.nextAppointmentDate) : null,
+    symptoms: Array.isArray(data.symptoms) ? data.symptoms : [],
+    symptomsDetail: data.symptomsDetail ?? data.symptom_detail ?? '',
+  };
+}
+
+// Thay đổi prop: nhận resultId thay vì chỉ patientId
 const ExaminationForm = ({
+  resultId,
   patientId,
   onNext,
   patientInfo,
@@ -67,255 +82,56 @@ const ExaminationForm = ({
   const [submittedData, setSubmittedData] = useState(null);
   const [originalData, setOriginalData] = useState(null);
 
-  // Debug localStorage on mount in development
+  // Khi mount, chỉ GET clinical result theo resultId
   useEffect(() => {
-    if (process.env.NODE_ENV === "development") {
-      console.log(
-        "🔍 [DEBUG] ExaminationForm mounted for patientId:",
-        patientId
-      );
-      debugLocalStorage();
-    }
-  }, [patientId]);
-
-  // Load existing data or draft when component initializes
-  useEffect(() => {
-    const loadExaminationData = async () => {
-      try {
-        console.log("🔄 Loading examination data for patient:", patientId);
-
-        // 1. Thử lấy từ localStorage trước (nhanh hơn)
-        const completedKey = `examination_completed_${patientId}`;
-        const savedCompleted = localStorage.getItem(completedKey);
-
-        if (savedCompleted) {
-          try {
-            const completedData = JSON.parse(savedCompleted);
-            console.log("✅ Found data in localStorage:", completedData);
-
-            // Kiểm tra xem dữ liệu có rỗng không
-            if (isDataEmpty(completedData)) {
-              console.log("⚠️ Found empty data in localStorage, cleaning...");
-              localStorage.removeItem(completedKey);
-              console.log("🧹 Cleaned empty data");
-            } else {
-              setIsCompleted(true);
-              setSubmittedData(completedData);
-              setOriginalData(completedData);
-              populateFormWithData(completedData);
-            }
-
-            // Vẫn tiếp tục gọi API để đồng bộ dữ liệu mới nhất
-            try {
-              const apiResults = await clinicalResultsAPI.getExaminationResults(
-                patientId
-              );
-              if (apiResults && apiResults.length > 0) {
-                const latestResult = apiResults[apiResults.length - 1];
-                console.log("✅ Found newer data from API:", latestResult);
-                setIsCompleted(true);
-                setSubmittedData(latestResult);
-                setOriginalData(latestResult);
-                populateFormWithData(latestResult);
-                // Cập nhật localStorage với dữ liệu mới nhất từ backend
-                localStorage.setItem(
-                  completedKey,
-                  JSON.stringify(latestResult)
-                );
-              }
-            } catch (apiError) {
-              console.warn(
-                "⚠️ API call failed, keeping localStorage data:",
-                apiError
-              );
-            }
-            return;
-          } catch (error) {
-            console.error("❌ Error parsing localStorage data:", error);
-            localStorage.removeItem(completedKey); // Xóa dữ liệu lỗi
-          }
-        }
-
-        // 2. Nếu localStorage không có, thử gọi API
-        try {
-          const apiResults = await clinicalResultsAPI.getExaminationResults(
-            patientId
-          );
-          if (apiResults && apiResults.length > 0) {
-            const latestResult = apiResults[apiResults.length - 1];
-            console.log("✅ Found data from API:", latestResult);
-            setIsCompleted(true);
-            setSubmittedData(latestResult);
-            setOriginalData(latestResult);
-            populateFormWithData(latestResult);
-            // Lưu vào localStorage để lần sau load nhanh hơn
-            localStorage.setItem(completedKey, JSON.stringify(latestResult));
-            return;
-          }
-        } catch (apiError) {
-          console.warn("⚠️ Could not load from API:", apiError);
-        }
-
-        // 3. Nếu cả hai đều không có, kiểm tra treatmentStateManager
-        const stateManagerData = treatmentStateManager.getStepData(0);
-        if (stateManagerData && stateManagerData.examination) {
-          console.log(
-            "✅ Found data in treatmentStateManager:",
-            stateManagerData.examination
-          );
-          setIsCompleted(true);
-          setSubmittedData(stateManagerData.examination);
-          setOriginalData(stateManagerData.examination);
-          populateFormWithData(stateManagerData.examination);
-          // Lưu vào localStorage
-          localStorage.setItem(
-            completedKey,
-            JSON.stringify(stateManagerData.examination)
-          );
-          return;
-        }
-
-        console.log("ℹ️ No existing examination data found");
-      } catch (error) {
-        console.error("❌ Critical error loading examination data:", error);
-      }
-    };
-
-    loadExaminationData();
-  }, [patientId, form, existingData, isEditing]);
-
-  // Helper function to populate form with data
-  const populateFormWithData = (data) => {
-    console.log("📝 Populating form with data:", data);
-    console.log("📝 Data diagnosis:", data.diagnosis);
-    console.log("📝 Data recommendations:", data.recommendations);
-    console.log("📝 Data clinicalSigns:", data.clinicalSigns);
-    console.log("📝 Data labResults:", data.labResults);
-
-    try {
-      // Chỉ populate form nếu có dữ liệu thực sự
-      const hasRealData =
-        data.diagnosis ||
-        data.recommendations ||
-        data.clinicalSigns?.bloodPressure ||
-        data.clinicalSigns?.temperature ||
-        data.clinicalSigns?.heartRate ||
-        data.clinicalSigns?.weight ||
-        data.clinicalSigns?.height ||
-        data.labResults?.ultrasound ||
-        data.notes ||
-        (data.symptoms && data.symptoms.length > 0) ||
-        (data.labResults?.bloodTest &&
-          Object.values(data.labResults.bloodTest).some(
-            (val) => val !== null && val !== ""
-          ));
-
-      if (!hasRealData) {
-        console.log("⚠️ No real data to populate, skipping form population");
+    const loadClinicalResult = async () => {
+      if (!resultId) {
+        setOriginalData(null);
         return;
       }
+      try {
+        const data = await clinicalResultsAPI.getClinicalResultById(resultId);
+        setOriginalData(data);
+        setSubmittedData(data);
+        setIsCompleted(!!data.isCompleted);
+      } catch (error) {
+        setOriginalData(null);
+        setSubmittedData(null);
+        setIsCompleted(false);
+      }
+    };
+    loadClinicalResult();
+  }, [resultId]);
 
-      form.setFieldsValue({
-        diagnosis: data.diagnosis || "",
-        bloodPressure: data.clinicalSigns?.bloodPressure || "",
-        temperature: data.clinicalSigns?.temperature || "",
-        heartRate: data.clinicalSigns?.heartRate || "",
-        weight: data.clinicalSigns?.weight || "",
-        height: data.clinicalSigns?.height || "",
-        ultrasound: data.labResults?.ultrasound || "",
-        notes: data.notes || "",
-      });
-      setSymptoms(data.symptoms || []);
-      setLabResults(data.labResults || {});
-      console.log("✅ Form populated successfully with real data");
-    } catch (error) {
-      console.error("❌ Error populating form:", error);
+
+
+  // Khi originalData thay đổi, cập nhật lại form values
+  useEffect(() => {
+    if (originalData) {
+      form.setFieldsValue(normalizeInitialValues(originalData));
     }
+  }, [originalData, form]);
+
+  // Hàm convert các trường ngày sang dayjs object (an toàn hơn)
+  const toDayjs = (val) => {
+    if (!val) return null;
+    if (moment.isMoment(val)) return val;
+    const d = moment(val);
+    return d.isValid() ? d : null;
   };
 
-  // Debug function to check localStorage data
-  const debugLocalStorage = () => {
-    const completedKey = `examination_completed_${patientId}`;
-    const savedData = localStorage.getItem(completedKey);
-    console.log("🔍 Debug localStorage for key:", completedKey);
-    console.log("🔍 Raw localStorage data:", savedData);
-    if (savedData) {
+  // Sau khi cập nhật thành công, reload lại dữ liệu từ BE
+  const reloadClinicalResult = async () => {
+    if (resultId) {
       try {
-        const parsedData = JSON.parse(savedData);
-        console.log("🔍 Parsed localStorage data:", parsedData);
-      } catch (error) {
-        console.error("❌ Error parsing localStorage data:", error);
+        const updated = await clinicalResultsAPI.getClinicalResultById(resultId);
+        setOriginalData(updated);
+        setSubmittedData(updated);
+        // form.setFieldsValue(updated); // Không cần setFieldsValue nữa vì form đã đồng bộ với originalData
+      } catch (e) {
+        // fallback: không reload được thì giữ nguyên
       }
     }
-  };
-
-  // Backup function to save data before clearing
-  const backupData = () => {
-    const completedKey = `examination_completed_${patientId}`;
-    const backupKey = `examination_backup_${patientId}`;
-    const savedData = localStorage.getItem(completedKey);
-    if (savedData) {
-      localStorage.setItem(backupKey, savedData);
-      console.log("💾 Data backed up to:", backupKey);
-    }
-  };
-
-  // Restore function to recover data from backup
-  const restoreData = () => {
-    const completedKey = `examination_completed_${patientId}`;
-    const backupKey = `examination_backup_${patientId}`;
-    const backupData = localStorage.getItem(backupKey);
-    if (backupData) {
-      localStorage.setItem(completedKey, backupData);
-      console.log("🔄 Data restored from backup");
-      window.location.reload(); // Reload to apply restored data
-    } else {
-      console.log("⚠️ No backup data found");
-    }
-  };
-
-  // Function to check if data is empty/null
-  const isDataEmpty = (data) => {
-    if (!data) return true;
-
-    const hasRealData =
-      data.diagnosis ||
-      data.clinicalSigns?.bloodPressure ||
-      data.clinicalSigns?.temperature ||
-      data.clinicalSigns?.heartRate ||
-      data.clinicalSigns?.weight ||
-      data.clinicalSigns?.height ||
-      data.labResults?.ultrasound ||
-      data.notes ||
-      (data.symptoms && data.symptoms.length > 0) ||
-      (data.labResults?.bloodTest &&
-        Object.values(data.labResults.bloodTest).some(
-          (val) => val !== null && val !== ""
-        ));
-
-    return !hasRealData;
-  };
-
-  // Function to clean empty data from localStorage
-  const cleanEmptyData = () => {
-    const completedKey = `examination_completed_${patientId}`;
-    const savedData = localStorage.getItem(completedKey);
-
-    if (savedData) {
-      try {
-        const parsedData = JSON.parse(savedData);
-        if (isDataEmpty(parsedData)) {
-          localStorage.removeItem(completedKey);
-          console.log("🧹 Cleaned empty data from localStorage");
-          return true;
-        }
-      } catch (error) {
-        console.error("❌ Error parsing data for cleaning:", error);
-        localStorage.removeItem(completedKey);
-        return true;
-      }
-    }
-    return false;
   };
 
   // Danh sách triệu chứng thường gặp
@@ -366,144 +182,116 @@ const ExaminationForm = ({
     }));
   };
 
+  // Function để điền dữ liệu mẫu test từ database
+  const fillTestData = () => {
+    try {
+      // Dữ liệu mẫu từ database
+      const testData = {
+        symptoms: ["Sốt", "ho nhẹ"],
+        symptomsDetail: "Bệnh nhân có triệu chứng sốt nhẹ 37.8°C, ho khan.",
+        bloodPressureSystolic: 120,
+        bloodPressureDiastolic: 80,
+        temperature: 37.8,
+        heartRate: 78,
+        weight: 60.50,
+        height: 170.00,
+        bloodType: "O",
+        fshLevel: 6.20,
+        lhLevel: 4.10,
+        estradiolLevel: 45.00,
+        testosteroneLevel: 0.50,
+        amhLevel: 2.10,
+        prolactinLevel: 12.00,
+        glucose: 5.1,
+        hemoglobin: 13.5,
+        creatinine: 0.90,
+        endometrialThickness: 7.5,
+        ovarySizeLeft: 3.2,
+        ovarySizeRight: 3.1,
+        follicleCountLeft: 5,
+        follicleCountRight: 6,
+        plateletCount: 250,
+        whiteBloodCell: 7.20,
+        ultrasoundFindings: "Bình thường",
+        diagnosis: "Viêm họng nhẹ",
+        diagnosisCode: "J02",
+        severityLevel: "Nhẹ",
+        infertilityDurationMonths: null,
+        previousTreatments: "",
+        recommendations: "Uống nhiều nước, nghỉ ngơi",
+        treatmentPriority: "Thấp",
+        notes: "Theo dõi thêm tại nhà.",
+        examinationDate: moment(),
+        completionDate: moment(),
+        nextAppointmentDate: moment().add(7, 'day'),
+        isCompleted: true
+      };
+
+      // Set form values
+      form.setFieldsValue(testData);
+      
+      // Update lab results state
+      setLabResults({
+        bloodTest: {
+          fshLevel: testData.fshLevel,
+          lhLevel: testData.lhLevel,
+          estradiolLevel: testData.estradiolLevel,
+          testosteroneLevel: testData.testosteroneLevel,
+          amhLevel: testData.amhLevel,
+          prolactinLevel: testData.prolactinLevel,
+          glucose: testData.glucose,
+          hemoglobin: testData.hemoglobin,
+          creatinine: testData.creatinine,
+        },
+        ultrasound: {
+          endometrialThickness: testData.endometrialThickness,
+          ovarySizeLeft: testData.ovarySizeLeft,
+          ovarySizeRight: testData.ovarySizeRight,
+          follicleCountLeft: testData.follicleCountLeft,
+          follicleCountRight: testData.follicleCountRight,
+          ultrasoundFindings: testData.ultrasoundFindings,
+        },
+        otherTests: {
+          plateletCount: testData.plateletCount,
+          whiteBloodCell: testData.whiteBloodCell,
+        }
+      });
+
+      message.success('Đã điền dữ liệu mẫu test!');
+      console.log('✅ [ExaminationForm] Test data filled successfully');
+    } catch (error) {
+      message.error('Có lỗi khi điền dữ liệu mẫu!');
+      console.error('❌ [ExaminationForm] Error filling test data:', error);
+    }
+  };
+
+  // Khi submit, chỉ PUT theo resultId
   const handleSubmit = async (values) => {
     try {
       setLoading(true);
-
-      // Validate required fields
-      if (!values.diagnosis) {
-        message.error("Vui lòng nhập chẩn đoán");
-        setLoading(false);
-        return;
-      }
-
-      // Lấy clinical result hiện có của bệnh nhân
-      const existingResults = await clinicalResultsAPI.getExaminationResults(
-        patientId
-      );
-      console.log("[DEBUG] existingResults clinical result:", existingResults);
-      if (existingResults && existingResults.length > 0) {
-        const existingResult = existingResults[0];
-        const examinationData = {
-          ...existingResult,
-          patientId,
-          doctorId: user?.id || "defaultDoctor",
-          doctorName: user?.fullName || "Bác sĩ",
-          examinationDate:
-            existingResult.examinationDate ||
-            new Date().toISOString().split("T")[0],
-          symptoms,
-          clinicalSigns: {
-            bloodPressure: values.bloodPressure,
-            temperature: values.temperature,
-            heartRate: values.heartRate,
-            weight: values.weight,
-            height: values.height,
-          },
-          labResults: {
-            ...labResults,
-            ultrasound: values.ultrasound,
-          },
-          diagnosis: values.diagnosis,
-          attachments: attachments.map((file) => file.name),
-          notes: values.notes,
-          status: "completed",
-          isEdited: isEditing,
-          editedAt: isEditing ? new Date().toISOString() : undefined,
-          originalData: isEditing ? existingData : undefined,
-          createdAt: existingResult.createdAt || new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        // Gọi PUT để cập nhật clinical result này
-        console.log(
-          "[DEBUG] Gọi PUT cập nhật clinical result id:",
-          existingResult.id
-        );
-        let savedResult = null;
-        try {
-          savedResult = await clinicalResultsAPI.updateExaminationResult(
-            existingResult.id,
-            examinationData
-          );
-        } catch (apiError) {
-          console.error("API update failed:", apiError);
-          message.error(
-            "❌ Không thể cập nhật kết quả khám. Vui lòng kiểm tra kết nối và thử lại."
-          );
-          setLoading(false);
-          return;
-        }
-        // Lưu vào localStorage để giữ lại khi reload
-        const dataToStore = {
-          ...savedResult,
-          completedAt: new Date().toISOString(),
-          fromStandalonePage: true,
-          apiSaved: true,
-        };
-        localStorage.setItem(
-          `examination_completed_${patientId}`,
-          JSON.stringify(dataToStore)
-        );
-        console.log("💾 Saved examination data to localStorage:", dataToStore);
-        message.success("🎉 Cập nhật kết quả khám thành công!");
+      const payload = {
+        ...values,
+        patientId,
+        examinationDate: values.examinationDate?.toISOString(),
+        completionDate: values.completionDate?.toISOString(),
+        nextAppointmentDate: values.nextAppointmentDate?.toISOString(),
+        symptoms: JSON.stringify(Array.isArray(values.symptoms) ? values.symptoms : (values.symptoms ? [values.symptoms] : [])),
+      };
+      if (resultId) {
+        await clinicalResultsAPI.updateExaminationResult(resultId, payload);
+        message.success('Cập nhật thành công!');
         setIsCompleted(true);
-        setSubmittedData(savedResult);
-        setOriginalData(savedResult);
-        // Dispatch custom event để đồng bộ các bước tiếp theo
-        const syncEvent = new CustomEvent("examinationCompleted", {
-          detail: {
-            patientId,
-            examinationData: savedResult,
-          },
-        });
-        window.dispatchEvent(syncEvent);
-        // Update treatment state manager
-        treatmentStateManager.updateExamination(patientId, savedResult);
-        // Dispatch event cho auto progress
-        const progressEvent = new CustomEvent("stepCompleted", {
-          detail: {
-            patientId,
-            stepIndex: 0,
-            stepName: "Khám lâm sàng",
-            data: savedResult,
-            autoAdvance: true,
-          },
-        });
-        window.dispatchEvent(progressEvent);
-        setTimeout(() => {
-          treatmentStateManager.forceRefresh();
-          console.log("🔄 Forced refresh of treatment state manager");
-        }, 500);
-        // Log kiểm tra id
-        console.log("[DEBUG] Kết quả cập nhật clinical result:", savedResult);
-        if (savedResult && savedResult.id) {
-          console.log(
-            "[DEBUG] id của clinical result:",
-            savedResult.id,
-            "Kiểu:",
-            typeof savedResult.id
-          );
-          const uuidRegex =
-            /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-          if (uuidRegex.test(savedResult.id)) {
-            console.log("[DEBUG] id là UUID hợp lệ!");
-          } else {
-            console.warn("[DEBUG] id KHÔNG phải UUID!");
-          }
-        } else {
-          console.warn("[DEBUG] Không có id trả về từ savedResult!");
-        }
+        // Reload lại clinical result sau khi cập nhật
+        const updated = await clinicalResultsAPI.getClinicalResultById(resultId);
+        setOriginalData(updated);
+        setSubmittedData(updated);
       } else {
-        // Không có clinical result nào để cập nhật
-        message.error(
-          "Không tìm thấy kết quả khám lâm sàng để cập nhật. Vui lòng liên hệ quản trị viên!"
-        );
-        setLoading(false);
-        return;
+        message.error('Không tìm thấy clinical result, vui lòng liên hệ quản trị viên!');
       }
-    } catch (error) {
-      console.error("❌ Critical error in handleSubmit:", error);
-      message.error("Có lỗi xảy ra khi lưu kết quả khám. Vui lòng thử lại!");
+    } catch (err) {
+      message.error('Có lỗi khi lưu!');
+      console.error(err);
+    } finally {
       setLoading(false);
     }
   };
@@ -518,6 +306,68 @@ const ExaminationForm = ({
     },
     fileList: attachments,
   };
+
+  // Kiểm tra xem có patientId hợp lệ không
+  if (!patientId) {
+    return (
+      <div className="examination-form-container">
+        <div className="examination-form-content">
+          <Card className="examination-main-card">
+            <div className="examination-header">
+              <Title level={2} className="examination-title">
+                <Space>
+                  <HeartOutlined className="title-icon" />
+                  Khám Lâm Sàng & Nhập Kết Quả
+                </Space>
+              </Title>
+            </div>
+            
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '60px 20px',
+              background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+              borderRadius: '12px',
+              margin: '20px 0'
+            }}>
+              <div style={{ fontSize: '64px', marginBottom: '20px', opacity: 0.6 }}>
+                🩺
+              </div>
+              <Title level={3} style={{ color: '#666', marginBottom: '16px' }}>
+                Không có kết quả khám lâm sàng
+              </Title>
+              <Text style={{ fontSize: '16px', color: '#888', display: 'block', marginBottom: '24px' }}>
+                Vui lòng chọn bệnh nhân để bắt đầu khám lâm sàng
+              </Text>
+              <Button 
+                type="primary" 
+                size="large"
+                icon={<UserOutlined />}
+                style={{ 
+                  background: 'linear-gradient(135deg, #ff6b9d 0%, #ff758c 100%)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '12px 24px',
+                  height: 'auto'
+                }}
+              >
+                Chọn bệnh nhân
+              </Button>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Render loading nếu chưa có originalData
+  console.log("[DEBUG] resultId:", resultId);
+  console.log("[DEBUG] originalData:", originalData);
+  if (!originalData || (!originalData.id && !originalData.resultId && !originalData.patientId)) {
+    return <div style={{textAlign: 'center', padding: '40px 0'}}><span>Đang tải dữ liệu khám lâm sàng...</span></div>;
+  }
+
+  // Thêm log kiểm tra initialValues ngay trước return
+  console.log("initialValues", normalizeInitialValues(originalData));
 
   return (
     <div className="examination-form-container">
@@ -534,496 +384,123 @@ const ExaminationForm = ({
 
           <div className="examination-body">
             {/* Chỉ hiển thị form khi chưa hoàn thành */}
-            {!isCompleted && (
+            {!isCompleted && originalData && (
               <Form
+                key={originalData.id || resultId || 'new'}
                 form={form}
                 layout="vertical"
                 onFinish={handleSubmit}
                 className="examination-form"
               >
-                <Row gutter={24}>
-                  {/* Cột trái - Triệu chứng và dấu hiệu */}
-                  <Col span={12}>
-                    {/* Triệu chứng */}
-                    <Card className="examination-section-card">
-                      <div className="section-title">
-                        <FileTextOutlined className="section-icon" />
-                        <span>Triệu chứng</span>
-                      </div>
-                      <div className="symptoms-selection">
-                        <Space wrap className="common-symptoms">
-                          {commonSymptoms.map((symptom) => (
-                            <Tag
-                              key={symptom}
-                              className={
-                                symptoms.includes(symptom)
-                                  ? "symptom-tag active"
-                                  : "symptom-tag"
-                              }
-                              onClick={() =>
-                                symptoms.includes(symptom)
-                                  ? handleSymptomRemove(symptom)
-                                  : handleSymptomAdd(symptom)
-                              }
-                            >
-                              {symptom}
-                            </Tag>
-                          ))}
-                        </Space>
-                        <Input
-                          placeholder="Nhập triệu chứng khác..."
-                          className="custom-symptom-input"
-                          onPressEnter={(e) => {
-                            if (e.target.value.trim()) {
-                              handleSymptomAdd(e.target.value.trim());
-                              e.target.value = "";
-                            }
-                          }}
-                        />
-                        <div className="selected-symptoms">
-                          <Text strong>Triệu chứng đã chọn:</Text>
-                          <div className="selected-symptoms-list">
-                            {symptoms.map((symptom) => (
-                              <Tag
-                                key={symptom}
-                                closable
-                                className="selected-symptom-tag"
-                                onClose={() => handleSymptomRemove(symptom)}
-                              >
-                                {symptom}
-                              </Tag>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
 
-                    {/* Dấu hiệu lâm sàng */}
-                    <Card className="examination-section-card">
-                      <div className="section-title">
-                        <MedicineBoxOutlined className="section-icon" />
-                        <span>Dấu hiệu lâm sàng</span>
-                      </div>
-                      <Row gutter={[12, 12]}>
-                        <Col span={12}>
-                          <Form.Item label="Huyết áp" name="bloodPressure">
-                            <Input
-                              placeholder="120/80"
-                              className="examination-input"
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item label="Nhiệt độ (°C)" name="temperature">
-                            <InputNumber
-                              min={35}
-                              max={42}
-                              step={0.1}
-                              className="examination-input-number"
-                              style={{ width: "100%" }}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item
-                            label="Nhịp tim (lần/phút)"
-                            name="heartRate"
-                          >
-                            <InputNumber
-                              min={40}
-                              max={200}
-                              className="examination-input-number"
-                              style={{ width: "100%" }}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item label="Cân nặng (kg)" name="weight">
-                            <InputNumber
-                              min={30}
-                              max={200}
-                              className="examination-input-number"
-                              style={{ width: "100%" }}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item label="Chiều cao (cm)" name="height">
-                            <InputNumber
-                              min={140}
-                              max={220}
-                              className="examination-input-number"
-                              style={{ width: "100%" }}
-                            />
-                          </Form.Item>
-                        </Col>
-                      </Row>
-                    </Card>
-                  </Col>
-
-                  {/* Cột phải - Xét nghiệm */}
-                  <Col span={12}>
-                    {/* Xét nghiệm máu */}
-                    <Card className="examination-section-card">
-                      <div className="section-title">
-                        <ExperimentOutlined className="section-icon" />
-                        <span>Xét nghiệm máu</span>
-                      </div>
-                      <Row gutter={[8, 8]}>
-                        {bloodTestConfig.map((test) => (
-                          <Col
-                            span={12}
-                            key={test.key}
-                            className="blood-test-item"
-                          >
-                            <div className="test-label">{test.label}</div>
-                            <InputNumber
-                              placeholder={test.normalRange}
-                              className="blood-test-input"
-                              style={{ width: "100%" }}
-                              onChange={(value) =>
-                                handleLabResultChange(test.key, value)
-                              }
-                            />
-                            <div className="normal-range">
-                              Bình thường: {test.normalRange}
-                            </div>
-                          </Col>
-                        ))}
-                      </Row>
-                    </Card>
-
-                    {/* Siêu âm */}
-                    <Card className="examination-section-card">
-                      <div className="section-title">
-                        <EyeOutlined className="section-icon" />
-                        <span>Kết quả siêu âm</span>
-                      </div>
-                      <Form.Item name="ultrasound">
-                        <TextArea
-                          rows={4}
-                          placeholder="Mô tả kết quả siêu âm..."
-                          className="examination-textarea"
-                        />
-                      </Form.Item>
-                    </Card>
-                  </Col>
-                </Row>
-
-                <Divider className="section-divider" />
-
-                {/* Chuẩn đoán lâm sàng */}
-                <Row gutter={24}>
-                  <Col span={24}>
-                    <Form.Item
-                      label="🔍 Chuẩn đoán lâm sàng"
-                      name="diagnosis"
-                      rules={[
-                        { required: true, message: "Vui lòng nhập chuẩn đoán" },
-                      ]}
-                    >
-                      <div
-                        style={{
-                          marginBottom: 8,
-                          display: "flex",
-                          alignItems: "center",
-                          flexWrap: "wrap",
-                          gap: 8,
-                        }}
+                {/* Triệu chứng & Chi tiết triệu chứng */}
+                <Card className="examination-section-card" style={{ marginBottom: 16 }}>
+                  <div className="section-title"><MedicineBoxOutlined className="section-icon" /> Triệu chứng</div>
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item
+                        name="symptoms"
+                        label="Triệu chứng (có thể chọn nhiều)"
                       >
                         <Select
-                          placeholder="Chọn chẩn đoán nhanh"
-                          style={{ width: 200 }}
-                          size="small"
-                          onChange={(value) =>
-                            form.setFieldsValue({ diagnosis: value })
-                          }
+                          mode="multiple"
                           allowClear
+                          placeholder="Chọn triệu chứng..."
                         >
-                          <Option
-                            value="Vô sinh nguyên phát"
-                            label="Vô sinh nguyên phát"
-                          >
-                            <div
-                              style={{ display: "flex", alignItems: "center" }}
-                            >
-                              <span
-                                style={{ color: "#ff4d4f", marginRight: 8 }}
-                              >
-                                🔴
-                              </span>
-                              Vô sinh nguyên phát
-                            </div>
-                          </Option>
-                          <Option
-                            value="Vô sinh thứ phát"
-                            label="Vô sinh thứ phát"
-                          >
-                            <div
-                              style={{ display: "flex", alignItems: "center" }}
-                            >
-                              <span
-                                style={{ color: "#ff4d4f", marginRight: 8 }}
-                              >
-                                🔴
-                              </span>
-                              Vô sinh thứ phát
-                            </div>
-                          </Option>
-                          <Option
-                            value="Rối loạn rụng trứng"
-                            label="Rối loạn rụng trứng"
-                          >
-                            <div
-                              style={{ display: "flex", alignItems: "center" }}
-                            >
-                              <span
-                                style={{ color: "#faad14", marginRight: 8 }}
-                              >
-                                🟡
-                              </span>
-                              Rối loạn rụng trứng
-                            </div>
-                          </Option>
-                          <Option
-                            value="Tắc ống dẫn trứng"
-                            label="Tắc ống dẫn trứng"
-                          >
-                            <div
-                              style={{ display: "flex", alignItems: "center" }}
-                            >
-                              <span
-                                style={{ color: "#ff4d4f", marginRight: 8 }}
-                              >
-                                🔴
-                              </span>
-                              Tắc ống dẫn trứng
-                            </div>
-                          </Option>
-                          <Option
-                            value="Lạc nội mạc tử cung"
-                            label="Lạc nội mạc tử cung"
-                          >
-                            <div
-                              style={{ display: "flex", alignItems: "center" }}
-                            >
-                              <span
-                                style={{ color: "#ff4d4f", marginRight: 8 }}
-                              >
-                                🔴
-                              </span>
-                              Lạc nội mạc tử cung
-                            </div>
-                          </Option>
-                          <Option
-                            value="Hội chứng buồng trứng đa nang (PCOS)"
-                            label="PCOS"
-                          >
-                            <div
-                              style={{ display: "flex", alignItems: "center" }}
-                            >
-                              <span
-                                style={{ color: "#faad14", marginRight: 8 }}
-                              >
-                                🟡
-                              </span>
-                              Hội chứng buồng trứng đa nang (PCOS)
-                            </div>
-                          </Option>
-                          <Option
-                            value="AMH thấp - Dự trữ buồng trứng kém"
-                            label="AMH thấp"
-                          >
-                            <div
-                              style={{ display: "flex", alignItems: "center" }}
-                            >
-                              <span
-                                style={{ color: "#ff4d4f", marginRight: 8 }}
-                              >
-                                🔴
-                              </span>
-                              AMH thấp - Dự trữ buồng trứng kém
-                            </div>
-                          </Option>
-                          <Option
-                            value="Tuổi cao - Dự trữ buồng trứng giảm"
-                            label="Tuổi cao"
-                          >
-                            <div
-                              style={{ display: "flex", alignItems: "center" }}
-                            >
-                              <span
-                                style={{ color: "#faad14", marginRight: 8 }}
-                              >
-                                🟡
-                              </span>
-                              Tuổi cao - Dự trữ buồng trứng giảm
-                            </div>
-                          </Option>
-                          <Option
-                            value="Tinh trùng yếu - Nam giới"
-                            label="Tinh trùng yếu"
-                          >
-                            <div
-                              style={{ display: "flex", alignItems: "center" }}
-                            >
-                              <span
-                                style={{ color: "#1890ff", marginRight: 8 }}
-                              >
-                                🔵
-                              </span>
-                              Tinh trùng yếu - Nam giới
-                            </div>
-                          </Option>
-                          <Option
-                            value="Vô tinh trùng - Nam giới"
-                            label="Vô tinh trùng"
-                          >
-                            <div
-                              style={{ display: "flex", alignItems: "center" }}
-                            >
-                              <span
-                                style={{ color: "#ff4d4f", marginRight: 8 }}
-                              >
-                                🔴
-                              </span>
-                              Vô tinh trùng - Nam giới
-                            </div>
-                          </Option>
-                          <Option
-                            value="Rối loạn nội tiết tố"
-                            label="Rối loạn nội tiết"
-                          >
-                            <div
-                              style={{ display: "flex", alignItems: "center" }}
-                            >
-                              <span
-                                style={{ color: "#faad14", marginRight: 8 }}
-                              >
-                                🟡
-                              </span>
-                              Rối loạn nội tiết tố
-                            </div>
-                          </Option>
-                          <Option value="U xơ tử cung" label="U xơ tử cung">
-                            <div
-                              style={{ display: "flex", alignItems: "center" }}
-                            >
-                              <span
-                                style={{ color: "#faad14", marginRight: 8 }}
-                              >
-                                🟡
-                              </span>
-                              U xơ tử cung
-                            </div>
-                          </Option>
+                          {commonSymptoms.map((sym, idx) => (
+                            <Option key={idx} value={sym}>{sym}</Option>
+                          ))}
                         </Select>
-                        <Button
-                          size="small"
-                          type="text"
-                          style={{
-                            border: "1px solid #d9d9d9",
-                            borderRadius: 6,
-                            fontSize: 11,
-                            height: 28,
-                          }}
-                          onClick={() =>
-                            form.setFieldsValue({
-                              diagnosis: "Vô sinh nguyên phát",
-                            })
-                          }
-                        >
-                          🔴 Vô sinh nguyên phát
-                        </Button>
-                        <Button
-                          size="small"
-                          type="text"
-                          style={{
-                            border: "1px solid #d9d9d9",
-                            borderRadius: 6,
-                            fontSize: 11,
-                            height: 28,
-                          }}
-                          onClick={() =>
-                            form.setFieldsValue({
-                              diagnosis: "Rối loạn rụng trứng",
-                            })
-                          }
-                        >
-                          🟡 Rối loạn rụng trứng
-                        </Button>
-                        <Button
-                          size="small"
-                          type="text"
-                          style={{
-                            border: "1px solid #d9d9d9",
-                            borderRadius: 6,
-                            fontSize: 11,
-                            height: 28,
-                          }}
-                          onClick={() =>
-                            form.setFieldsValue({
-                              diagnosis: "Tắc ống dẫn trứng",
-                            })
-                          }
-                        >
-                          🔴 Tắc ống dẫn trứng
-                        </Button>
-                        <Button
-                          size="small"
-                          type="text"
-                          style={{
-                            border: "1px solid #d9d9d9",
-                            borderRadius: 6,
-                            fontSize: 11,
-                            height: 28,
-                          }}
-                          onClick={() =>
-                            form.setFieldsValue({
-                              diagnosis: "AMH thấp - Dự trữ buồng trứng kém",
-                            })
-                          }
-                        >
-                          🔴 AMH thấp
-                        </Button>
-                      </div>
-                      <TextArea
-                        rows={3}
-                        placeholder="Nhập chuẩn đoán..."
-                        className="examination-textarea"
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item
+                        name="symptomsDetail"
+                        label="Chi tiết triệu chứng"
+                      >
+                        <TextArea rows={2} placeholder="Mô tả chi tiết triệu chứng..." />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                </Card>     
 
-                {/* Upload file đính kèm */}
-                <Form.Item label="📎 File đính kèm">
-                  <Upload
-                    {...uploadProps}
-                    multiple
-                    className="examination-upload"
-                    showUploadList={false}
-                  >
-                    <Button icon={<UploadOutlined />} size="small">
-                      Chọn file
-                    </Button>
-                  </Upload>
-                  {attachments.length > 0 && (
-                    <div
-                      style={{ marginTop: 8, fontSize: "12px", color: "#666" }}
-                    >
-                      Đã chọn {attachments.length} file
-                    </div>
-                  )}
-                </Form.Item>
+                {/* Dấu hiệu lâm sàng */}
+                <Card className="examination-section-card" style={{ marginBottom: 16 }}>
+                  <div className="section-title"><UserOutlined className="section-icon" /> Dấu hiệu lâm sàng</div>
+                  <Row gutter={16}>
+                    <Col span={8}><Form.Item name="bloodPressureSystolic" label="Huyết áp tâm thu" rules={[{ type: 'number', min: 0, max: 300, message: '0-300 mmHg' }]}><InputNumber style={{ width: '100%' }} min={0} max={300} /></Form.Item></Col>
+                    <Col span={8}><Form.Item name="bloodPressureDiastolic" label="Huyết áp tâm trương" rules={[{ type: 'number', min: 0, max: 200, message: '0-200 mmHg' }]}><InputNumber style={{ width: '100%' }} min={0} max={200} /></Form.Item></Col>
+                    <Col span={8}><Form.Item name="temperature" label="Nhiệt độ (°C)" rules={[{ type: 'number', min: 30, max: 45, message: '30-45°C' }]}><InputNumber style={{ width: '100%' }} min={30} max={45} step={0.1} /></Form.Item></Col>
+                  </Row>
+                  <Row gutter={16}>
+                    <Col span={8}><Form.Item name="heartRate" label="Nhịp tim" rules={[{ type: 'number', min: 0, max: 200, message: '0-200 lần/phút' }]}><InputNumber style={{ width: '100%' }} min={0} max={200} /></Form.Item></Col>
+                    <Col span={8}><Form.Item name="weight" label="Cân nặng (kg)" rules={[{ type: 'number', min: 0, max: 300, message: '0-300 kg' }]}><InputNumber style={{ width: '100%' }} min={0} max={300} step={0.1} /></Form.Item></Col>
+                    <Col span={8}><Form.Item name="height" label="Chiều cao (cm)" rules={[{ type: 'number', min: 0, max: 250, message: '0-250 cm' }]}><InputNumber style={{ width: '100%' }} min={0} max={250} step={0.1} /></Form.Item></Col>
+                  </Row>
+                  <Row gutter={16}>
+                    <Col span={8}><Form.Item name="bloodType" label="Nhóm máu"><Select><Option value="A">A</Option><Option value="B">B</Option><Option value="AB">AB</Option><Option value="O">O</Option></Select></Form.Item></Col>
+                  </Row>
+                </Card>
+
+                {/* Chỉ số hormone & sinh học */}
+                <Card className="examination-section-card" style={{ marginBottom: 16 }}>
+                  <div className="section-title"><ExperimentOutlined className="section-icon" /> Chỉ số hormone & sinh học</div>
+                  <Row gutter={16}>
+                    <Col span={6}><Form.Item name="fshLevel" label="FSH" rules={[{ type: 'number', min: 0, max: 100, message: '0-100' }]}><InputNumber style={{ width: '100%' }} step={0.1} min={0} max={100} /></Form.Item></Col>
+                    <Col span={6}><Form.Item name="lhLevel" label="LH" rules={[{ type: 'number', min: 0, max: 100, message: '0-100' }]}><InputNumber style={{ width: '100%' }} step={0.1} min={0} max={100} /></Form.Item></Col>
+                    <Col span={6}><Form.Item name="estradiolLevel" label="Estradiol" rules={[{ type: 'number', min: 0, max: 1000, message: '0-1000' }]}><InputNumber style={{ width: '100%' }} step={0.1} min={0} max={1000} /></Form.Item></Col>
+                    <Col span={6}><Form.Item name="testosteroneLevel" label="Testosterone" rules={[{ type: 'number', min: 0, max: 10, message: '0-10' }]}><InputNumber style={{ width: '100%' }} step={0.1} min={0} max={10} /></Form.Item></Col>
+                  </Row>
+                  <Row gutter={16}>
+                    <Col span={6}><Form.Item name="amhLevel" label="AMH" rules={[{ type: 'number', min: 0, max: 20, message: '0-20' }]}><InputNumber style={{ width: '100%' }} step={0.1} min={0} max={20} /></Form.Item></Col>
+                    <Col span={6}><Form.Item name="prolactinLevel" label="Prolactin" rules={[{ type: 'number', min: 0, max: 100, message: '0-100' }]}><InputNumber style={{ width: '100%' }} step={0.1} min={0} max={100} /></Form.Item></Col>
+                    <Col span={6}><Form.Item name="glucose" label="Glucose" rules={[{ type: 'number', min: 0, max: 20, message: '0-20' }]}><InputNumber style={{ width: '100%' }} step={0.1} min={0} max={20} /></Form.Item></Col>
+                    <Col span={6}><Form.Item name="hemoglobin" label="Hemoglobin" rules={[{ type: 'number', min: 0, max: 30, message: '0-30' }]}><InputNumber style={{ width: '100%' }} step={0.1} min={0} max={30} /></Form.Item></Col>
+                  </Row>
+                  <Row gutter={16}>
+                    <Col span={6}><Form.Item name="creatinine" label="Creatinine" rules={[{ type: 'number', min: 0, max: 5, message: '0-5' }]}><InputNumber style={{ width: '100%' }} step={0.1} min={0} max={5} /></Form.Item></Col>
+                    <Col span={6}><Form.Item name="plateletCount" label="Tiểu cầu" rules={[{ type: 'number', min: 0, max: 1000, message: '0-1000' }]}><InputNumber style={{ width: '100%' }} min={0} max={1000} /></Form.Item></Col>
+                    <Col span={6}><Form.Item name="whiteBloodCell" label="Bạch cầu" rules={[{ type: 'number', min: 0, max: 100, message: '0-100' }]}><InputNumber style={{ width: '100%' }} step={0.1} min={0} max={100} /></Form.Item></Col>
+                  </Row>
+                </Card>
+
+                {/* Siêu âm & sinh sản */}
+                <Card className="examination-section-card" style={{ marginBottom: 16 }}>
+                  <div className="section-title"><EyeOutlined className="section-icon" /> Siêu âm & sinh sản</div>
+                  <Row gutter={16}>
+                    <Col span={8}><Form.Item name="endometrialThickness" label="Độ dày nội mạc tử cung" rules={[{ type: 'number', min: 0, max: 30, message: '0-30 mm' }]}><InputNumber style={{ width: '100%' }} step={0.1} min={0} max={30} /></Form.Item></Col>
+                    <Col span={8}><Form.Item name="ovarySizeLeft" label="Kích thước buồng trứng trái" rules={[{ type: 'number', min: 0, max: 10, message: '0-10 cm' }]}><InputNumber style={{ width: '100%' }} step={0.1} min={0} max={10} /></Form.Item></Col>
+                    <Col span={8}><Form.Item name="ovarySizeRight" label="Kích thước buồng trứng phải" rules={[{ type: 'number', min: 0, max: 10, message: '0-10 cm' }]}><InputNumber style={{ width: '100%' }} step={0.1} min={0} max={10} /></Form.Item></Col>
+                  </Row>
+                  <Row gutter={16}>
+                    <Col span={8}><Form.Item name="follicleCountLeft" label="Số nang noãn trái" rules={[{ type: 'number', min: 0, max: 50, message: '0-50' }]}><InputNumber style={{ width: '100%' }} min={0} max={50} /></Form.Item></Col>
+                    <Col span={8}><Form.Item name="follicleCountRight" label="Số nang noãn phải" rules={[{ type: 'number', min: 0, max: 50, message: '0-50' }]}><InputNumber style={{ width: '100%' }} min={0} max={50} /></Form.Item></Col>
+                    <Col span={8}><Form.Item name="ultrasoundFindings" label="Kết quả siêu âm"><TextArea rows={2} placeholder="Mô tả kết quả siêu âm..." /></Form.Item></Col>
+                  </Row>
+                </Card>
+
+                {/* Chẩn đoán & điều trị */}
+                <Card className="examination-section-card" style={{ marginBottom: 16 }}>
+                  <div className="section-title"><FileTextOutlined className="section-icon" /> Chẩn đoán & điều trị</div>
+                  <Row gutter={16}>
+                    <Col span={8}><Form.Item name="diagnosis" label="Chẩn đoán"><Input /></Form.Item></Col>
+                    <Col span={8}><Form.Item name="diagnosisCode" label="Mã chẩn đoán"><Input /></Form.Item></Col>
+                    <Col span={8}><Form.Item name="severityLevel" label="Mức độ nặng"><Select><Option value="Nhẹ">Nhẹ</Option><Option value="Vừa">Vừa</Option><Option value="Nặng">Nặng</Option></Select></Form.Item></Col>
+                  </Row>
+                  <Row gutter={16}>
+                    <Col span={8}><Form.Item name="infertilityDurationMonths" label="Thời gian vô sinh (tháng)"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+                    <Col span={8}><Form.Item name="previousTreatments" label="Điều trị trước đó"><Input /></Form.Item></Col>
+                    <Col span={8}><Form.Item name="recommendations" label="Khuyến nghị"><Input /></Form.Item></Col>
+                  </Row>
+                  <Row gutter={16}>
+                    <Col span={8}><Form.Item name="treatmentPriority" label="Mức ưu tiên điều trị"><Select><Option value="Cao">Cao</Option><Option value="Trung bình">Trung bình</Option><Option value="Thấp">Thấp</Option></Select></Form.Item></Col>
+                    <Col span={8}><Form.Item name="completionDate" label="Ngày hoàn thành"><DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" /></Form.Item></Col>
+                  </Row>
+                </Card>
 
                 {/* Ghi chú */}
-                <Form.Item label="📝 Ghi chú" name="notes">
-                  <TextArea
-                    rows={2}
-                    placeholder="Ghi chú thêm..."
-                    className="examination-textarea"
-                  />
+                <Form.Item name="notes" label="Ghi chú">
+                  <TextArea rows={2} placeholder="Ghi chú thêm..." />
                 </Form.Item>
 
                 {/* Bác sĩ khám */}
@@ -1072,28 +549,7 @@ const ExaminationForm = ({
                       className="action-btn test-btn"
                       icon={<ReloadOutlined />}
                       onClick={() => {
-                        form.setFieldsValue({
-                          diagnosis: "Vô sinh nguyên phát",
-                          bloodPressure: "120/80",
-                          temperature: 36.5,
-                          heartRate: 72,
-                          weight: 55,
-                          height: 160,
-                          ultrasound:
-                            "Buồng trứng bình thường, nội mạc tử cung dày 8mm",
-                          notes:
-                            "Bệnh nhân cần theo dõi trong quá trình điều trị",
-                        });
-                        setSymptoms(["rối loạn kinh nguyệt", "khó thụ thai"]);
-                        setLabResults({
-                          bloodTest: {
-                            FSH: "8.5",
-                            LH: "6.2",
-                            E2: "45.0",
-                            AMH: "2.1",
-                          },
-                        });
-                        // message.info("Đã điền dữ liệu mẫu");
+                        fillTestData();
                       }}
                     >
                       Điền mẫu test
@@ -1135,35 +591,14 @@ const ExaminationForm = ({
                           className="action-btn print-btn"
                           onClick={() => {
                             setIsCompleted(false);
-                            localStorage.removeItem(
-                              `examination_completed_${patientId}`
-                            );
+                            // localStorage.removeItem( // This line is no longer needed
+                            //   `examination_completed_${patientId}`
+                            // );
                           }}
                         >
                           Chỉnh sửa
                         </Button>
-                        <Button
-                          icon={<ReloadOutlined />}
-                          className="action-btn reset-btn"
-                          onClick={() => {
-                            backupData();
-                            setIsCompleted(false);
-                            setSubmittedData(null);
-                            setOriginalData(null);
-                            localStorage.removeItem(
-                              `examination_completed_${patientId}`
-                            );
-                            localStorage.removeItem(
-                              `examination_draft_${patientId}`
-                            );
-                            form.resetFields();
-                            setSymptoms([]);
-                            setLabResults({});
-                            setAttachments([]);
-                          }}
-                        >
-                          Đặt lại
-                        </Button>
+                        {/* Đã xóa nút Đặt lại */}
                       </Space>
                     }
                   >
@@ -1200,49 +635,29 @@ const ExaminationForm = ({
                           className="results-descriptions"
                         >
                           <Descriptions.Item label="Huyết áp">
-                            {submittedData.clinicalSigns?.bloodPressure ? (
-                              <Tag className="result-clinical-tag">
-                                {submittedData.clinicalSigns.bloodPressure}
-                              </Tag>
-                            ) : (
-                              "Chưa đo"
-                            )}
+                            {(submittedData.bloodPressureSystolic && submittedData.bloodPressureDiastolic)
+                              ? <Tag className="result-clinical-tag">{submittedData.bloodPressureSystolic}/{submittedData.bloodPressureDiastolic} mmHg</Tag>
+                              : "Chưa đo"}
                           </Descriptions.Item>
                           <Descriptions.Item label="Nhiệt độ">
-                            {submittedData.clinicalSigns?.temperature ? (
-                              <Tag className="result-clinical-tag">
-                                {submittedData.clinicalSigns.temperature}°C
-                              </Tag>
-                            ) : (
-                              "Chưa đo"
-                            )}
+                            {submittedData.temperature
+                              ? <Tag className="result-clinical-tag">{submittedData.temperature}°C</Tag>
+                              : "Chưa đo"}
                           </Descriptions.Item>
                           <Descriptions.Item label="Nhịp tim">
-                            {submittedData.clinicalSigns?.heartRate ? (
-                              <Tag className="result-clinical-tag">
-                                {submittedData.clinicalSigns.heartRate} lần/phút
-                              </Tag>
-                            ) : (
-                              "Chưa đo"
-                            )}
+                            {submittedData.heartRate
+                              ? <Tag className="result-clinical-tag">{submittedData.heartRate} lần/phút</Tag>
+                              : "Chưa đo"}
                           </Descriptions.Item>
                           <Descriptions.Item label="Cân nặng">
-                            {submittedData.clinicalSigns?.weight ? (
-                              <Tag className="result-clinical-tag">
-                                {submittedData.clinicalSigns.weight} kg
-                              </Tag>
-                            ) : (
-                              "Chưa đo"
-                            )}
+                            {submittedData.weight
+                              ? <Tag className="result-clinical-tag">{submittedData.weight} kg</Tag>
+                              : "Chưa đo"}
                           </Descriptions.Item>
                           <Descriptions.Item label="Chiều cao">
-                            {submittedData.clinicalSigns?.height ? (
-                              <Tag className="result-clinical-tag">
-                                {submittedData.clinicalSigns.height} cm
-                              </Tag>
-                            ) : (
-                              "Chưa đo"
-                            )}
+                            {submittedData.height
+                              ? <Tag className="result-clinical-tag">{submittedData.height} cm</Tag>
+                              : "Chưa đo"}
                           </Descriptions.Item>
                         </Descriptions>
                       </Col>
@@ -1260,52 +675,25 @@ const ExaminationForm = ({
                           className="results-descriptions"
                         >
                           <Descriptions.Item label="Triệu chứng" span={2}>
-                            {submittedData.symptoms?.length > 0 ? (
-                              <Space wrap>
-                                {submittedData.symptoms.map(
-                                  (symptom, index) => (
-                                    <Tag
-                                      key={index}
-                                      className="result-symptom-tag"
-                                    >
-                                      {symptom}
-                                    </Tag>
-                                  )
-                                )}
-                              </Space>
-                            ) : (
-                              "Không có triệu chứng ghi nhận"
-                            )}
+                            {(() => {
+                              let parsedSymptoms = Array.isArray(submittedData.symptoms)
+                                ? submittedData.symptoms
+                                : (typeof submittedData.symptoms === 'string' ? JSON.parse(submittedData.symptoms) : []);
+                              return parsedSymptoms.length > 0 ? (
+                                <Space wrap>
+                                  {parsedSymptoms.map((symptom, index) => (
+                                    <Tag key={index} className="result-symptom-tag">{symptom}</Tag>
+                                  ))}
+                                </Space>
+                              ) : (
+                                "Không có triệu chứng ghi nhận"
+                              );
+                            })()}
                           </Descriptions.Item>
-                          <Descriptions.Item
-                            label="Kết quả xét nghiệm máu"
-                            span={2}
-                          >
-                            {submittedData.labResults?.bloodTest ? (
-                              <Space wrap>
-                                {Object.entries(
-                                  submittedData.labResults.bloodTest
-                                ).map(([test, value], idx) => (
-                                  <Tag
-                                    key={test}
-                                    className="result-bloodtest-tag"
-                                  >
-                                    <Text strong>{test}:</Text> {value || "N/A"}
-                                  </Tag>
-                                ))}
-                              </Space>
-                            ) : (
-                              "Chưa có kết quả xét nghiệm"
-                            )}
-                          </Descriptions.Item>
-                          <Descriptions.Item label="Kết quả siêu âm" span={2}>
-                            {submittedData.labResults?.ultrasound ? (
-                              <Tag className="result-ultrasound-tag">
-                                {submittedData.labResults.ultrasound}
-                              </Tag>
-                            ) : (
-                              "Chưa có kết quả siêu âm"
-                            )}
+                          <Descriptions.Item label="Chi tiết triệu chứng" span={2}>
+                            {submittedData.symptomsDetail
+                              ? <Tag className="result-symptom-tag">{submittedData.symptomsDetail}</Tag>
+                              : "Không có"}
                           </Descriptions.Item>
                         </Descriptions>
                       </Col>

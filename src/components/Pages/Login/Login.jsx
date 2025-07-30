@@ -149,59 +149,77 @@ export default function Login() {
       return;
     }
 
-    // ✅ Log dữ liệu gửi lên
-    console.log("🔐 Đăng nhập với:", { email: formData.email });
+    // Chỉ log khi debug mode
+    if (process.env.NODE_ENV === 'development' && false) { // Tắt log
+      console.log("🔐 Đăng nhập với:", { email: formData.email });
+    }
 
     try {
       const userData = await apiLogin.login(formData.email, formData.password);
-      console.log("✅ Đăng nhập thành công:", userData);
-      console.log("👤 Role từ backend:", userData.role);
+      
+      // Chỉ log khi debug mode
+      if (process.env.NODE_ENV === 'development' && false) { // Tắt log
+        console.log("✅ Đăng nhập thành công:", userData);
+        console.log("👤 Role từ backend:", userData.role);
+      }
 
       // ✅ Calculate dashboard path directly to avoid timing issues with UserContext
       const dashboardPath = calculateDashboardPath(userData);
 
-      console.log("🎯 Calculated dashboard path:", dashboardPath);
+      // Chỉ log khi debug mode
+      if (process.env.NODE_ENV === 'development' && false) { // Tắt log
+        console.log("🎯 Calculated dashboard path:", dashboardPath);
+      }
 
-      // ✅ Redirect ngay lập tức trước khi gọi login để tránh delay
-      navigate(dashboardPath, { replace: true });
-
-      // ✅ Sau đó mới gọi login để cập nhật context
+      // ✅ Gọi login trước để cập nhật context
       await login(userData);
+      
+      // ✅ Redirect ngay lập tức khi thành công
+      navigate(dashboardPath, { replace: true });
     } catch (error) {
-      console.error("❌ Lỗi đăng nhập:", error);
+      // Chỉ log lỗi khi debug mode
+      if (process.env.NODE_ENV === 'development' && false) {
+        console.error("❌ Lỗi đăng nhập:", error);
+      }
 
       let errorMsg = "❌ Đăng nhập thất bại.";
 
       if (error.response) {
         const { status, data } = error.response;
-        console.error("❗Lỗi từ server:", data);
-        console.error("📄 Status code:", status);
+        
+        // Chỉ log khi debug mode
+        if (process.env.NODE_ENV === 'development' && false) {
+          console.error("❗Lỗi từ server:", data);
+          console.error("📄 Status code:", status);
+        }
 
         switch (status) {
           case 403:
-            errorMsg =
-              "❌ Email của bạn chưa được xác thực. Vui lòng kiểm tra hộp thư để kích hoạt tài khoản.";
+            errorMsg = "❌ Email của bạn chưa được xác thực. Vui lòng kiểm tra hộp thư.";
             break;
           case 401:
             errorMsg = "❌ Email hoặc mật khẩu không đúng.";
             break;
           case 423:
-            errorMsg =
-              "❌ Tài khoản của bạn đã bị khóa. Vui lòng liên hệ admin.";
+            errorMsg = "❌ Tài khoản đã bị khóa. Vui lòng liên hệ admin.";
             break;
           case 400:
             errorMsg = "❌ Thông tin đăng nhập không hợp lệ.";
             break;
           case 500:
-            errorMsg = "❌ Lỗi server. Vui lòng thử lại sau ít phút.";
+            errorMsg = "❌ Lỗi server. Vui lòng thử lại sau.";
             break;
           default:
-            errorMsg = data?.message || errorMsg;
+            errorMsg = data?.message || "❌ Đăng nhập thất bại.";
         }
       } else if (error.request) {
-        console.error("❌ Không nhận được phản hồi từ server:", error.request);
-        errorMsg =
-          "❌ Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.";
+        // Chỉ log khi debug mode
+        if (process.env.NODE_ENV === 'development' && false) {
+          console.error("❌ Không nhận được phản hồi từ server:", error.request);
+        }
+        errorMsg = "❌ Không thể kết nối server. Vui lòng kiểm tra mạng.";
+      } else {
+        errorMsg = "❌ Có lỗi xảy ra. Vui lòng thử lại.";
       }
 
       setMessage(errorMsg);
@@ -287,12 +305,30 @@ export default function Login() {
 
   const handleGoogleLoginError = () => {
     console.log("❌ Google Login Failed");
-    setMessage("❌ Đăng nhập Google thất bại. Vui lòng thử lại.");
+    setMessage("❌ Đăng nhập Google thất bại. Vui lòng thử lại hoặc sử dụng đăng nhập thường.");
   };
 
+  // 🆕 Handle Google Sign-In configuration error
   useEffect(() => {
-    console.log("🌐 Current origin:", window.location.origin);
-    console.log("🔑 Google Client ID:", clientId);
+    // Check if Google Sign-In is properly configured
+    const checkGoogleSignInConfig = () => {
+      const currentOrigin = window.location.origin;
+      console.log("🔍 [Login] Current origin:", currentOrigin);
+      console.log("🔑 [Login] Google Client ID:", clientId);
+      
+      // Show warning if not localhost
+      if (!currentOrigin.includes('localhost') && !currentOrigin.includes('127.0.0.1')) {
+        console.warn("⚠️ [Login] Google Sign-In may not work on this domain:", currentOrigin);
+      }
+    };
+    
+    checkGoogleSignInConfig();
+  }, []);
+
+  useEffect(() => {
+    // Bỏ log để tránh spam
+    // console.log("🌐 Current origin:", window.location.origin);
+    // console.log("🔑 Google Client ID:", clientId);
   }, []);
 
   // ✅ Handle messages from Register page (email verification success)
@@ -441,7 +477,17 @@ export default function Login() {
                 className={
                   message.startsWith("✅") ? "server-success" : "server-error"
                 }
-                style={{ marginTop: 10 }}
+                style={{ 
+                  marginTop: 10,
+                  padding: "12px 16px",
+                  borderRadius: "8px",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  textAlign: "center",
+                  background: message.startsWith("✅") ? "#f6ffed" : "#fff2f0",
+                  border: message.startsWith("✅") ? "1px solid #b7eb8f" : "1px solid #ffccc7",
+                  color: message.startsWith("✅") ? "#52c41a" : "#ff4d4f"
+                }}
               >
                 {message}
                 {message.includes("chưa được xác thực") && (
@@ -507,6 +553,16 @@ export default function Login() {
             opacity: 1;
             transform: translateY(0);
           }
+        }
+        
+        /* ✅ Ẩn thông báo lỗi token từ antd */
+        .ant-message-notice {
+          display: none !important;
+        }
+        
+        /* ✅ Ẩn thông báo lỗi network */
+        .ant-message-error {
+          display: none !important;
         }
       `}</style>
     </GoogleOAuthProvider>

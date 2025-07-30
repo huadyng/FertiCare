@@ -191,6 +191,16 @@ export default function Header() {
                 </div>
                 <div className="dropdown-divider"></div>
                 <div
+                  className="dropdown-item"
+                  onClick={() => {
+                    setShowDropdown(false);
+                    navigate("/my-appointments");
+                  }}
+                >
+                  <span className="dropdown-icon">📅</span>
+                  <span>Lịch hẹn của tôi</span>
+                </div>
+                <div
                   className="dropdown-item logout-item"
                   onClick={handleLogoutClick}
                 >

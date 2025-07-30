@@ -1,4 +1,4 @@
-import axiosClient from "./axiosClient";
+import axiosClient from "../services/axiosClient";
 
 // 1. Tạo comment mới
 export const createComment = async (commentData) => {

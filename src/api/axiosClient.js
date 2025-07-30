@@ -1,5 +1,6 @@
 //Kết nối URL của Backend
 import axios from "axios";
+import { message } from "antd";
 const axiosClient = axios.create({
   //"http://localhost:8080" -- http://localhost:3001
 
@@ -49,7 +50,22 @@ axiosClient.interceptors.response.use(
     // Xử lý lỗi 403 - Forbidden (có thể do token hết hạn)
     if (error.response?.status === 403) {
       console.warn("⚠️ [axiosClient] 403 Forbidden - Token có thể hết hạn");
-      // Có thể redirect về login hoặc refresh token
+      message.error({
+        content: "🔒 Không có quyền truy cập. Vui lòng đăng nhập lại!",
+        duration: 5,
+        style: {
+          marginTop: '20vh',
+          fontSize: '16px',
+          fontWeight: 'bold',
+        },
+      });
+      // Clear localStorage mà không redirect
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+      // Bỏ redirect để tránh render lại trang
+      // setTimeout(() => {
+      //   window.location.href = "/login";
+      // }, 3000);
     }
 
     // Xử lý lỗi 500 - Internal Server Error
@@ -57,12 +73,49 @@ axiosClient.interceptors.response.use(
       console.error(
         "💥 [axiosClient] 500 Internal Server Error - Backend có vấn đề"
       );
+      message.error({
+        content: "💥 Lỗi hệ thống. Vui lòng thử lại sau!",
+        duration: 5,
+      });
     }
 
     // Xử lý lỗi 401 - Unauthorized
     if (error.response?.status === 401) {
       console.warn("⚠️ [axiosClient] 401 Unauthorized - Token không hợp lệ");
-      // Có thể redirect về login
+      message.error({
+        content: "🔒 Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!",
+        duration: 8,
+        style: {
+          marginTop: '20vh',
+          fontSize: '16px',
+          fontWeight: 'bold',
+        },
+      });
+      // Clear localStorage mà không redirect
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+      // Bỏ redirect để tránh render lại trang
+      // setTimeout(() => {
+      //   window.location.href = "/login";
+      // }, 3000);
+    }
+
+    // Xử lý lỗi network
+    if (error.request) {
+      console.error("🌐 [axiosClient] Network Error - Không thể kết nối server");
+      message.error({
+        content: "🌐 Lỗi kết nối mạng. Vui lòng kiểm tra kết nối!",
+        duration: 5,
+      });
+    }
+
+    // Xử lý lỗi 404 - Not Found
+    if (error.response?.status === 404) {
+      console.warn("🔍 [axiosClient] 404 Not Found");
+      message.error({
+        content: "🔍 Không tìm thấy dữ liệu yêu cầu!",
+        duration: 5,
+      });
     }
 
     return Promise.reject(error);

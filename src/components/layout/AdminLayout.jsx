@@ -1,12 +1,11 @@
 import { useState, useContext } from "react";
-import { Layout, Menu, Avatar, Dropdown, Badge, Button, message } from "antd";
+import { Layout, Menu, Avatar, Dropdown, Button, message } from "antd"; // Bỏ Badge vì đã ẩn thông báo
 import {
   DashboardOutlined,
   UserOutlined,
   TeamOutlined,
-  SettingOutlined,
   LogoutOutlined,
-  BellOutlined,
+  // BellOutlined, // Đã ẩn chuông thông báo
   BarChartOutlined,
   MedicineBoxOutlined,
   CalendarOutlined,
@@ -35,12 +34,6 @@ const AdminLayout = () => {
       icon: <UserOutlined />,
       label: "Thông tin cá nhân",
       onClick: () => navigate("/admin/profile"),
-    },
-    {
-      key: "settings",
-      icon: <SettingOutlined />,
-      label: "Cài đặt",
-      onClick: () => navigate("/admin/settings"),
     },
     {
       type: "divider",
@@ -72,6 +65,8 @@ const AdminLayout = () => {
       label: "Quản lý phòng ban",
       onClick: () => navigate("/admin/departments"),
     },
+    /* Đã ẩn các tab sau - có thể bỏ comment để hiển thị lại */
+    /*
     {
       key: "/admin/doctors",
       icon: <TeamOutlined />,
@@ -90,12 +85,8 @@ const AdminLayout = () => {
       label: "Báo cáo hệ thống",
       onClick: () => navigate("/admin/reports"),
     },
-    {
-      key: "/admin/settings",
-      icon: <SettingOutlined />,
-      label: "Cài đặt hệ thống",
-      onClick: () => navigate("/admin/settings"),
-    },
+    */
+
   ];
 
   return (
@@ -136,6 +127,8 @@ const AdminLayout = () => {
           </div>
 
           <div className="admin-header-right">
+            {/* Đã ẩn chuông thông báo - có thể bỏ comment để hiển thị lại */}
+            {/* 
             <Badge count={5} className="notification-badge">
               <Button
                 type="text"
@@ -143,6 +136,7 @@ const AdminLayout = () => {
                 className="notification-btn"
               />
             </Badge>
+            */}
 
             <Dropdown
               menu={{ items: userMenuItems }}
