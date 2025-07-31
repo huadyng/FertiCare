@@ -161,46 +161,7 @@ const DoctorForm = ({ initialValues, onSubmit, onCancel, disabled = false }) => 
       </Form.Item>
 
       {/* Work Schedule */}
-      <Form.Item label="Work Schedule" shouldUpdate>
-        {() => {
-          const schedule = form.getFieldValue("schedule") || {};
-          return (
-            <div style={{ maxHeight: 300, overflowY: "auto", border: "1px solid #ddd", padding: 10 }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr>
-                    <th style={{ border: "1px solid #ccc", padding: 8 }}>Day</th>
-                    {shifts.map((shift) => (
-                      <th key={shift} style={{ border: "1px solid #ccc", padding: 8, textTransform: "capitalize" }}>
-                        {shift}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {daysOfWeek.map((day) => (
-                    <tr key={day}>
-                      <td style={{ border: "1px solid #ccc", padding: 8, textTransform: "capitalize" }}>{day}</td>
-                      {shifts.map((shift) => (
-                        <td key={shift} style={{ border: "1px solid #ccc", padding: 8, textAlign: "center" }}>
-                          <Form.Item
-                            name={["schedule", day, shift]}
-                            valuePropName="checked"
-                            noStyle
-                          >
-                            <Switch disabled={disabled} />
-                          </Form.Item>
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          );
-        }}
-      </Form.Item>
-
+      
       {!disabled && (
         <Form.Item style={{ textAlign: "right" }}>
           <Button onClick={onCancel} style={{ marginRight: 8 }}>

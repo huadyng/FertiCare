@@ -1,9 +1,9 @@
 .doctor-card {
   width: 100%;
-  max-width: 350px;
+ max-width: unset;  
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
-  padding: 35px;
+  padding: 20px 32px;
   border-radius: 30px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
   text-align: center;
@@ -12,6 +12,7 @@
   position: relative;
   overflow: hidden;
   cursor: pointer;
+  box-sizing: border-box;
   animation: fadeInUp 0.8s ease-out both;
 }
 

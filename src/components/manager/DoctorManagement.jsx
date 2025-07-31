@@ -88,38 +88,38 @@ const DoctorManagement = () => {
 
   const columns = [
     {
-      title: "Full Name",
+      title: "Họ và Tên",
       dataIndex: "fullName",
       key: "fullName",
     },
     {
-      title: "Department",
+      title: "Khoa",
       dataIndex: "department",
       key: "department",
     },
     {
-      title: "Status",
+      title: "Trạng thái",
       dataIndex: "status",
       key: "status",
       render: (_, record) => (
         <Switch
           checked={record.status === "active"}
           onChange={() => handleToggleStatus(record)}
-          checkedChildren="Active"
-          unCheckedChildren="Inactive"
+          checkedChildren="Hoat động"
+          unCheckedChildren="Không hoạt động"
         />
       ),
     },
     {
-      title: "Actions",
+      title: "Hành động",
       key: "actions",
       render: (_, record) => (
         <Space>
           <Button icon={<EyeOutlined />} onClick={() => openModal("view", record)}>
-            View
+            Coi
           </Button>
           <Button icon={<EditOutlined />} onClick={() => openModal("edit", record)}>
-            Edit
+            Sửa
           </Button>
           
         </Space>
@@ -129,10 +129,10 @@ const DoctorManagement = () => {
 
   return (
     <Card
-      title="Doctor Management"
+      title="Quản lý Bác Sĩ"
       extra={
         <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal("create")}>
-          Add Doctor
+          Thêm bác sĩ
         </Button>
       }
     >

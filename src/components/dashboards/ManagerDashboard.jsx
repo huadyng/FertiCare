@@ -55,9 +55,9 @@ const Dashboard = () => {
 
   // 🥧 Doctors Pie Data
   const doctorPieData = [
-    { name: "Active Doctors", value: dashboardData.activeDoctors || 0 },
+    { name: "Bác sĩ đang làm", value: dashboardData.activeDoctors || 0 },
     {
-      name: "Inactive Doctors",
+      name: "Bác sĩ đang nghỉ",
       value:
         (dashboardData.totalDoctors || 0) - (dashboardData.activeDoctors || 0),
     },
@@ -65,10 +65,10 @@ const Dashboard = () => {
 
   // 🥧 Shifts Pie Data
   const shiftPieData = [
-    { name: "Understaffed", value: shiftStats.understaffedShifts || 0 },
-    { name: "Pending", value: shiftStats.pendingShifts || 0 },
-    { name: "Active", value: shiftStats.activeShifts || 0 },
-    { name: "Completed", value: shiftStats.completedShifts || 0 },
+    { name: "Thiếu người", value: shiftStats.understaffedShifts || 0 },
+    { name: "Đang Đợi", value: shiftStats.pendingShifts || 0 },
+    { name: "Đang làm", value: shiftStats.activeShifts || 0 },
+    { name: "Hoàn thành", value: shiftStats.completedShifts || 0 },
   ];
 
   return (
@@ -78,7 +78,7 @@ const Dashboard = () => {
         <Col span={8}>
           <Card>
             <Statistic
-              title="📅 Today's Appointments"
+              title="📅 Cuộc Hẹn ngày hôm nay"
               value={dashboardData.todayAppointments || 0}
             />
           </Card>
@@ -86,7 +86,7 @@ const Dashboard = () => {
         <Col span={8}>
           <Card>
             <Statistic
-              title="⭐ Average Rating"
+              title="⭐ Đánh giá Trung bình"
               value={dashboardData.averageRating || 0}
               precision={1}
               suffix="/5"
@@ -97,7 +97,7 @@ const Dashboard = () => {
         <Col span={8}>
           <Card>
             <Statistic
-              title="😊 Patient Satisfaction"
+              title="😊 Khách hàng thỏa mãng"
               value={dashboardData.patientSatisfaction || 0}
               suffix="%"
               valueStyle={{ color: "#52c41a" }}
@@ -110,7 +110,7 @@ const Dashboard = () => {
       <Row gutter={16} style={{ marginBottom: 16 }}>
         {/* Doctor Pie */}
         <Col span={12}>
-          <Card title="🥧 Doctors Overview">
+          <Card title="🥧 Bác Sĩ">
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
@@ -141,7 +141,7 @@ const Dashboard = () => {
         {/* Shift Pie */}
         <Col span={12}>
           <Card
-            title="📊 Work Shift Overview"
+            title="📊 Lịch"
             extra={
               <Button
                 type="primary"
@@ -182,7 +182,7 @@ const Dashboard = () => {
       {/* 📈 Line chart */}
       <Row gutter={16}>
         <Col span={24}>
-          <Card title="📈 Monthly Performance">
+          <Card title="📈 Hoạt động trong tháng">
             <ResponsiveContainer width="100%" height={300}>
               <LineChart
                 data={dashboardData.performanceData}
@@ -197,19 +197,19 @@ const Dashboard = () => {
                   type="monotone"
                   dataKey="patients"
                   stroke="#3b82f6"
-                  name="Patients"
+                  name="Bệnh nhân"
                 />
                 <Line
                   type="monotone"
                   dataKey="appointments"
                   stroke="#f97316"
-                  name="Appointments"
+                  name="Cuộc hẹn"
                 />
                 <Line
                   type="monotone"
                   dataKey="success"
                   stroke="#22c55e"
-                  name="Success"
+                  name="Thành công"
                 />
               </LineChart>
             </ResponsiveContainer>

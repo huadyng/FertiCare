@@ -12,7 +12,7 @@
     #ffffff 0%,
     #d86c7e 25%,
     #ff6b9d 50%,
-    #913855 100%
+    #ad365e 100%
   );
   min-height: 100vh;
   position: relative;
@@ -376,13 +376,15 @@
 /* Doctor List */
 .doctor-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(3, 1fr); /* luôn 3 thẻ mỗi hàng */
   gap: 40px;
   justify-items: center;
-  width: 100%;
-  padding: 40px 60px; /* Cho rộng hơn 1 chút về hai bên */
+  max-width: 1200px; /* hoặc 1400px tùy theo bạn */
+  margin: 0 auto; /* canh giữa */
+  padding: 40px 20px;
   box-sizing: border-box;
 }
+
 
 /* Pagination */
 .pagination-container {
