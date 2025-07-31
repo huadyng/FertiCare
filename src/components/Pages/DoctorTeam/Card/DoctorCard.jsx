@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import "./DoctorCard.css";
 
-const DoctorCard = ({ id, name, expYears, cases, pic, animationDelay = 0 }) => {
+const DoctorCard = ({ id, name, expYears,desc, cases, pic, animationDelay = 0 }) => {
   const navigate = useNavigate();
 
   const handleClick = () => {
@@ -36,8 +36,7 @@ const DoctorCard = ({ id, name, expYears, cases, pic, animationDelay = 0 }) => {
       <h3 className="doctor-name">{name}</h3>
 
       <p className="doctor-info">
-        Bác sĩ chuyên khoa với nhiều năm kinh nghiệm trong lĩnh vực điều trị
-        hiếm muộn, cam kết mang lại sự chăm sóc tốt nhất cho bệnh nhân.
+       {desc}
       </p>
 
       <div className="doctor-stats">

@@ -62,7 +62,7 @@ export default function DoctorCarousel() {
                 <div className="card-info">
                   <h3 className="card-name">{doc.name}</h3>
                   <p className="card-position">Số ca: {doc.cases}</p>
-                  <p className="card-desc">Kinh nghiệm: {doc.expyears} năm</p>
+                  <p className="card-desc">Kinh nghiệm: {doc.expYears} năm</p>
                   <button className="read-more" onClick={() => navigate(`/doctor/${doc.id}`)}>Xem thêm →</button>
                 </div>
               </div>

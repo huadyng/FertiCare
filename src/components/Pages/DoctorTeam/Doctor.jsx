@@ -211,9 +211,10 @@ const Doctor = () => {
               id={doctor.id}
               key={doctor.id}
               name={doctor.name}
-              expYears={doctor.expyears}
+              expYears={doctor.expYears}
               cases={doctor.cases}
               pic={doctor.pic}
+              desc={doctor.Descrpition}
               animationDelay={index * 0.1}
             />
           ))}

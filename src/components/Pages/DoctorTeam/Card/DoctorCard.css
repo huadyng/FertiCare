@@ -1,6 +1,7 @@
 .doctor-card {
   width: 100%;
- max-width: unset;  
+  max-width: 100%;
+  
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
   padding: 20px 32px;
