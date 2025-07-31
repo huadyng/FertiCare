@@ -30,28 +30,8 @@ const PatientDashboard = () => {
   const [treatmentData, setTreatmentData] = useState(null);
 
   useEffect(() => {
-    // Simulate API call to get patient data
-    setTimeout(() => {
-      setTreatmentData({
-        treatmentProgress: 65,
-        currentPhase: "Kích thích buồng trứng",
-        nextAppointment: "2024-01-15 09:00",
-        doctorName: "BS. Nguyễn Thị Lan",
-        totalSessions: 12,
-        completedSessions: 8,
-        upcomingTests: ["Siêu âm kiểm tra", "Xét nghiệm hormone"],
-        medications: [
-          { name: "Gonal-F", dosage: "150 IU", time: "Tối", status: "active" },
-          {
-            name: "Cetrotide",
-            dosage: "0.25mg",
-            time: "Sáng",
-            status: "active",
-          },
-        ],
-      });
-      setLoading(false);
-    }, 1000);
+    // TODO: Replace with actual API call
+    setLoading(false);
   }, []);
 
   const treatmentTimeline = [

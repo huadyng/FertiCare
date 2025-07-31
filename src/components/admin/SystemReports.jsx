@@ -63,118 +63,12 @@ const { TabPane } = Tabs;
 const { RangePicker } = DatePicker;
 const { Title, Text } = Typography;
 
-// Mock data for charts
-const monthlyData = [
-  {
-    month: "T1",
-    patients: 245,
-    revenue: 1250000000,
-    appointments: 320,
-    treatments: 198,
-  },
-  {
-    month: "T2",
-    patients: 278,
-    revenue: 1380000000,
-    appointments: 352,
-    treatments: 225,
-  },
-  {
-    month: "T3",
-    patients: 312,
-    revenue: 1560000000,
-    appointments: 398,
-    treatments: 267,
-  },
-  {
-    month: "T4",
-    patients: 289,
-    revenue: 1445000000,
-    appointments: 375,
-    treatments: 234,
-  },
-  {
-    month: "T5",
-    patients: 334,
-    revenue: 1670000000,
-    appointments: 412,
-    treatments: 289,
-  },
-  {
-    month: "T6",
-    patients: 356,
-    revenue: 1780000000,
-    appointments: 445,
-    treatments: 312,
-  },
-];
-
-const departmentData = [
-  {
-    name: "Khám tổng quát",
-    patients: 345,
-    revenue: 690000000,
-    color: "#8884d8",
-  },
-  {
-    name: "Điều trị chuyên sâu",
-    patients: 234,
-    revenue: 936000000,
-    color: "#82ca9d",
-  },
-  { name: "Phẫu thuật", patients: 123, revenue: 615000000, color: "#ffc658" },
-  { name: "Chẩn đoán", patients: 178, revenue: 356000000, color: "#ff7c7c" },
-];
-
-const treatmentSuccessData = [
-  { treatment: "IVF", success: 85, total: 156, rate: 54.5 },
-  { treatment: "IUI", success: 72, total: 98, rate: 73.5 },
-  { treatment: "ICSI", success: 68, total: 89, rate: 76.4 },
-  { treatment: "Phẫu thuật nội soi", success: 145, total: 156, rate: 92.9 },
-];
-
-const topDoctorsData = [
-  {
-    id: 1,
-    name: "Dr. Nguyễn Văn An",
-    patients: 245,
-    revenue: 490000000,
-    rating: 4.8,
-    specialization: "Sản phụ khoa",
-    successRate: 87,
-  },
-  {
-    id: 2,
-    name: "Dr. Trần Thị Bình",
-    patients: 312,
-    revenue: 624000000,
-    rating: 4.9,
-    specialization: "Nội tiết sinh sản",
-    successRate: 92,
-  },
-  {
-    id: 3,
-    name: "Dr. Lê Văn Cường",
-    patients: 189,
-    revenue: 378000000,
-    rating: 4.7,
-    specialization: "Phẫu thuật nội soi",
-    successRate: 95,
-  },
-];
-
-const systemMetrics = {
-  totalPatients: 1245,
-  activePatients: 892,
-  totalDoctors: 24,
-  activeDoctors: 22,
-  totalRevenue: 8750000000,
-  monthlyGrowth: 12.5,
-  patientSatisfaction: 94.2,
-  avgWaitTime: 25,
-  systemUptime: 99.8,
-  dataBackupStatus: "success",
-};
+// TODO: Replace with actual API data
+const monthlyData = [];
+const departmentData = [];
+const treatmentSuccessData = [];
+const topDoctorsData = [];
+const systemMetrics = {};
 
 const SystemReports = () => {
   const [loading, setLoading] = useState(false);

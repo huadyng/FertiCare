@@ -1,9 +1,11 @@
-import axiosClient from "./axiosClient";
+import axiosClient from "../services/axiosClient.js";
 
 export const treatmentPlanAPI = {
   // Lưu phác đồ điều trị mới từ clinical result
   async createTreatmentPlanFromClinicalResult(resultId, planData) {
     try {
+
+      
       const response = await axiosClient.post(
         `/api/treatment-workflow/treatment-plan/from-clinical-result/${resultId}`,
         planData
@@ -256,6 +258,27 @@ export const treatmentPlanAPI = {
       isValid: errors.length === 0,
       errors,
     };
+  },
+
+  // Lấy phác đồ điều trị hiện tại (active) của bệnh nhân
+  async getActiveTreatmentPlan(patientId) {
+    try {
+      const response = await axiosClient.get(
+        `/api/treatment-workflow/patient/${patientId}/active-treatment-plan`
+      );
+      return {
+        success: true,
+        data: response.data,
+        message: "Lấy phác đồ điều trị hiện tại thành công",
+      };
+    } catch (error) {
+      console.error("Error fetching active treatment plan:", error);
+      return {
+        success: false,
+        error: error.message,
+        message: "Có lỗi xảy ra khi lấy phác đồ điều trị hiện tại",
+      };
+    }
   },
 };
 

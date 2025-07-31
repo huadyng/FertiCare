@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Table,
   Card,
@@ -15,21 +16,21 @@ import {
   Row,
   Col,
   Statistic,
-  Progress,
   Tag,
+  Tooltip,
+  Switch,
 } from "antd";
 import {
   PlusOutlined,
   EditOutlined,
-  DeleteOutlined,
   SearchOutlined,
   ReloadOutlined,
   EyeOutlined,
-  TeamOutlined,
   UserOutlined,
   MedicineBoxOutlined,
+  InfoCircleOutlined,
 } from "@ant-design/icons";
-import { departmentAPI } from "../../services/api";
+import apiAdmin from "../../api/apiAdmin";
 
 const { Search } = Input;
 const { TextArea } = Input;
@@ -41,6 +42,7 @@ const DepartmentManagement = () => {
   const [isViewDrawerVisible, setIsViewDrawerVisible] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [form] = Form.useForm();
+  const navigate = useNavigate();
   const [searchText, setSearchText] = useState("");
 
   // Stats
@@ -55,27 +57,39 @@ const DepartmentManagement = () => {
     fetchDepartments();
   }, [searchText]);
 
+
+
+
+
   const fetchDepartments = async () => {
     setLoading(true);
     try {
-      const response = await departmentAPI.getAll();
+      console.log("🔍 [DepartmentManagement] Fetching departments from real API...");
+      const response = await apiAdmin.getAllDepartments();
+      
+      // response is already the data array, not wrapped in .data
+      const allData = Array.isArray(response) ? response : [];
+      
       const filteredData = searchText
-        ? response.data.filter(
+        ? allData.filter(
             (dept) =>
               dept.name.toLowerCase().includes(searchText.toLowerCase()) ||
-              dept.description.toLowerCase().includes(searchText.toLowerCase())
+              (dept.description && dept.description.toLowerCase().includes(searchText.toLowerCase()))
           )
-        : response.data;
+        : allData;
 
+      console.log("✅ [DepartmentManagement] Real departments data:", filteredData);
+      
+      // Use the data directly from Backend without additional processing
       setDepartments(filteredData);
-
-      // Calculate stats
+      
+      // Calculate stats from departments data
       const totalDoctors = filteredData.reduce(
-        (sum, dept) => sum + dept.doctorCount,
+        (sum, dept) => sum + (dept.doctorCount || 0),
         0
       );
       const totalPatients = filteredData.reduce(
-        (sum, dept) => sum + dept.patientCount,
+        (sum, dept) => sum + (dept.patientCount || 0),
         0
       );
 
@@ -89,8 +103,17 @@ const DepartmentManagement = () => {
             : 0,
       });
     } catch (error) {
-      message.error("Lỗi khi tải danh sách phòng ban");
-      console.error(error);
+      console.error("❌ [DepartmentManagement] Real API fetch failed:", error);
+      message.error("Lỗi khi tải danh sách phòng ban: " + (error.response?.data?.message || error.message));
+      
+      // Fallback to empty data
+      setDepartments([]);
+      setStats({
+        totalDepartments: 0,
+        totalDoctors: 0,
+        totalPatients: 0,
+        avgPatientsPerDept: 0,
+      });
     }
     setLoading(false);
   };
@@ -107,54 +130,99 @@ const DepartmentManagement = () => {
     setIsModalVisible(true);
   };
 
-  const handleView = (department) => {
+  const handleView = async (department) => {
     setSelectedDepartment(department);
     setIsViewDrawerVisible(true);
-  };
-
-  const handleDelete = async (departmentId) => {
+    
+    // Fetch detailed doctor information for this department
     try {
-      await departmentAPI.delete(departmentId);
-      message.success("Xóa phòng ban thành công");
-      fetchDepartments();
+      console.log("🔍 [DepartmentManagement] Fetching doctors for department:", department.name);
+      const doctorData = await apiAdmin.getDoctorsByDepartment(department.id, department.name);
+      console.log("✅ [DepartmentManagement] Doctor data received:", doctorData);
+      
+      // Update selected department with doctor details
+      setSelectedDepartment(prev => ({
+        ...prev,
+        doctors: doctorData.doctors || [],
+        doctorCount: doctorData.doctorCount || 0
+      }));
     } catch (error) {
-      message.error("Lỗi khi xóa phòng ban");
+      console.error("❌ [DepartmentManagement] Failed to fetch doctors:", error);
+      message.warning("Không thể tải danh sách bác sĩ");
     }
   };
 
+
+
   const handleSubmit = async (values) => {
     try {
+      console.log("🔍 [DepartmentManagement] Submitting department data:", values);
+      
       if (selectedDepartment) {
-        // Update
-        await departmentAPI.update(selectedDepartment.id, values);
+        // Update - đảm bảo isActive được gửi
+        const updateData = {
+          ...values,
+          isActive: values.isActive !== undefined ? values.isActive : selectedDepartment.isActive
+        };
+        
+        // Đảm bảo không gửi undefined
+        if (updateData.isActive === undefined) {
+          updateData.isActive = selectedDepartment.isActive;
+        }
+        console.log("🔍 [DepartmentManagement] Updating department with data:", updateData);
+        await apiAdmin.updateDepartment(selectedDepartment.id, updateData);
         message.success("Cập nhật phòng ban thành công");
       } else {
         // Create
-        await departmentAPI.create({
+        const departmentData = {
           ...values,
           doctorCount: 0,
           patientCount: 0,
-          status: "active",
-        });
+          isActive: values.isActive !== undefined ? values.isActive : true,
+        };
+        console.log("🔍 [DepartmentManagement] Creating department with data:", departmentData);
+        await apiAdmin.createDepartment(departmentData);
         message.success("Tạo phòng ban thành công");
       }
       setIsModalVisible(false);
       fetchDepartments();
     } catch (error) {
-      message.error("Lỗi khi lưu thông tin phòng ban");
+      console.error("❌ [DepartmentManagement] Submit failed:", error);
+      message.error("Lỗi khi lưu thông tin phòng ban: " + (error.response?.data?.message || error.message));
     }
   };
 
-  const getEfficiencyColor = (patientCount) => {
-    if (patientCount >= 400) return "#52c41a"; // Green
-    if (patientCount >= 200) return "#faad14"; // Orange
-    return "#ff4d4f"; // Red
+  const getEfficiencyColor = (patientCount, doctorCount) => {
+    if (doctorCount === 0) return "#ff4d4f"; // Red - không có bác sĩ
+    
+    const ratio = patientCount / doctorCount;
+    if (ratio >= 15) return "#52c41a"; // Green - hiệu suất cao
+    if (ratio >= 8) return "#faad14"; // Orange - hiệu suất trung bình
+    return "#ff4d4f"; // Red - hiệu suất thấp
   };
 
-  const getEfficiencyText = (patientCount) => {
-    if (patientCount >= 400) return "Cao";
-    if (patientCount >= 200) return "Trung bình";
+  const getEfficiencyText = (patientCount, doctorCount) => {
+    if (doctorCount === 0) return "Không có bác sĩ";
+    
+    const ratio = patientCount / doctorCount;
+    if (ratio >= 15) return "Cao";
+    if (ratio >= 8) return "Trung bình";
     return "Thấp";
+  };
+
+  const getEfficiencyTooltip = (patientCount, doctorCount) => {
+    if (doctorCount === 0) {
+      return "Không có khả năng phục vụ bệnh nhân – cần ưu tiên xử lý";
+    }
+    
+    const ratio = patientCount / doctorCount;
+    if (ratio >= 15) {
+      return "Bác sĩ đang phục vụ nhiều bệnh nhân – tối ưu tốt nguồn lực";
+    }
+    if (ratio >= 8) {
+      return "Phân bổ hợp lý, hiệu suất ở mức chấp nhận được";
+    }
+    return "Bác sĩ đang không được khai thác hết năng lực làm việc";
   };
 
   const columns = [
@@ -176,11 +244,17 @@ const DepartmentManagement = () => {
       dataIndex: "doctorCount",
       key: "doctorCount",
       sorter: (a, b) => a.doctorCount - b.doctorCount,
-      render: (count) => (
-        <Space>
-          <TeamOutlined style={{ color: "#1890ff" }} />
-          <span>{count}</span>
-        </Space>
+      render: (count, record) => (
+        <Button
+          type="link"
+          style={{ padding: 0, height: 'auto' }}
+          onClick={() => handleView(record)}
+        >
+          <Space>
+            <UserOutlined style={{ color: "#1890ff" }} />
+            <span>{count}</span>
+          </Space>
+        </Button>
       ),
     },
     {
@@ -199,12 +273,29 @@ const DepartmentManagement = () => {
       title: "Hiệu suất",
       key: "efficiency",
       render: (_, record) => {
-        const efficiency = record.patientCount;
-        const color = getEfficiencyColor(efficiency);
-        const text = getEfficiencyText(efficiency);
-        return <Tag color={color}>{text}</Tag>;
+        const color = getEfficiencyColor(record.patientCount, record.doctorCount);
+        const text = getEfficiencyText(record.patientCount, record.doctorCount);
+        const tooltip = getEfficiencyTooltip(record.patientCount, record.doctorCount);
+        return (
+          <Tooltip title={tooltip}>
+            <Tag color={color}>
+              {text} <InfoCircleOutlined style={{ marginLeft: 4, fontSize: '12px' }} />
+            </Tag>
+          </Tooltip>
+        );
       },
       sorter: (a, b) => a.patientCount - b.patientCount,
+    },
+    {
+      title: "Trạng thái",
+      dataIndex: "isActive",
+      key: "isActive",
+      render: (isActive) => (
+        <Tag color={isActive ? "green" : "red"}>
+          {isActive ? "Hoạt động" : "Không hoạt động"}
+        </Tag>
+      ),
+      sorter: (a, b) => (a.isActive === b.isActive ? 0 : a.isActive ? 1 : -1),
     },
     {
       title: "Tỷ lệ bệnh nhân/bác sĩ",
@@ -240,14 +331,6 @@ const DepartmentManagement = () => {
             onClick={() => handleEdit(record)}
             title="Chỉnh sửa"
           />
-          <Popconfirm
-            title="Bạn có chắc chắn muốn xóa phòng ban này?"
-            onConfirm={() => handleDelete(record.id)}
-            okText="Có"
-            cancelText="Không"
-          >
-            <Button type="link" danger icon={<DeleteOutlined />} title="Xóa" />
-          </Popconfirm>
         </Space>
       ),
     },
@@ -255,6 +338,8 @@ const DepartmentManagement = () => {
 
   return (
     <div className="department-management">
+
+
       {/* Statistics Cards */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={12} md={6}>
@@ -273,7 +358,7 @@ const DepartmentManagement = () => {
               title="Tổng bác sĩ"
               value={stats.totalDoctors}
               valueStyle={{ color: "#52c41a" }}
-              prefix={<TeamOutlined />}
+              prefix={<UserOutlined />}
             />
           </Card>
         </Col>
@@ -375,6 +460,17 @@ const DepartmentManagement = () => {
             />
           </Form.Item>
 
+          <Form.Item
+            label="Trạng thái"
+            name="isActive"
+            valuePropName="checked"
+          >
+            <Switch 
+              checkedChildren="Hoạt động" 
+              unCheckedChildren="Không hoạt động"
+            />
+          </Form.Item>
+
           <div style={{ textAlign: "right" }}>
             <Space>
               <Button onClick={() => setIsModalVisible(false)}>Hủy</Button>
@@ -393,6 +489,9 @@ const DepartmentManagement = () => {
         width={500}
         onClose={() => setIsViewDrawerVisible(false)}
         open={isViewDrawerVisible}
+        zIndex={1000}
+        mask={true}
+        maskClosable={true}
       >
         {selectedDepartment && (
           <div>
@@ -414,9 +513,12 @@ const DepartmentManagement = () => {
                 <MedicineBoxOutlined />
               </div>
               <h3 style={{ marginBottom: 8 }}>{selectedDepartment.name}</h3>
-              <Tag color={getEfficiencyColor(selectedDepartment.patientCount)}>
-                Hiệu suất: {getEfficiencyText(selectedDepartment.patientCount)}
+                          <Tooltip title={getEfficiencyTooltip(selectedDepartment.patientCount, selectedDepartment.doctorCount)}>
+              <Tag color={getEfficiencyColor(selectedDepartment.patientCount, selectedDepartment.doctorCount)}>
+                Hiệu suất: {getEfficiencyText(selectedDepartment.patientCount, selectedDepartment.doctorCount)}
+                <InfoCircleOutlined style={{ marginLeft: 4, fontSize: '12px' }} />
               </Tag>
+            </Tooltip>
             </div>
 
             <Descriptions column={1} variant="bordered" size="small">
@@ -428,7 +530,7 @@ const DepartmentManagement = () => {
               </Descriptions.Item>
               <Descriptions.Item label="Số bác sĩ">
                 <Space>
-                  <TeamOutlined style={{ color: "#1890ff" }} />
+                  <UserOutlined style={{ color: "#1890ff" }} />
                   {selectedDepartment.doctorCount}
                 </Space>
               </Descriptions.Item>
@@ -448,35 +550,7 @@ const DepartmentManagement = () => {
               </Descriptions.Item>
             </Descriptions>
 
-            <Divider>Thống kê hoạt động</Divider>
 
-            <div style={{ marginBottom: 16 }}>
-              <p>Tỷ lệ công suất:</p>
-              <Progress
-                percent={Math.min(
-                  (selectedDepartment.patientCount / 500) * 100,
-                  100
-                )}
-                strokeColor={getEfficiencyColor(
-                  selectedDepartment.patientCount
-                )}
-                format={(percent) => `${percent.toFixed(0)}%`}
-              />
-            </div>
-
-            <div style={{ marginBottom: 16 }}>
-              <p>Phân bổ nhân lực:</p>
-              <Progress
-                percent={Math.min(
-                  (selectedDepartment.doctorCount / 20) * 100,
-                  100
-                )}
-                strokeColor="#722ed1"
-                format={(percent) => `${percent.toFixed(0)}%`}
-              />
-            </div>
-
-            <Divider />
 
             <div style={{ textAlign: "center" }}>
               <Space>
@@ -490,7 +564,17 @@ const DepartmentManagement = () => {
                 >
                   Chỉnh sửa
                 </Button>
-                <Button icon={<TeamOutlined />}>Quản lý nhân sự</Button>
+                <Button 
+                  icon={<UserOutlined />}
+                  onClick={() => {
+                    setIsViewDrawerVisible(false); // Đóng drawer trước
+                    navigate('/admin/users', { 
+                      state: { departmentFilter: selectedDepartment?.name } 
+                    });
+                  }}
+                >
+                  Quản lý người dùng
+                </Button>
               </Space>
             </div>
           </div>

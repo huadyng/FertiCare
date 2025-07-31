@@ -1,4 +1,4 @@
-import axiosClient from "./axiosClient";
+import axiosClient from "../services/axiosClient";
 
 const apiDoctor = {
   // Helper function to get current user role
@@ -17,21 +17,7 @@ const apiDoctor = {
 
   // Helper function to get doctor profile with fallback
   getDoctorProfileWithFallback: async (doctorId) => {
-    const userRole = apiDoctor.getCurrentUserRole();
-    console.log(`🔍 [apiDoctor] Getting doctor profile for role: ${userRole}`);
-
-    // If user is not a doctor, return null with appropriate message
-    if (userRole !== "DOCTOR") {
-      console.log(
-        "ℹ️ [apiDoctor] User is not a doctor, skipping profile fetch"
-      );
-      return {
-        success: false,
-        data: null,
-        message: "Chỉ bác sĩ mới có thể truy cập thông tin này",
-        permissionDenied: true,
-      };
-    }
+    console.log(`🔍 [apiDoctor] Getting doctor profile for: ${doctorId}`);
 
     try {
       // Use the correct endpoint for doctor profile
@@ -149,7 +135,7 @@ const apiDoctor = {
       // Tính toán thống kê cơ bản từ danh sách bệnh nhân
       const totalPatients = patients.length;
 
-      // Thử lấy thêm dữ liệu từ treatment phases nếu có
+      // Lấy treatment phases của bác sĩ (chứa thông tin planId)
       let treatmentPhases = [];
       if (doctorId) {
         try {
@@ -178,26 +164,40 @@ const apiDoctor = {
           phase.startDate && new Date(phase.startDate).toDateString() === today
       ).length;
 
-      // Bệnh nhân đang điều trị (có treatment plan active)
-      const inTreatment = treatmentPhases.filter(
-        (phase) => phase.status === "In Progress"
-      ).length;
+      // 🆕 ĐANG ĐIỀU TRỊ: Đếm unique planId từ treatment phases 
+      // (API chỉ trả về active treatment plans, nên mỗi planId = 1 bệnh nhân đang điều trị)
+      const uniqueActivePlans = new Set();
+      treatmentPhases.forEach((phase) => {
+        if (phase.planId) {
+          uniqueActivePlans.add(phase.planId);
+        }
+      });
+      const inTreatment = uniqueActivePlans.size;
 
-      // Bệnh nhân đã hoàn thành điều trị
-      const completed = treatmentPhases.filter(
-        (phase) => phase.status === "Completed"
-      ).length;
+      // 🆕 ĐÃ HOÀN THÀNH: Tính từ patient status 
+      // (vì API không trả về completed plans, dùng patient status làm fallback)
+      let completed = 0;
+      if (patients.length > 0) {
+        patients.forEach((patient) => {
+          if (
+            patient.status === "completed" ||
+            patient.profileStatus === "completed"
+          ) {
+            completed++;
+          }
+        });
+      }
 
-      // Tính tỉ lệ thành công
-      const totalPhases = treatmentPhases.length;
+      // 🆕 TỈ LỆ THÀNH CÔNG: (completed patients / total patients) * 100
+      const totalPatientsForSuccess = patients.length;
       const successRate =
-        totalPhases > 0 ? Math.round((completed / totalPhases) * 100) : 0;
+        totalPatientsForSuccess > 0 ? Math.round((completed / totalPatientsForSuccess) * 100) : 0;
 
-      // Nếu không có treatment phases, tính toán từ profile status của patients
+      // Fallback: Nếu không có treatment phases, tính toán từ profile status của patients
       let fallbackInTreatment = 0;
       let fallbackCompleted = 0;
 
-      if (totalPhases === 0 && patients.length > 0) {
+      if (treatmentPhases.length === 0 && patients.length > 0) {
         patients.forEach((patient) => {
           if (
             patient.status === "active" ||
@@ -216,10 +216,10 @@ const apiDoctor = {
       const stats = {
         totalPatients: totalPatients,
         todayAppointments: todayAppointments,
-        inTreatment: totalPhases > 0 ? inTreatment : fallbackInTreatment,
-        completed: totalPhases > 0 ? completed : fallbackCompleted,
+        inTreatment: treatmentPhases.length > 0 ? inTreatment : fallbackInTreatment,
+        completed: treatmentPhases.length > 0 ? completed : fallbackCompleted,
         successRate:
-          totalPhases > 0
+          treatmentPhases.length > 0
             ? successRate
             : totalPatients > 0
             ? Math.round((fallbackCompleted / totalPatients) * 100)
@@ -643,29 +643,9 @@ const apiDoctor = {
         }
       }
 
-      // Nếu không có appointments từ treatment phases, tạo dữ liệu mẫu từ patients
+      // TODO: Handle empty appointments
       if (todayAppointments.length === 0) {
-        try {
-          const patientsResponse = await apiDoctor.getMyPatients();
-          const patients = patientsResponse || [];
-
-          // Tạo lịch hẹn mẫu cho 2-3 bệnh nhân đầu tiên
-          const sampleTimes = ["09:00", "10:30", "14:00"];
-          todayAppointments = patients.slice(0, 3).map((patient, index) => ({
-            id: `appointment-${patient.id}-${Date.now()}`,
-            time: sampleTimes[index] || "09:00",
-            patientName: patient.fullName || `Bệnh nhân ${patient.id}`,
-            service: "Khám lâm sàng",
-            status: "Scheduled",
-            type: "Consultation",
-            notes: "Lịch hẹn khám định kỳ",
-          }));
-        } catch (error) {
-          console.warn(
-            "⚠️ [apiDoctor] Không thể tạo appointments mẫu:",
-            error.message
-          );
-        }
+        console.log("ℹ️ [apiDoctor] No appointments found for today");
       }
 
       console.log("✅ [apiDoctor] Lịch hẹn hôm nay:", todayAppointments.length);
@@ -698,11 +678,106 @@ const apiDoctor = {
         },
       ];
 
-      console.log(
-        "✅ [apiDoctor] Sử dụng lịch hẹn mặc định:",
-        defaultAppointments.length
-      );
       return defaultAppointments;
+    }
+  },
+
+  // 🆕 Lấy lịch hẹn theo ngày cụ thể
+  getAppointmentsByDate: async (date) => {
+    try {
+      console.log("📅 [apiDoctor] Lấy lịch hẹn cho ngày:", date);
+
+      // Lấy doctorId từ localStorage
+      const user = localStorage.getItem("user");
+      let doctorId = null;
+
+      if (user) {
+        try {
+          const userData = JSON.parse(user);
+          doctorId = userData.id || userData.userId;
+        } catch (e) {
+          console.error("❌ [apiDoctor] Lỗi parse user data:", e);
+        }
+      }
+
+      // Thử lấy appointments từ API backend
+      let appointments = [];
+      if (doctorId) {
+        try {
+          // Gọi API backend để lấy appointments theo ngày
+          const response = await axiosClient.get(
+            `/api/doctor/schedule/my-appointments?date=${date}`
+          );
+          
+          if (response.data && response.data.appointments) {
+            appointments = response.data.appointments.map((appointment) => ({
+              id: appointment.appointmentId,
+              time: appointment.appointmentTime 
+                ? new Date(appointment.appointmentTime).toLocaleTimeString("vi-VN", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "09:00",
+              patientName: appointment.customer?.name || `Bệnh nhân ${appointment.customerId}`,
+              service: "Khám lâm sàng",
+              status: appointment.checkInStatus || "Scheduled",
+              type: "Consultation",
+              notes: "Lịch hẹn khám",
+              room: appointment.room,
+            }));
+          }
+          
+          console.log("✅ [apiDoctor] Appointments from API:", appointments.length);
+        } catch (error) {
+          console.warn(
+            "⚠️ [apiDoctor] Không thể lấy appointments từ API:",
+            error.message
+          );
+          
+          // Fallback: thử lấy từ treatment phases
+          try {
+            const response = await axiosClient.get(
+              `/api/treatment-workflow/doctor/${doctorId}/treatment-phases`
+            );
+            const phases = response.data || [];
+
+            // Lọc phases theo ngày
+            const targetDate = new Date(date).toDateString();
+            const targetPhases = phases.filter(
+              (phase) =>
+                phase.startDate &&
+                new Date(phase.startDate).toDateString() === targetDate
+            );
+
+            // Transform thành format lịch hẹn
+            appointments = targetPhases.map((phase) => ({
+              id: phase.phaseId || `phase-${Date.now()}`,
+              time: phase.startDate
+                ? new Date(phase.startDate).toLocaleTimeString("vi-VN", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "09:00",
+              patientName: `Bệnh nhân ${phase.patientId}`,
+              service: phase.phaseName || "Khám lâm sàng",
+              status: phase.status || "Scheduled",
+              type: "Treatment",
+              notes: phase.description || "",
+            }));
+          } catch (phaseError) {
+            console.warn(
+              "⚠️ [apiDoctor] Không thể lấy treatment phases:",
+              phaseError.message
+            );
+          }
+        }
+      }
+
+      console.log("✅ [apiDoctor] Lịch hẹn cho ngày", date, ":", appointments.length);
+      return appointments;
+    } catch (error) {
+      console.error("❌ [apiDoctor] Lỗi lấy lịch hẹn theo ngày:", error);
+      return [];
     }
   },
 

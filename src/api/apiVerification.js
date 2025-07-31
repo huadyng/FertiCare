@@ -1,4 +1,4 @@
-import axiosClient from "./axiosClient";
+import axiosClient from "../services/axiosClient";
 
 const apiVerification = {
   // Xác thực email bằng token - improved với backend response format đúng

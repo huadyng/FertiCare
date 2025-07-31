@@ -1,4 +1,4 @@
-import axiosClient from "./axiosClient";
+import axiosClient from "../services/axiosClient";
 
 // Tạo blog mới ((hỗ trợ FormData với ảnh thật)
 export const createBlog = async (formData) => {
@@ -34,6 +34,17 @@ export const getPublishedBlogs = async () => {
     return response.data;
   } catch (error) {
     console.error("Lỗi khi lấy danh sách blog đã xuất bản", error);
+    throw error;
+  }
+};
+
+// 🆕 Lấy tất cả blog (endpoint GET /api/blogs)
+export const getAllBlogs = async () => {
+  try {
+    const response = await axiosClient.get("/api/blogs");
+    return response.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy tất cả blog", error);
     throw error;
   }
 };

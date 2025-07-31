@@ -5,7 +5,7 @@ const ENV_CONFIG = {
   // API Configuration
   API: {
     BASE_URL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8080",
-    TIMEOUT: parseInt(import.meta.env.VITE_API_TIMEOUT) || 60000,
+    TIMEOUT: parseInt(import.meta.env.VITE_API_TIMEOUT) || 900000, // 15 minutes (15 * 60 * 1000)
     DB_URL: import.meta.env.VITE_DB_URL || "http://localhost:3001",
   },
 

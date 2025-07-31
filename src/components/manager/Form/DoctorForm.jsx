@@ -2,6 +2,7 @@
 import React from "react";
 import { Form, Input, Select, DatePicker, InputNumber, Switch, Button, Row, Col } from "antd";
 import moment from "moment";
+import { dateOfBirthValidator, getDateOfBirthConstraints } from "../../../utils/dateValidation";
 
 const { Option } = Select;
 
@@ -81,7 +82,7 @@ const DoctorForm = ({ initialValues, onSubmit, onCancel, disabled = false }) => 
           { type: "email", message: "Invalid email" },
         ]}
       >
-        <Input placeholder="Enter email" />
+        <Input placeholder="Enter email" disabled={initialValues?.id !== undefined} />
       </Form.Item>
 
       <Form.Item
@@ -95,9 +96,18 @@ const DoctorForm = ({ initialValues, onSubmit, onCancel, disabled = false }) => 
       <Form.Item
         label="Date of Birth"
         name="dateOfBirth"
-        rules={[{ required: true, message: "Please select date of birth" }]}
+        rules={[
+          { required: true, message: "Please select date of birth" },
+          { validator: dateOfBirthValidator }
+        ]}
       >
-        <DatePicker style={{ width: "100%" }} />
+        <DatePicker 
+          style={{ width: "100%" }}
+          disabledDate={(current) => {
+            const { minDate, maxDate } = getDateOfBirthConstraints();
+            return current && (current < moment(minDate) || current > moment(maxDate));
+          }}
+        />
       </Form.Item>
 
       <Form.Item

@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import CustomDatePicker from "./components/CustomDatePicker/CustomDatePicker";
-import axiosClient from "../../../api/axiosClient";
+import axiosClient from "../../../services/axiosClient";
+import { UserContext } from "../../../context/UserContext";
 import "./RegistrationForm.css";
 
 const RegistrationForm = () => {
   const navigate = useNavigate();
+  const { user, isLoggedIn } = useContext(UserContext);
   const [showBackToTop, setShowBackToTop] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -96,38 +98,40 @@ const RegistrationForm = () => {
 
   // Nếu chọn auto thì load lịch bác sĩ đầu tiên
   useEffect(() => {
-    const fetchAutoDoctorSchedule = async () => {
-      if (
-        formData.doctorOption === "auto" &&
-        doctors.length > 0 &&
-        !formData.appointmentDate
-      ) {
-        const autoDoctorId = doctors[0].id;
-
-        setFormData((prev) => ({ ...prev, doctorId: autoDoctorId }));
-
-        try {
-          setLoadingStates((prev) => ({ ...prev, dates: true }));
-
-          const res = await axiosClient.get(
-            `/api/service-request/available-dates/${autoDoctorId}`
-          );
-          const dateList = res.data.map((dateStr) => ({
-            date: dateStr,
-            slots: [],
-          }));
-
-          setAvailableDates(dateList);
-          setAvailableSlots([]);
-        } catch (err) {
-          setAvailableDates([]);
-        } finally {
-          setLoadingStates((prev) => ({ ...prev, dates: false }));
-        }
-      }
-    };
     fetchAutoDoctorSchedule();
   }, [formData.doctorOption, doctors, formData.appointmentDate]);
+
+  // Khi chọn bác sĩ tự động
+  const fetchAutoDoctorSchedule = async () => {
+    if (
+      formData.doctorOption === "auto" &&
+      doctors.length > 0 &&
+      !formData.appointmentDate
+    ) {
+      const autoDoctorId = doctors[0].id;
+      
+      setFormData((prev) => ({ ...prev, doctorId: autoDoctorId }));
+
+      try {
+        setLoadingStates((prev) => ({ ...prev, dates: true }));
+
+        const res = await axiosClient.get(
+          `/api/service-request/available-dates/${autoDoctorId}`
+        );
+        const dateList = res.data.map((dateStr) => ({
+          date: dateStr,
+          slots: [],
+        }));
+
+        setAvailableDates(dateList);
+        setAvailableSlots([]);
+      } catch (err) {
+        setAvailableDates([]);
+      } finally {
+        setLoadingStates((prev) => ({ ...prev, dates: false }));
+      }
+    }
+  };
 
   // Khi chọn bác sĩ thủ công
   const handleDoctorChange = async (e) => {
@@ -178,8 +182,11 @@ const RegistrationForm = () => {
       return;
     }
 
-    // Format date to YYYY-MM-DD
-    const formattedDate = date.toISOString().split("T")[0];
+    // Format date to YYYY-MM-DD using local date
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const formattedDate = `${year}-${month}-${day}`;
     console.log("[DEBUG] Ngày đã format:", formattedDate);
 
     setFormData((prev) => {
@@ -260,7 +267,11 @@ const RegistrationForm = () => {
   // Kiểm tra ngày có available không
   const isDateAvailable = (date) => {
     if (!Array.isArray(availableDates)) return false;
-    const dateStr = date.toISOString().split("T")[0];
+    // Sử dụng local date thay vì UTC để tránh lệch timezone
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
     const isAvailable = availableDates.some((d) => d.date.date === dateStr);
     return isAvailable;
   };
@@ -295,6 +306,9 @@ const RegistrationForm = () => {
       return;
     }
 
+    // Tạo datetime với timezone local (không chuyển đổi sang UTC)
+    const appointmentDateTime = new Date(`${formData.appointmentDate}T${formData.appointmentTime}:00`);
+    // Gửi thời gian local dưới dạng string để tránh lệch timezone
     const appointmentTime = `${formData.appointmentDate}T${formData.appointmentTime}:00`;
 
     const dataToSubmit = {
@@ -326,7 +340,7 @@ const RegistrationForm = () => {
         appointmentDate: formData.appointmentDate,
         appointmentTime: formData.appointmentTime,
         notes: formData.notes,
-        appointmentDateTime: `${formData.appointmentDate}T${formData.appointmentTime}:00`,
+        appointmentDateTime: appointmentTime,
       };
 
       console.log("submittedData created:", submittedData);
@@ -432,59 +446,15 @@ const RegistrationForm = () => {
     );
     console.log("submittedFormData:", submittedFormData);
 
-    // Ưu tiên hiển thị từ API response
-    if (registerInfo?.appointmentTime) {
-      console.log("Using API response time");
-
-      // Kiểm tra xem appointmentTime có phải là full datetime hay chỉ là time
-      const timeValue = registerInfo.appointmentTime;
-      console.log("API time value:", timeValue);
-
-      // Nếu chỉ là time format (HH:mm:ss), kết hợp với ngày từ submitted data
-      if (timeValue.match(/^\d{2}:\d{2}:\d{2}$/)) {
-        console.log(
-          "API time is time-only format, combining with submitted date"
-        );
-        if (submittedFormData?.appointmentDate) {
-          try {
-            const date = new Date(submittedFormData.appointmentDate);
-            const vietnamDate = date.toLocaleDateString("vi-VN", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            });
-            const timeOnly = timeValue.substring(0, 5); // Remove seconds, get HH:mm
-            const result = `${vietnamDate} - ${timeOnly}`;
-            console.log("Combined datetime result:", result);
-            return result;
-          } catch (error) {
-            console.error("Error combining date and time:", error);
-          }
-        } else {
-          // Nếu không có ngày từ submitted data, chỉ hiển thị time
-          console.log("No submitted date available, showing time only");
-          const timeOnly = timeValue.substring(0, 5);
-          return `Hôm nay lúc ${timeOnly}`;
-        }
-      } else {
-        // Nếu là full datetime, format bình thường
-        console.log("API time is full datetime format");
-        const result = formatDateTime(timeValue);
-        console.log("Formatted API time:", result);
-        return result;
-      }
-    }
-
-    // Nếu không có từ API, sử dụng dữ liệu đã submit
+    // Ưu tiên hiển thị từ dữ liệu người dùng đã chọn (submittedFormData)
     if (
       submittedFormData?.appointmentDate &&
       submittedFormData?.appointmentTime
     ) {
-      console.log("Using submitted form data");
+      console.log("Using user's original selection from submittedFormData");
       console.log("appointmentDate:", submittedFormData.appointmentDate);
       console.log("appointmentTime:", submittedFormData.appointmentTime);
 
-      // Thử cách đơn giản hơn
       try {
         const date = new Date(submittedFormData.appointmentDate);
         const vietnamDate = date.toLocaleDateString("vi-VN", {
@@ -492,12 +462,83 @@ const RegistrationForm = () => {
           month: "2-digit",
           year: "numeric",
         });
-        const result = `${vietnamDate} lúc ${submittedFormData.appointmentTime}`;
-        console.log("Simple formatted result:", result);
+        
+        // Sử dụng thời gian người dùng đã chọn (không phải từ API)
+        const timeToDisplay = submittedFormData.appointmentTime;
+        
+        const result = `${vietnamDate} lúc ${timeToDisplay}`;
+        console.log("User's original selection result:", result);
         return result;
       } catch (error) {
-        console.error("Error in simple format:", error);
+        console.error("Error formatting user's selection:", error);
         return `${submittedFormData.appointmentDate} lúc ${submittedFormData.appointmentTime}`;
+      }
+    }
+
+    // Nếu không có submittedFormData, thử sử dụng API response
+    if (registerInfo?.appointmentTime) {
+      console.log("Using API response time as fallback");
+
+      const timeValue = registerInfo.appointmentTime;
+      console.log("API time value:", timeValue);
+
+      // Nếu là time-only format (HH:mm:ss), kết hợp với ngày từ API hoặc localStorage
+      if (timeValue.match(/^\d{2}:\d{2}:\d{2}$/)) {
+        console.log("API time is time-only format");
+        
+        // 🆕 Kiểm tra xem có phải thời gian đã bị chuyển đổi timezone không
+        // Nếu có submittedFormData, so sánh với thời gian gốc
+        if (submittedFormData?.appointmentTime) {
+          const originalTime = submittedFormData.appointmentTime;
+          const apiTime = timeValue.substring(0, 5);
+          
+          console.log("Comparing times - Original:", originalTime, "API:", apiTime);
+          
+          // Nếu thời gian khác nhau, có thể đã bị chuyển đổi timezone
+          if (originalTime !== apiTime) {
+            console.log("Timezone conversion detected, using original time");
+            const date = new Date(submittedFormData.appointmentDate);
+            const vietnamDate = date.toLocaleDateString("vi-VN", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            });
+            return `${vietnamDate} lúc ${originalTime}`;
+          }
+        }
+        
+        // Thử lấy ngày từ localStorage backup
+        try {
+          const backupData = localStorage.getItem("lastSubmittedData");
+          if (backupData) {
+            const parsedData = JSON.parse(backupData);
+            if (parsedData?.appointmentDate) {
+              const date = new Date(parsedData.appointmentDate);
+              const vietnamDate = date.toLocaleDateString("vi-VN", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              });
+              const timeOnly = timeValue.substring(0, 5); // Remove seconds, get HH:mm
+              const result = `${vietnamDate} lúc ${timeOnly}`;
+              console.log("API + localStorage backup result:", result);
+              return result;
+            }
+          }
+        } catch (error) {
+          console.error("Error reading localStorage backup:", error);
+        }
+        
+        // Fallback: chỉ hiển thị time
+        console.log("No date available, showing time only");
+        const timeOnly = timeValue.substring(0, 5);
+        return `Hôm nay lúc ${timeOnly}`;
+      } else {
+        // Nếu là full datetime, format bình thường
+        console.log("API time is full datetime format");
+        const result = formatDateTime(timeValue);
+        console.log("Formatted API time:", result);
+        return result;
       }
     }
 

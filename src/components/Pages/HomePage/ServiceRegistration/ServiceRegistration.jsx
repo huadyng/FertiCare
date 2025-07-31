@@ -29,6 +29,7 @@ import {
 import { UserContext } from "../../../../context/UserContext";
 import { serviceAPI } from "../../../../services/api";
 import "./ServiceRegistration.css";
+import { dateOfBirthValidator, getDateOfBirthConstraints } from "../../../../utils/dateValidation";
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
@@ -233,7 +234,7 @@ const ServiceRegistration = () => {
                   { type: "email", message: "Email không hợp lệ!" },
                 ]}
               >
-                <Input prefix={<MailOutlined />} />
+                <Input prefix={<MailOutlined />} disabled={user?.email !== undefined} />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
@@ -242,11 +243,16 @@ const ServiceRegistration = () => {
                 name="dateOfBirth"
                 rules={[
                   { required: true, message: "Vui lòng chọn ngày sinh!" },
+                  { validator: dateOfBirthValidator }
                 ]}
               >
                 <DatePicker
                   style={{ width: "100%" }}
                   placeholder="Chọn ngày sinh"
+                  disabledDate={(current) => {
+                    const { minDate, maxDate } = getDateOfBirthConstraints();
+                    return current && (current < minDate || current > maxDate);
+                  }}
                 />
               </Form.Item>
             </Col>

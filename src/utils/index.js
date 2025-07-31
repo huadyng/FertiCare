@@ -234,10 +234,14 @@ export const removeStorageItem = (key) => {
 
 /**
  * Clear all app-related items from localStorage
+ * Note: This function does NOT clear authentication tokens
  */
 export const clearAppStorage = () => {
   Object.values(STORAGE_KEYS).forEach((key) => {
-    removeStorageItem(key);
+    // Don't clear authentication tokens
+    if (key !== "accessToken" && key !== "refreshToken" && key !== "userData") {
+      removeStorageItem(key);
+    }
   });
 };
 

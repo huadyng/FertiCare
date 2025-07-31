@@ -1,25 +1,37 @@
-import axiosClient from "./axiosClient";
+import axiosClient from "../services/axiosClient";
 
 const apiLogin = {
   // Đăng nhập thường
   login: async (email, password) => {
     try {
-      console.log("🔐 [apiLogin] Gửi dữ liệu đăng nhập:");
-      console.log("📧 Email:", email);
-      console.log("🔑 Password:", password ? "***" : "empty");
+      // Chỉ log khi debug mode
+      if (process.env.NODE_ENV === 'development' && false) { // Tắt log
+        console.log("🔐 [apiLogin] Gửi dữ liệu đăng nhập:");
+        console.log("📧 Email:", email);
+        console.log("🔑 Password:", password ? "***" : "empty");
+      }
 
       const response = await axiosClient.post("/api/auth/login", {
         email,
         password,
       });
 
-      console.log("✅ [apiLogin] Phản hồi từ server:", response.data);
+      // Chỉ log khi debug mode
+      if (process.env.NODE_ENV === 'development' && false) { // Tắt log
+        console.log("✅ [apiLogin] Phản hồi từ server:", response.data);
+        console.log("✅ [apiLogin] Token trong response:", !!response.data.token);
+        console.log("✅ [apiLogin] Token preview:", response.data.token ? response.data.token.substring(0, 50) + "..." : "NO TOKEN");
+        console.log("✅ [apiLogin] Response keys:", Object.keys(response.data));
+      }
       return response.data;
     } catch (error) {
-      console.error(
-        "❌ [apiLogin] Lỗi khi đăng nhập:",
-        error.response?.data || error.message
-      );
+      // Chỉ log khi debug mode
+      if (process.env.NODE_ENV === 'development' && false) {
+        console.error(
+          "❌ [apiLogin] Lỗi khi đăng nhập:",
+          error.response?.data || error.message
+        );
+      }
       throw error;
     }
   },

@@ -39,7 +39,7 @@ const CustomDatePicker = ({
     "Tháng 12",
   ];
 
-  const weekdays = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+  const weekdays = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
   // Update input value when selected date changes
   useEffect(() => {
@@ -172,13 +172,17 @@ const CustomDatePicker = ({
     // Last day of the month
     const lastDay = new Date(year, month + 1, 0);
 
-    // Start from Sunday of the week containing first day
+    // Start from Monday of the week containing first day
     const startDate = new Date(firstDay);
-    startDate.setDate(startDate.getDate() - firstDay.getDay());
+    const firstDayOfWeek = firstDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const mondayOffset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1; // Convert to Monday-based
+    startDate.setDate(startDate.getDate() - mondayOffset);
 
-    // End at Saturday of the week containing last day
+    // End at Sunday of the week containing last day
     const endDate = new Date(lastDay);
-    endDate.setDate(endDate.getDate() + (6 - lastDay.getDay()));
+    const lastDayOfWeek = lastDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const sundayOffset = lastDayOfWeek === 0 ? 0 : 7 - lastDayOfWeek; // Days to add to reach Sunday
+    endDate.setDate(endDate.getDate() + sundayOffset);
 
     const days = [];
     const currentDate = new Date(startDate);

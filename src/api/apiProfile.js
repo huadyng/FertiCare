@@ -1,4 +1,4 @@
-import axiosClient from "./axiosClient";
+import axiosClient from "../services/axiosClient";
 
 const apiProfile = {
   // Lấy profile của user hiện tại (tự động detect role)
@@ -43,10 +43,12 @@ const apiProfile = {
             "gender",
             "dateOfBirth",
             "address",
-            "avatarUrl",
             "specialty",
             "qualification",
             "experienceYears",
+            "notes",
+            "status"
+            // ✅ Bỏ avatarUrl vì không có chức năng upload
           ];
           break;
         case "CUSTOMER":
@@ -137,79 +139,51 @@ const apiProfile = {
     }
   },
 
-  // Upload avatar - sử dụng endpoint có sẵn
-  uploadAvatar: async (file) => {
-    try {
-      console.log("📷 [apiProfile] Đang upload avatar...");
-
-      // Debug token
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        const userData = JSON.parse(storedUser);
-        console.log(
-          "🔍 [apiProfile] Token exists:",
-          userData.token ? "YES" : "NO"
-        );
-      } else {
-        console.log("🔍 [apiProfile] No user data in localStorage");
-      }
-
-      const formData = new FormData();
-      formData.append("avatar", file);
-
-      const response = await axiosClient.post(
-        "/api/profiles/me/avatar",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-
-      console.log("✅ [apiProfile] Upload avatar thành công:", response.data);
-      return response.data;
-    } catch (error) {
-      console.error(
-        "❌ [apiProfile] Lỗi khi upload avatar:",
-        error.response?.data || error.message
-      );
-      throw error;
-    }
-  },
-
-  // Cập nhật avatar URL - sử dụng endpoint generic cho tất cả role
-  updateAvatarUrl: async (avatarUrl) => {
-    try {
-      console.log("🌐 [apiProfile] Đang cập nhật avatar URL:", avatarUrl);
-
-      const response = await axiosClient.put("/api/profiles/me", {
-        avatarUrl: avatarUrl,
-      });
-
-      console.log(
-        "✅ [apiProfile] Cập nhật avatar URL thành công:",
-        response.data
-      );
-      return response.data;
-    } catch (error) {
-      console.error(
-        "❌ [apiProfile] Lỗi khi cập nhật avatar URL:",
-        error.response?.data || error.message
-      );
-      throw error;
-    }
-  },
-
   // Lấy profile theo role cụ thể
-  getDoctorProfile: async () => {
+  getDoctorProfile: async (doctorId = null) => {
     try {
       console.log("🔍 [apiProfile] Đang lấy doctor profile...");
+      
+      // ✅ Nếu có doctorId, thử endpoint với ID trước
+      if (doctorId) {
+        const endpointWithId = `/api/profiles/doctor/${doctorId}`;
+        console.log("🔍 [apiProfile] Thử endpoint với doctor ID:", endpointWithId);
+        
+        try {
+          const response = await axiosClient.get(endpointWithId);
+          console.log(
+            "✅ [apiProfile] Lấy doctor profile thành công với ID:",
+            response.data
+          );
+          
+          // ✅ Đảm bảo ID được set
+          if (response.data) {
+            response.data.id = doctorId;
+          }
+          
+          return response.data;
+        } catch (idError) {
+          console.warn(
+            "⚠️ [apiProfile] Endpoint với ID không tồn tại, fallback về /me:",
+            idError.response?.status
+          );
+          // Fallback về /me nếu endpoint với ID không tồn tại
+        }
+      }
+      
+      // ✅ Fallback về endpoint /me
+      console.log("🔍 [apiProfile] Sử dụng endpoint /me (current user)");
       const response = await axiosClient.get("/api/profiles/doctor/me");
       console.log(
-        "✅ [apiProfile] Lấy doctor profile thành công:",
+        "✅ [apiProfile] Lấy doctor profile thành công với /me:",
         response.data
       );
+      
+      // ✅ Đảm bảo ID được set nếu có
+      if (response.data && doctorId) {
+        response.data.id = doctorId;
+      }
+      
       return response.data;
     } catch (error) {
       console.error(
