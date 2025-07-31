@@ -45,7 +45,7 @@ import { clinicalResultsAPI } from "../../../api/apiClinicalResults";
 import { UserContext } from "../../../context/UserContext";
 import { treatmentStateManager } from "../../../utils/treatmentStateManager";
 import { debugUtils } from "../../../utils/debugUtils";
-import moment from 'moment';
+import moment from "moment";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -57,9 +57,15 @@ function normalizeInitialValues(data) {
     ...data,
     examinationDate: data.examinationDate ? moment(data.examinationDate) : null,
     completionDate: data.completionDate ? moment(data.completionDate) : null,
-    nextAppointmentDate: data.nextAppointmentDate ? moment(data.nextAppointmentDate) : null,
+    nextAppointmentDate: data.nextAppointmentDate
+      ? moment(data.nextAppointmentDate)
+      : null,
     symptoms: Array.isArray(data.symptoms) ? data.symptoms : [],
-    symptomsDetail: data.symptomsDetail ?? data.symptom_detail ?? '',
+    symptomsDetail: data.symptomsDetail ?? data.symptom_detail ?? "",
+    bmi: data.bmi || null,
+    appointmentId: data.appointmentId || null,
+    attachedFileUrl: data.attachedFileUrl || null,
+    isCompleted: data.isCompleted !== undefined ? data.isCompleted : false,
   };
 }
 
@@ -103,8 +109,6 @@ const ExaminationForm = ({
     loadClinicalResult();
   }, [resultId]);
 
-
-
   // Khi originalData thay đổi, cập nhật lại form values
   useEffect(() => {
     if (originalData) {
@@ -124,7 +128,9 @@ const ExaminationForm = ({
   const reloadClinicalResult = async () => {
     if (resultId) {
       try {
-        const updated = await clinicalResultsAPI.getClinicalResultById(resultId);
+        const updated = await clinicalResultsAPI.getClinicalResultById(
+          resultId
+        );
         setOriginalData(updated);
         setSubmittedData(updated);
         // form.setFieldsValue(updated); // Không cần setFieldsValue nữa vì form đã đồng bộ với originalData
@@ -193,25 +199,27 @@ const ExaminationForm = ({
         bloodPressureDiastolic: 80,
         temperature: 37.8,
         heartRate: 78,
-        weight: 60.50,
-        height: 170.00,
+        weight: 60.5,
+        height: 170.0,
+        bmi: 20.93,
         bloodType: "O",
-        fshLevel: 6.20,
-        lhLevel: 4.10,
-        estradiolLevel: 45.00,
-        testosteroneLevel: 0.50,
-        amhLevel: 2.10,
-        prolactinLevel: 12.00,
+        appointmentId: "apt-001",
+        fshLevel: 6.2,
+        lhLevel: 4.1,
+        estradiolLevel: 45.0,
+        testosteroneLevel: 0.5,
+        amhLevel: 2.1,
+        prolactinLevel: 12.0,
         glucose: 5.1,
         hemoglobin: 13.5,
-        creatinine: 0.90,
+        creatinine: 0.9,
         endometrialThickness: 7.5,
         ovarySizeLeft: 3.2,
         ovarySizeRight: 3.1,
         follicleCountLeft: 5,
         follicleCountRight: 6,
         plateletCount: 250,
-        whiteBloodCell: 7.20,
+        whiteBloodCell: 7.2,
         ultrasoundFindings: "Bình thường",
         diagnosis: "Viêm họng nhẹ",
         diagnosisCode: "J02",
@@ -223,13 +231,14 @@ const ExaminationForm = ({
         notes: "Theo dõi thêm tại nhà.",
         examinationDate: moment(),
         completionDate: moment(),
-        nextAppointmentDate: moment().add(7, 'day'),
-        isCompleted: true
+        nextAppointmentDate: moment().add(7, "day"),
+        attachedFileUrl: "https://example.com/file.pdf",
+        isCompleted: true,
       };
 
       // Set form values
       form.setFieldsValue(testData);
-      
+
       // Update lab results state
       setLabResults({
         bloodTest: {
@@ -254,14 +263,14 @@ const ExaminationForm = ({
         otherTests: {
           plateletCount: testData.plateletCount,
           whiteBloodCell: testData.whiteBloodCell,
-        }
+        },
       });
 
-      message.success('Đã điền dữ liệu mẫu test!');
-      console.log('✅ [ExaminationForm] Test data filled successfully');
+      message.success("Đã điền dữ liệu mẫu test!");
+      console.log("✅ [ExaminationForm] Test data filled successfully");
     } catch (error) {
-      message.error('Có lỗi khi điền dữ liệu mẫu!');
-      console.error('❌ [ExaminationForm] Error filling test data:', error);
+      message.error("Có lỗi khi điền dữ liệu mẫu!");
+      console.error("❌ [ExaminationForm] Error filling test data:", error);
     }
   };
 
@@ -275,21 +284,31 @@ const ExaminationForm = ({
         examinationDate: values.examinationDate?.toISOString(),
         completionDate: values.completionDate?.toISOString(),
         nextAppointmentDate: values.nextAppointmentDate?.toISOString(),
-        symptoms: JSON.stringify(Array.isArray(values.symptoms) ? values.symptoms : (values.symptoms ? [values.symptoms] : [])),
+        symptoms: JSON.stringify(
+          Array.isArray(values.symptoms)
+            ? values.symptoms
+            : values.symptoms
+            ? [values.symptoms]
+            : []
+        ),
       };
       if (resultId) {
         await clinicalResultsAPI.updateExaminationResult(resultId, payload);
-        message.success('Cập nhật thành công!');
+        message.success("Cập nhật thành công!");
         setIsCompleted(true);
         // Reload lại clinical result sau khi cập nhật
-        const updated = await clinicalResultsAPI.getClinicalResultById(resultId);
+        const updated = await clinicalResultsAPI.getClinicalResultById(
+          resultId
+        );
         setOriginalData(updated);
         setSubmittedData(updated);
       } else {
-        message.error('Không tìm thấy clinical result, vui lòng liên hệ quản trị viên!');
+        message.error(
+          "Không tìm thấy clinical result, vui lòng liên hệ quản trị viên!"
+        );
       }
     } catch (err) {
-      message.error('Có lỗi khi lưu!');
+      message.error("Có lỗi khi lưu!");
       console.error(err);
     } finally {
       setLoading(false);
@@ -321,33 +340,45 @@ const ExaminationForm = ({
                 </Space>
               </Title>
             </div>
-            
-            <div style={{ 
-              textAlign: 'center', 
-              padding: '60px 20px',
-              background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
-              borderRadius: '12px',
-              margin: '20px 0'
-            }}>
-              <div style={{ fontSize: '64px', marginBottom: '20px', opacity: 0.6 }}>
+
+            <div
+              style={{
+                textAlign: "center",
+                padding: "60px 20px",
+                background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
+                borderRadius: "12px",
+                margin: "20px 0",
+              }}
+            >
+              <div
+                style={{ fontSize: "64px", marginBottom: "20px", opacity: 0.6 }}
+              >
                 🩺
               </div>
-              <Title level={3} style={{ color: '#666', marginBottom: '16px' }}>
+              <Title level={3} style={{ color: "#666", marginBottom: "16px" }}>
                 Không có kết quả khám lâm sàng
               </Title>
-              <Text style={{ fontSize: '16px', color: '#888', display: 'block', marginBottom: '24px' }}>
+              <Text
+                style={{
+                  fontSize: "16px",
+                  color: "#888",
+                  display: "block",
+                  marginBottom: "24px",
+                }}
+              >
                 Vui lòng chọn bệnh nhân để bắt đầu khám lâm sàng
               </Text>
-              <Button 
-                type="primary" 
+              <Button
+                type="primary"
                 size="large"
                 icon={<UserOutlined />}
-                style={{ 
-                  background: 'linear-gradient(135deg, #ff6b9d 0%, #ff758c 100%)',
-                  border: 'none',
-                  borderRadius: '8px',
-                  padding: '12px 24px',
-                  height: 'auto'
+                style={{
+                  background:
+                    "linear-gradient(135deg, #ff6b9d 0%, #ff758c 100%)",
+                  border: "none",
+                  borderRadius: "8px",
+                  padding: "12px 24px",
+                  height: "auto",
                 }}
               >
                 Chọn bệnh nhân
@@ -362,8 +393,15 @@ const ExaminationForm = ({
   // Render loading nếu chưa có originalData
   console.log("[DEBUG] resultId:", resultId);
   console.log("[DEBUG] originalData:", originalData);
-  if (!originalData || (!originalData.id && !originalData.resultId && !originalData.patientId)) {
-    return <div style={{textAlign: 'center', padding: '40px 0'}}><span>Đang tải dữ liệu khám lâm sàng...</span></div>;
+  if (
+    !originalData ||
+    (!originalData.id && !originalData.resultId && !originalData.patientId)
+  ) {
+    return (
+      <div style={{ textAlign: "center", padding: "40px 0" }}>
+        <span>Đang tải dữ liệu khám lâm sàng...</span>
+      </div>
+    );
   }
 
   // Thêm log kiểm tra initialValues ngay trước return
@@ -386,16 +424,20 @@ const ExaminationForm = ({
             {/* Chỉ hiển thị form khi chưa hoàn thành */}
             {!isCompleted && originalData && (
               <Form
-                key={originalData.id || resultId || 'new'}
+                key={originalData.id || resultId || "new"}
                 form={form}
                 layout="vertical"
                 onFinish={handleSubmit}
                 className="examination-form"
               >
-
                 {/* Triệu chứng & Chi tiết triệu chứng */}
-                <Card className="examination-section-card" style={{ marginBottom: 16 }}>
-                  <div className="section-title"><MedicineBoxOutlined className="section-icon" /> Triệu chứng</div>
+                <Card
+                  className="examination-section-card"
+                  style={{ marginBottom: 16 }}
+                >
+                  <div className="section-title">
+                    <MedicineBoxOutlined className="section-icon" /> Triệu chứng
+                  </div>
                   <Row gutter={16}>
                     <Col span={12}>
                       <Form.Item
@@ -408,7 +450,9 @@ const ExaminationForm = ({
                           placeholder="Chọn triệu chứng..."
                         >
                           {commonSymptoms.map((sym, idx) => (
-                            <Option key={idx} value={sym}>{sym}</Option>
+                            <Option key={idx} value={sym}>
+                              {sym}
+                            </Option>
                           ))}
                         </Select>
                       </Form.Item>
@@ -418,83 +462,635 @@ const ExaminationForm = ({
                         name="symptomsDetail"
                         label="Chi tiết triệu chứng"
                       >
-                        <TextArea rows={2} placeholder="Mô tả chi tiết triệu chứng..." />
+                        <TextArea
+                          rows={2}
+                          placeholder="Mô tả chi tiết triệu chứng..."
+                        />
                       </Form.Item>
                     </Col>
                   </Row>
-                </Card>     
+                </Card>
 
                 {/* Dấu hiệu lâm sàng */}
-                <Card className="examination-section-card" style={{ marginBottom: 16 }}>
-                  <div className="section-title"><UserOutlined className="section-icon" /> Dấu hiệu lâm sàng</div>
+                <Card
+                  className="examination-section-card"
+                  style={{ marginBottom: 16 }}
+                >
+                  <div className="section-title">
+                    <UserOutlined className="section-icon" /> Dấu hiệu lâm sàng
+                  </div>
                   <Row gutter={16}>
-                    <Col span={8}><Form.Item name="bloodPressureSystolic" label="Huyết áp tâm thu" rules={[{ type: 'number', min: 0, max: 300, message: '0-300 mmHg' }]}><InputNumber style={{ width: '100%' }} min={0} max={300} /></Form.Item></Col>
-                    <Col span={8}><Form.Item name="bloodPressureDiastolic" label="Huyết áp tâm trương" rules={[{ type: 'number', min: 0, max: 200, message: '0-200 mmHg' }]}><InputNumber style={{ width: '100%' }} min={0} max={200} /></Form.Item></Col>
-                    <Col span={8}><Form.Item name="temperature" label="Nhiệt độ (°C)" rules={[{ type: 'number', min: 30, max: 45, message: '30-45°C' }]}><InputNumber style={{ width: '100%' }} min={30} max={45} step={0.1} /></Form.Item></Col>
+                    <Col span={8}>
+                      <Form.Item
+                        name="bloodPressureSystolic"
+                        label="Huyết áp tâm thu"
+                        rules={[
+                          {
+                            type: "number",
+                            min: 0,
+                            max: 300,
+                            message: "0-300 mmHg",
+                          },
+                        ]}
+                      >
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          min={0}
+                          max={300}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item
+                        name="bloodPressureDiastolic"
+                        label="Huyết áp tâm trương"
+                        rules={[
+                          {
+                            type: "number",
+                            min: 0,
+                            max: 200,
+                            message: "0-200 mmHg",
+                          },
+                        ]}
+                      >
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          min={0}
+                          max={200}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item
+                        name="temperature"
+                        label="Nhiệt độ (°C)"
+                        rules={[
+                          {
+                            type: "number",
+                            min: 30,
+                            max: 45,
+                            message: "30-45°C",
+                          },
+                        ]}
+                      >
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          min={30}
+                          max={45}
+                          step={0.1}
+                        />
+                      </Form.Item>
+                    </Col>
                   </Row>
                   <Row gutter={16}>
-                    <Col span={8}><Form.Item name="heartRate" label="Nhịp tim" rules={[{ type: 'number', min: 0, max: 200, message: '0-200 lần/phút' }]}><InputNumber style={{ width: '100%' }} min={0} max={200} /></Form.Item></Col>
-                    <Col span={8}><Form.Item name="weight" label="Cân nặng (kg)" rules={[{ type: 'number', min: 0, max: 300, message: '0-300 kg' }]}><InputNumber style={{ width: '100%' }} min={0} max={300} step={0.1} /></Form.Item></Col>
-                    <Col span={8}><Form.Item name="height" label="Chiều cao (cm)" rules={[{ type: 'number', min: 0, max: 250, message: '0-250 cm' }]}><InputNumber style={{ width: '100%' }} min={0} max={250} step={0.1} /></Form.Item></Col>
+                    <Col span={8}>
+                      <Form.Item
+                        name="heartRate"
+                        label="Nhịp tim"
+                        rules={[
+                          {
+                            type: "number",
+                            min: 0,
+                            max: 200,
+                            message: "0-200 lần/phút",
+                          },
+                        ]}
+                      >
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          min={0}
+                          max={200}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item
+                        name="weight"
+                        label="Cân nặng (kg)"
+                        rules={[
+                          {
+                            type: "number",
+                            min: 0,
+                            max: 300,
+                            message: "0-300 kg",
+                          },
+                        ]}
+                      >
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          min={0}
+                          max={300}
+                          step={0.1}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item
+                        name="height"
+                        label="Chiều cao (cm)"
+                        rules={[
+                          {
+                            type: "number",
+                            min: 0,
+                            max: 250,
+                            message: "0-250 cm",
+                          },
+                        ]}
+                      >
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          min={0}
+                          max={250}
+                          step={0.1}
+                        />
+                      </Form.Item>
+                    </Col>
                   </Row>
                   <Row gutter={16}>
-                    <Col span={8}><Form.Item name="bloodType" label="Nhóm máu"><Select><Option value="A">A</Option><Option value="B">B</Option><Option value="AB">AB</Option><Option value="O">O</Option></Select></Form.Item></Col>
+                    <Col span={8}>
+                      <Form.Item name="bloodType" label="Nhóm máu">
+                        <Select>
+                          <Option value="A">A</Option>
+                          <Option value="B">B</Option>
+                          <Option value="AB">AB</Option>
+                          <Option value="O">O</Option>
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item
+                        name="bmi"
+                        label="BMI"
+                        rules={[
+                          {
+                            type: "number",
+                            min: 0,
+                            max: 100,
+                            message: "0-100",
+                          },
+                        ]}
+                      >
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          step={0.1}
+                          min={0}
+                          max={100}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item name="appointmentId" label="ID lịch hẹn">
+                        <Input disabled />
+                      </Form.Item>
+                    </Col>
                   </Row>
                 </Card>
 
                 {/* Chỉ số hormone & sinh học */}
-                <Card className="examination-section-card" style={{ marginBottom: 16 }}>
-                  <div className="section-title"><ExperimentOutlined className="section-icon" /> Chỉ số hormone & sinh học</div>
+                <Card
+                  className="examination-section-card"
+                  style={{ marginBottom: 16 }}
+                >
+                  <div className="section-title">
+                    <ExperimentOutlined className="section-icon" /> Chỉ số
+                    hormone & sinh học
+                  </div>
                   <Row gutter={16}>
-                    <Col span={6}><Form.Item name="fshLevel" label="FSH" rules={[{ type: 'number', min: 0, max: 100, message: '0-100' }]}><InputNumber style={{ width: '100%' }} step={0.1} min={0} max={100} /></Form.Item></Col>
-                    <Col span={6}><Form.Item name="lhLevel" label="LH" rules={[{ type: 'number', min: 0, max: 100, message: '0-100' }]}><InputNumber style={{ width: '100%' }} step={0.1} min={0} max={100} /></Form.Item></Col>
-                    <Col span={6}><Form.Item name="estradiolLevel" label="Estradiol" rules={[{ type: 'number', min: 0, max: 1000, message: '0-1000' }]}><InputNumber style={{ width: '100%' }} step={0.1} min={0} max={1000} /></Form.Item></Col>
-                    <Col span={6}><Form.Item name="testosteroneLevel" label="Testosterone" rules={[{ type: 'number', min: 0, max: 10, message: '0-10' }]}><InputNumber style={{ width: '100%' }} step={0.1} min={0} max={10} /></Form.Item></Col>
+                    <Col span={6}>
+                      <Form.Item
+                        name="fshLevel"
+                        label="FSH"
+                        rules={[
+                          {
+                            type: "number",
+                            min: 0,
+                            max: 100,
+                            message: "0-100",
+                          },
+                        ]}
+                      >
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          step={0.1}
+                          min={0}
+                          max={100}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={6}>
+                      <Form.Item
+                        name="lhLevel"
+                        label="LH"
+                        rules={[
+                          {
+                            type: "number",
+                            min: 0,
+                            max: 100,
+                            message: "0-100",
+                          },
+                        ]}
+                      >
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          step={0.1}
+                          min={0}
+                          max={100}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={6}>
+                      <Form.Item
+                        name="estradiolLevel"
+                        label="Estradiol"
+                        rules={[
+                          {
+                            type: "number",
+                            min: 0,
+                            max: 1000,
+                            message: "0-1000",
+                          },
+                        ]}
+                      >
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          step={0.1}
+                          min={0}
+                          max={1000}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={6}>
+                      <Form.Item
+                        name="testosteroneLevel"
+                        label="Testosterone"
+                        rules={[
+                          { type: "number", min: 0, max: 10, message: "0-10" },
+                        ]}
+                      >
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          step={0.1}
+                          min={0}
+                          max={10}
+                        />
+                      </Form.Item>
+                    </Col>
                   </Row>
                   <Row gutter={16}>
-                    <Col span={6}><Form.Item name="amhLevel" label="AMH" rules={[{ type: 'number', min: 0, max: 20, message: '0-20' }]}><InputNumber style={{ width: '100%' }} step={0.1} min={0} max={20} /></Form.Item></Col>
-                    <Col span={6}><Form.Item name="prolactinLevel" label="Prolactin" rules={[{ type: 'number', min: 0, max: 100, message: '0-100' }]}><InputNumber style={{ width: '100%' }} step={0.1} min={0} max={100} /></Form.Item></Col>
-                    <Col span={6}><Form.Item name="glucose" label="Glucose" rules={[{ type: 'number', min: 0, max: 20, message: '0-20' }]}><InputNumber style={{ width: '100%' }} step={0.1} min={0} max={20} /></Form.Item></Col>
-                    <Col span={6}><Form.Item name="hemoglobin" label="Hemoglobin" rules={[{ type: 'number', min: 0, max: 30, message: '0-30' }]}><InputNumber style={{ width: '100%' }} step={0.1} min={0} max={30} /></Form.Item></Col>
+                    <Col span={6}>
+                      <Form.Item
+                        name="amhLevel"
+                        label="AMH"
+                        rules={[
+                          { type: "number", min: 0, max: 20, message: "0-20" },
+                        ]}
+                      >
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          step={0.1}
+                          min={0}
+                          max={20}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={6}>
+                      <Form.Item
+                        name="prolactinLevel"
+                        label="Prolactin"
+                        rules={[
+                          {
+                            type: "number",
+                            min: 0,
+                            max: 100,
+                            message: "0-100",
+                          },
+                        ]}
+                      >
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          step={0.1}
+                          min={0}
+                          max={100}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={6}>
+                      <Form.Item
+                        name="glucose"
+                        label="Glucose"
+                        rules={[
+                          { type: "number", min: 0, max: 20, message: "0-20" },
+                        ]}
+                      >
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          step={0.1}
+                          min={0}
+                          max={20}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={6}>
+                      <Form.Item
+                        name="hemoglobin"
+                        label="Hemoglobin"
+                        rules={[
+                          { type: "number", min: 0, max: 30, message: "0-30" },
+                        ]}
+                      >
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          step={0.1}
+                          min={0}
+                          max={30}
+                        />
+                      </Form.Item>
+                    </Col>
                   </Row>
                   <Row gutter={16}>
-                    <Col span={6}><Form.Item name="creatinine" label="Creatinine" rules={[{ type: 'number', min: 0, max: 5, message: '0-5' }]}><InputNumber style={{ width: '100%' }} step={0.1} min={0} max={5} /></Form.Item></Col>
-                    <Col span={6}><Form.Item name="plateletCount" label="Tiểu cầu" rules={[{ type: 'number', min: 0, max: 1000, message: '0-1000' }]}><InputNumber style={{ width: '100%' }} min={0} max={1000} /></Form.Item></Col>
-                    <Col span={6}><Form.Item name="whiteBloodCell" label="Bạch cầu" rules={[{ type: 'number', min: 0, max: 100, message: '0-100' }]}><InputNumber style={{ width: '100%' }} step={0.1} min={0} max={100} /></Form.Item></Col>
+                    <Col span={6}>
+                      <Form.Item
+                        name="creatinine"
+                        label="Creatinine"
+                        rules={[
+                          { type: "number", min: 0, max: 5, message: "0-5" },
+                        ]}
+                      >
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          step={0.1}
+                          min={0}
+                          max={5}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={6}>
+                      <Form.Item
+                        name="plateletCount"
+                        label="Tiểu cầu"
+                        rules={[
+                          {
+                            type: "number",
+                            min: 0,
+                            max: 1000,
+                            message: "0-1000",
+                          },
+                        ]}
+                      >
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          min={0}
+                          max={1000}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={6}>
+                      <Form.Item
+                        name="whiteBloodCell"
+                        label="Bạch cầu"
+                        rules={[
+                          {
+                            type: "number",
+                            min: 0,
+                            max: 100,
+                            message: "0-100",
+                          },
+                        ]}
+                      >
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          step={0.1}
+                          min={0}
+                          max={100}
+                        />
+                      </Form.Item>
+                    </Col>
                   </Row>
                 </Card>
 
                 {/* Siêu âm & sinh sản */}
-                <Card className="examination-section-card" style={{ marginBottom: 16 }}>
-                  <div className="section-title"><EyeOutlined className="section-icon" /> Siêu âm & sinh sản</div>
+                <Card
+                  className="examination-section-card"
+                  style={{ marginBottom: 16 }}
+                >
+                  <div className="section-title">
+                    <EyeOutlined className="section-icon" /> Siêu âm & sinh sản
+                  </div>
                   <Row gutter={16}>
-                    <Col span={8}><Form.Item name="endometrialThickness" label="Độ dày nội mạc tử cung" rules={[{ type: 'number', min: 0, max: 30, message: '0-30 mm' }]}><InputNumber style={{ width: '100%' }} step={0.1} min={0} max={30} /></Form.Item></Col>
-                    <Col span={8}><Form.Item name="ovarySizeLeft" label="Kích thước buồng trứng trái" rules={[{ type: 'number', min: 0, max: 10, message: '0-10 cm' }]}><InputNumber style={{ width: '100%' }} step={0.1} min={0} max={10} /></Form.Item></Col>
-                    <Col span={8}><Form.Item name="ovarySizeRight" label="Kích thước buồng trứng phải" rules={[{ type: 'number', min: 0, max: 10, message: '0-10 cm' }]}><InputNumber style={{ width: '100%' }} step={0.1} min={0} max={10} /></Form.Item></Col>
+                    <Col span={8}>
+                      <Form.Item
+                        name="endometrialThickness"
+                        label="Độ dày nội mạc tử cung"
+                        rules={[
+                          {
+                            type: "number",
+                            min: 0,
+                            max: 30,
+                            message: "0-30 mm",
+                          },
+                        ]}
+                      >
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          step={0.1}
+                          min={0}
+                          max={30}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item
+                        name="ovarySizeLeft"
+                        label="Kích thước buồng trứng trái"
+                        rules={[
+                          {
+                            type: "number",
+                            min: 0,
+                            max: 10,
+                            message: "0-10 cm",
+                          },
+                        ]}
+                      >
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          step={0.1}
+                          min={0}
+                          max={10}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item
+                        name="ovarySizeRight"
+                        label="Kích thước buồng trứng phải"
+                        rules={[
+                          {
+                            type: "number",
+                            min: 0,
+                            max: 10,
+                            message: "0-10 cm",
+                          },
+                        ]}
+                      >
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          step={0.1}
+                          min={0}
+                          max={10}
+                        />
+                      </Form.Item>
+                    </Col>
                   </Row>
                   <Row gutter={16}>
-                    <Col span={8}><Form.Item name="follicleCountLeft" label="Số nang noãn trái" rules={[{ type: 'number', min: 0, max: 50, message: '0-50' }]}><InputNumber style={{ width: '100%' }} min={0} max={50} /></Form.Item></Col>
-                    <Col span={8}><Form.Item name="follicleCountRight" label="Số nang noãn phải" rules={[{ type: 'number', min: 0, max: 50, message: '0-50' }]}><InputNumber style={{ width: '100%' }} min={0} max={50} /></Form.Item></Col>
-                    <Col span={8}><Form.Item name="ultrasoundFindings" label="Kết quả siêu âm"><TextArea rows={2} placeholder="Mô tả kết quả siêu âm..." /></Form.Item></Col>
+                    <Col span={8}>
+                      <Form.Item
+                        name="follicleCountLeft"
+                        label="Số nang noãn trái"
+                        rules={[
+                          { type: "number", min: 0, max: 50, message: "0-50" },
+                        ]}
+                      >
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          min={0}
+                          max={50}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item
+                        name="follicleCountRight"
+                        label="Số nang noãn phải"
+                        rules={[
+                          { type: "number", min: 0, max: 50, message: "0-50" },
+                        ]}
+                      >
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          min={0}
+                          max={50}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item
+                        name="ultrasoundFindings"
+                        label="Kết quả siêu âm"
+                      >
+                        <TextArea
+                          rows={2}
+                          placeholder="Mô tả kết quả siêu âm..."
+                        />
+                      </Form.Item>
+                    </Col>
                   </Row>
                 </Card>
 
                 {/* Chẩn đoán & điều trị */}
-                <Card className="examination-section-card" style={{ marginBottom: 16 }}>
-                  <div className="section-title"><FileTextOutlined className="section-icon" /> Chẩn đoán & điều trị</div>
+                <Card
+                  className="examination-section-card"
+                  style={{ marginBottom: 16 }}
+                >
+                  <div className="section-title">
+                    <FileTextOutlined className="section-icon" /> Chẩn đoán &
+                    điều trị
+                  </div>
                   <Row gutter={16}>
-                    <Col span={8}><Form.Item name="diagnosis" label="Chẩn đoán"><Input /></Form.Item></Col>
-                    <Col span={8}><Form.Item name="diagnosisCode" label="Mã chẩn đoán"><Input /></Form.Item></Col>
-                    <Col span={8}><Form.Item name="severityLevel" label="Mức độ nặng"><Select><Option value="Nhẹ">Nhẹ</Option><Option value="Vừa">Vừa</Option><Option value="Nặng">Nặng</Option></Select></Form.Item></Col>
+                    <Col span={8}>
+                      <Form.Item name="diagnosis" label="Chẩn đoán">
+                        <Input />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item name="diagnosisCode" label="Mã chẩn đoán">
+                        <Input />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item name="severityLevel" label="Mức độ nặng">
+                        <Select>
+                          <Option value="Nhẹ">Nhẹ</Option>
+                          <Option value="Vừa">Vừa</Option>
+                          <Option value="Nặng">Nặng</Option>
+                        </Select>
+                      </Form.Item>
+                    </Col>
                   </Row>
                   <Row gutter={16}>
-                    <Col span={8}><Form.Item name="infertilityDurationMonths" label="Thời gian vô sinh (tháng)"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
-                    <Col span={8}><Form.Item name="previousTreatments" label="Điều trị trước đó"><Input /></Form.Item></Col>
-                    <Col span={8}><Form.Item name="recommendations" label="Khuyến nghị"><Input /></Form.Item></Col>
+                    <Col span={8}>
+                      <Form.Item
+                        name="infertilityDurationMonths"
+                        label="Thời gian vô sinh (tháng)"
+                      >
+                        <InputNumber style={{ width: "100%" }} />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item
+                        name="previousTreatments"
+                        label="Điều trị trước đó"
+                      >
+                        <Input />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item name="recommendations" label="Khuyến nghị">
+                        <Input />
+                      </Form.Item>
+                    </Col>
                   </Row>
                   <Row gutter={16}>
-                    <Col span={8}><Form.Item name="treatmentPriority" label="Mức ưu tiên điều trị"><Select><Option value="Cao">Cao</Option><Option value="Trung bình">Trung bình</Option><Option value="Thấp">Thấp</Option></Select></Form.Item></Col>
-                    <Col span={8}><Form.Item name="completionDate" label="Ngày hoàn thành"><DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" /></Form.Item></Col>
+                    <Col span={8}>
+                      <Form.Item
+                        name="treatmentPriority"
+                        label="Mức ưu tiên điều trị"
+                      >
+                        <Select>
+                          <Option value="Cao">Cao</Option>
+                          <Option value="Trung bình">Trung bình</Option>
+                          <Option value="Thấp">Thấp</Option>
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item name="completionDate" label="Ngày hoàn thành">
+                        <DatePicker
+                          style={{ width: "100%" }}
+                          format="DD/MM/YYYY"
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item
+                        name="nextAppointmentDate"
+                        label="Lịch hẹn tiếp theo"
+                      >
+                        <DatePicker
+                          style={{ width: "100%" }}
+                          format="DD/MM/YYYY"
+                          showTime
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  <Row gutter={16}>
+                    <Col span={8}>
+                      <Form.Item name="attachedFileUrl" label="File đính kèm">
+                        <Input placeholder="URL file đính kèm..." />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item
+                        name="isCompleted"
+                        label="Trạng thái hoàn thành"
+                        valuePropName="checked"
+                      >
+                        <Select>
+                          <Option value={true}>Hoàn thành</Option>
+                          <Option value={false}>Chưa hoàn thành</Option>
+                        </Select>
+                      </Form.Item>
+                    </Col>
                   </Row>
                 </Card>
 
@@ -635,29 +1231,51 @@ const ExaminationForm = ({
                           className="results-descriptions"
                         >
                           <Descriptions.Item label="Huyết áp">
-                            {(submittedData.bloodPressureSystolic && submittedData.bloodPressureDiastolic)
-                              ? <Tag className="result-clinical-tag">{submittedData.bloodPressureSystolic}/{submittedData.bloodPressureDiastolic} mmHg</Tag>
-                              : "Chưa đo"}
+                            {submittedData.bloodPressureSystolic &&
+                            submittedData.bloodPressureDiastolic ? (
+                              <Tag className="result-clinical-tag">
+                                {submittedData.bloodPressureSystolic}/
+                                {submittedData.bloodPressureDiastolic} mmHg
+                              </Tag>
+                            ) : (
+                              "Chưa đo"
+                            )}
                           </Descriptions.Item>
                           <Descriptions.Item label="Nhiệt độ">
-                            {submittedData.temperature
-                              ? <Tag className="result-clinical-tag">{submittedData.temperature}°C</Tag>
-                              : "Chưa đo"}
+                            {submittedData.temperature ? (
+                              <Tag className="result-clinical-tag">
+                                {submittedData.temperature}°C
+                              </Tag>
+                            ) : (
+                              "Chưa đo"
+                            )}
                           </Descriptions.Item>
                           <Descriptions.Item label="Nhịp tim">
-                            {submittedData.heartRate
-                              ? <Tag className="result-clinical-tag">{submittedData.heartRate} lần/phút</Tag>
-                              : "Chưa đo"}
+                            {submittedData.heartRate ? (
+                              <Tag className="result-clinical-tag">
+                                {submittedData.heartRate} lần/phút
+                              </Tag>
+                            ) : (
+                              "Chưa đo"
+                            )}
                           </Descriptions.Item>
                           <Descriptions.Item label="Cân nặng">
-                            {submittedData.weight
-                              ? <Tag className="result-clinical-tag">{submittedData.weight} kg</Tag>
-                              : "Chưa đo"}
+                            {submittedData.weight ? (
+                              <Tag className="result-clinical-tag">
+                                {submittedData.weight} kg
+                              </Tag>
+                            ) : (
+                              "Chưa đo"
+                            )}
                           </Descriptions.Item>
                           <Descriptions.Item label="Chiều cao">
-                            {submittedData.height
-                              ? <Tag className="result-clinical-tag">{submittedData.height} cm</Tag>
-                              : "Chưa đo"}
+                            {submittedData.height ? (
+                              <Tag className="result-clinical-tag">
+                                {submittedData.height} cm
+                              </Tag>
+                            ) : (
+                              "Chưa đo"
+                            )}
                           </Descriptions.Item>
                         </Descriptions>
                       </Col>
@@ -676,13 +1294,22 @@ const ExaminationForm = ({
                         >
                           <Descriptions.Item label="Triệu chứng" span={2}>
                             {(() => {
-                              let parsedSymptoms = Array.isArray(submittedData.symptoms)
+                              let parsedSymptoms = Array.isArray(
+                                submittedData.symptoms
+                              )
                                 ? submittedData.symptoms
-                                : (typeof submittedData.symptoms === 'string' ? JSON.parse(submittedData.symptoms) : []);
+                                : typeof submittedData.symptoms === "string"
+                                ? JSON.parse(submittedData.symptoms)
+                                : [];
                               return parsedSymptoms.length > 0 ? (
                                 <Space wrap>
                                   {parsedSymptoms.map((symptom, index) => (
-                                    <Tag key={index} className="result-symptom-tag">{symptom}</Tag>
+                                    <Tag
+                                      key={index}
+                                      className="result-symptom-tag"
+                                    >
+                                      {symptom}
+                                    </Tag>
                                   ))}
                                 </Space>
                               ) : (
@@ -690,10 +1317,17 @@ const ExaminationForm = ({
                               );
                             })()}
                           </Descriptions.Item>
-                          <Descriptions.Item label="Chi tiết triệu chứng" span={2}>
-                            {submittedData.symptomsDetail
-                              ? <Tag className="result-symptom-tag">{submittedData.symptomsDetail}</Tag>
-                              : "Không có"}
+                          <Descriptions.Item
+                            label="Chi tiết triệu chứng"
+                            span={2}
+                          >
+                            {submittedData.symptomsDetail ? (
+                              <Tag className="result-symptom-tag">
+                                {submittedData.symptomsDetail}
+                              </Tag>
+                            ) : (
+                              "Không có"
+                            )}
                           </Descriptions.Item>
                         </Descriptions>
                       </Col>

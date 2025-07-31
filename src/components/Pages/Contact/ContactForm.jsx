@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -14,6 +14,7 @@ const hospitalIcon = new L.Icon({
 
 export default function Contact() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [showBackToTop, setShowBackToTop] = useState(false);
 
   useEffect(() => {
@@ -38,11 +39,13 @@ export default function Contact() {
 
   return (
     <div className="contact-container" id="contact-section">
-      {/* Back to Home Button */}
-      <button className="back-to-home-btn" onClick={handleBackToHome}>
-        <span className="back-icon">←</span>
-        <span className="back-text">Trang chủ</span>
-      </button>
+      {/* Back to Home Button - Only show when not on homepage */}
+      {location.pathname !== "/" && (
+        <button className="back-to-home-btn" onClick={handleBackToHome}>
+          <span className="back-icon">←</span>
+          <span className="back-text">Trang chủ</span>
+        </button>
+      )}
 
       {/* Back to Top Button */}
       {showBackToTop && (

@@ -37,6 +37,7 @@ export const clinicalResultsAPI = {
         heartRate: examinationData.heartRate || null,
         weight: examinationData.weight || null,
         height: examinationData.height || null,
+        bmi: examinationData.bmi || null,
         fshLevel: examinationData.fshLevel || null,
         lhLevel: examinationData.lhLevel || null,
         estradiolLevel: examinationData.estradiolLevel || null,
@@ -62,11 +63,11 @@ export const clinicalResultsAPI = {
         previousTreatments: examinationData.previousTreatments || "",
         recommendations: examinationData.recommendations || "",
         treatmentPriority: examinationData.treatmentPriority || "",
-        completionDate: examinationData.completionDate
-          ? new Date(examinationData.completionDate)
-          : null,
         nextAppointmentDate: examinationData.nextAppointmentDate
           ? new Date(examinationData.nextAppointmentDate)
+          : null,
+        completionDate: examinationData.completionDate
+          ? new Date(examinationData.completionDate)
           : null,
         notes: examinationData.notes || "",
         attachedFileUrl: examinationData.attachedFileUrl || null,
@@ -110,6 +111,7 @@ const transformBackendToFrontend = (backendData) => {
     id: backendData.resultId,
     patientId: backendData.patientId,
     doctorId: backendData.doctorId,
+    appointmentId: backendData.appointmentId,
     examinationDate:
       backendData.examinationDate || backendData.examination_date,
     resultType: backendData.resultType || backendData.result_type,
@@ -138,6 +140,7 @@ const transformBackendToFrontend = (backendData) => {
     heartRate: backendData.heartRate,
     weight: backendData.weight,
     height: backendData.height,
+    bmi: backendData.bmi,
     bloodType: backendData.bloodType,
     fshLevel: backendData.fshLevel,
     lhLevel: backendData.lhLevel,
@@ -163,8 +166,13 @@ const transformBackendToFrontend = (backendData) => {
     previousTreatments: backendData.previousTreatments,
     recommendations: backendData.recommendations,
     treatmentPriority: backendData.treatmentPriority,
+    nextAppointmentDate: backendData.nextAppointmentDate,
+    attachedFileUrl: backendData.attachedFileUrl,
+    isCompleted: backendData.isCompleted,
     completionDate: backendData.completionDate,
     status: backendData.isCompleted ? "completed" : "pending",
+    createdDate: backendData.createdDate,
+    updatedDate: backendData.updatedDate,
     createdAt: backendData.createdAt,
     updatedAt: backendData.updatedAt,
   };

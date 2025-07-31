@@ -1,12 +1,12 @@
-import React, { useContext, useState } from "react";
+import React, { useContext } from "react";
 import "./HeroSection.css";
 import { useNavigate } from "react-router-dom";
 import { UserContext } from "../../../../context/UserContext";
+import SearchBox from "../../../common/SearchBox/SearchBox";
 
 export default function HeroSection() {
   const navigate = useNavigate();
   const { user, isLoggedIn } = useContext(UserContext);
-  const [searchQuery, setSearchQuery] = useState("");
 
   const handleBookingClick = () => {
     if (isLoggedIn && user) {
@@ -16,11 +16,27 @@ export default function HeroSection() {
     }
   };
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      // Handle search functionality
-      console.log("Searching for:", searchQuery);
+  const handleSearch = (searchQuery) => {
+    console.log("Searching for:", searchQuery);
+
+    // Tìm kiếm chung - thử tìm trong tất cả các section
+    const sections = [
+      "services-section",
+      "doctors-section",
+      "about-section",
+      "achievements-section",
+      "news-section",
+      "contact-section",
+      "feedback-section",
+    ];
+
+    // Tìm section đầu tiên có thể scroll được
+    for (const sectionId of sections) {
+      const element = document.getElementById(sectionId);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth" });
+        break;
+      }
     }
   };
 
@@ -42,18 +58,7 @@ export default function HeroSection() {
         </p>
 
         <div className="hero-search">
-          <form onSubmit={handleSearch} className="hero-search-container">
-            <span className="search-icon">🔍</span>
-            <input
-              type="text"
-              placeholder="Tìm kiếm dịch vụ, bác sĩ, thông tin..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <button type="submit" className="search-button">
-              Tìm kiếm
-            </button>
-          </form>
+          <SearchBox onSearch={handleSearch} />
         </div>
 
         <div className="hero-buttons">

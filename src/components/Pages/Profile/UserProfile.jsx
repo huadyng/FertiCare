@@ -1,8 +1,50 @@
 import React, { useState, useEffect, useContext } from "react";
 import { UserContext } from "../../../context/UserContext";
 import apiProfile from "../../../api/apiProfile";
-import "./UserProfile.css";
 import { validateDateOfBirth } from "../../../utils/dateValidation";
+import {
+  Card,
+  Avatar,
+  Button,
+  Form,
+  Input,
+  Select,
+  DatePicker,
+  message,
+  Spin,
+  Row,
+  Col,
+  Divider,
+  Tag,
+  Typography,
+  Space,
+  Alert,
+  Descriptions,
+  Upload,
+  Modal,
+  Tooltip,
+} from "antd";
+import {
+  UserOutlined,
+  EditOutlined,
+  SaveOutlined,
+  CloseOutlined,
+  PhoneOutlined,
+  MailOutlined,
+  CalendarOutlined,
+  EnvironmentOutlined,
+  IdcardOutlined,
+  TrophyOutlined,
+  HeartOutlined,
+  TeamOutlined,
+  SettingOutlined,
+  UploadOutlined,
+} from "@ant-design/icons";
+import dayjs from "dayjs";
+
+const { Title, Text } = Typography;
+const { TextArea } = Input;
+const { Option } = Select;
 
 const UserProfile = () => {
   const { user, USER_ROLES, setUser } = useContext(UserContext);
@@ -10,10 +52,10 @@ const UserProfile = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({});
+  const [form] = Form.useForm();
   const [updateLoading, setUpdateLoading] = useState(false);
   const [updateMessage, setUpdateMessage] = useState("");
-  const [validationErrors, setValidationErrors] = useState({});
+  const [messageApi, contextHolder] = message.useMessage();
 
   useEffect(() => {
     fetchProfile().catch((error) => {
@@ -59,7 +101,10 @@ const UserProfile = () => {
             break;
           case "DOCTOR":
             // ✅ Luôn lấy profile của bác sĩ đang đăng nhập
-            console.log("🔍 [UserProfile] Lấy profile cho doctor ID:", user?.id);
+            console.log(
+              "🔍 [UserProfile] Lấy profile cho doctor ID:",
+              user?.id
+            );
             profileData = await apiProfile.getDoctorProfile(user?.id);
             // Đảm bảo ID của bác sĩ được set
             if (profileData && user?.id) {
@@ -95,13 +140,18 @@ const UserProfile = () => {
         profileData.avatarUrl
       );
       setProfile(profileData);
-      setFormData({
+
+      // Set form data for editing
+      const formData = {
         ...profileData,
         gender: convertGenderForForm(profileData.gender),
         maritalStatus: convertMaritalStatusForForm(profileData.maritalStatus),
-        // ✅ Bỏ avatarUrl vì không có chức năng upload
-        avatarUrl: undefined,
-      }); // Initialize form with current data (converted for display)
+        dateOfBirth: profileData.dateOfBirth
+          ? dayjs(profileData.dateOfBirth)
+          : null,
+      };
+
+      form.setFieldsValue(formData);
 
       return profileData; // Return profile data để có thể sử dụng ngay
     } catch (err) {
@@ -131,7 +181,7 @@ const UserProfile = () => {
           extraPermissions: "",
         };
         setProfile(fallbackProfile);
-        setFormData({
+        form.setFieldsValue({
           ...fallbackProfile,
           gender: convertGenderForForm(fallbackProfile.gender),
           maritalStatus: convertMaritalStatusForForm(
@@ -156,86 +206,29 @@ const UserProfile = () => {
   const handleEditToggle = () => {
     if (isEditing) {
       // Reset form data when canceling
-      setFormData({
+      form.setFieldsValue({
         ...profile,
         gender: convertGenderForForm(profile.gender),
         maritalStatus: convertMaritalStatusForForm(profile.maritalStatus),
+        dateOfBirth: profile.dateOfBirth ? dayjs(profile.dateOfBirth) : null,
       });
-      setValidationErrors({});
       setUpdateMessage("");
-    } else {
-      // Khi bắt đầu edit, đảm bảo customer chỉ có thể dùng file upload
-      if (
-        user?.role?.toUpperCase() === USER_ROLES.CUSTOMER ||
-        user?.role?.toUpperCase() === USER_ROLES.PATIENT
-      ) {
-        // No avatar logic to reset here as avatar states are removed
-      }
     }
     setIsEditing(!isEditing);
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    // Clear validation error when user starts typing
-    if (validationErrors[name]) {
-      setValidationErrors((prev) => ({
-        ...prev,
-        [name]: "",
-      }));
-    }
-  };
-
-  const validateForm = () => {
-    const errors = {};
-
-    if (!formData.fullName?.trim()) {
-      errors.fullName = "Họ và tên không được bỏ trống";
-    }
-
-    if (!formData.email?.trim()) {
-      errors.email = "Email không được bỏ trống";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      errors.email = "Email không đúng định dạng";
-    }
-
-    if (!formData.phone?.trim()) {
-      errors.phone = "Số điện thoại không được bỏ trống";
-    } else if (!/^[0-9]{10,11}$/.test(formData.phone.replace(/\s/g, ""))) {
-      errors.phone = "Số điện thoại không đúng định dạng";
-    }
-
-    // Validate date of birth
-    if (formData.dateOfBirth) {
-      const dateValidation = validateDateOfBirth(formData.dateOfBirth);
-      if (!dateValidation.isValid) {
-        errors.dateOfBirth = dateValidation.message;
-      }
-    }
-
-    return errors;
-  };
-
-  const handleUpdateProfile = async (e) => {
-    e.preventDefault();
-
-    const errors = validateForm();
-    if (Object.keys(errors).length > 0) {
-      setValidationErrors(errors);
-      return;
-    }
-
+  const handleUpdateProfile = async (values) => {
     try {
       setUpdateLoading(true);
       setUpdateMessage("");
 
       // Chuẩn bị data để cập nhật profile
-      let dataToUpdate = { ...formData };
+      let dataToUpdate = {
+        ...values,
+        dateOfBirth: values.dateOfBirth
+          ? values.dateOfBirth.format("YYYY-MM-DD")
+          : null,
+      };
 
       // ✅ Đảm bảo ID được giữ nguyên cho doctor
       if (user?.role?.toUpperCase() === "DOCTOR" && user?.id) {
@@ -260,37 +253,19 @@ const UserProfile = () => {
         successMessage = "✅ Cập nhật thông tin thành công!";
       }
 
-      setUpdateMessage(successMessage);
+      messageApi.success(successMessage);
       setIsEditing(false);
-
-      // Reset states
-      // No avatar states to reset
 
       // Fetch lại profile
       console.log("🔄 [UserProfile] Fetching updated profile...");
       const updatedProfileData = await fetchProfile();
 
-      // Force refresh image timestamp
-      // No avatar update time to force refresh
       console.log("✅ [UserProfile] Update process completed!");
-
-      // ✅ Bỏ logic cập nhật avatar vì không có chức năng upload
-      // Cập nhật user context để Header hiển thị avatar mới
-      // if (updatedProfileData?.avatarUrl) {
-      //   const updatedUser = {
-      //     ...user,
-      //     avatarUrl: updatedProfileData.avatarUrl,
-      //   };
-      //   setUser(updatedUser);
-      //   // Cập nhật localStorage
-      //   localStorage.setItem("user", JSON.stringify(updatedUser));
-      //   console.log("🔄 [UserProfile] Updated user context with new avatar");
-      // }
 
       // Clear success message after 3 seconds
       setTimeout(() => setUpdateMessage(""), 3000);
     } catch (err) {
-      setUpdateMessage(
+      messageApi.error(
         "❌ Có lỗi xảy ra khi cập nhật: " +
           (err.response?.data?.message || err.message)
       );
@@ -302,7 +277,7 @@ const UserProfile = () => {
   const formatDate = (dateString) => {
     if (!dateString) return "Chưa cập nhật";
     try {
-      return new Date(dateString).toLocaleDateString("vi-VN");
+      return dayjs(dateString).format("DD/MM/YYYY");
     } catch {
       return "Không hợp lệ";
     }
@@ -377,65 +352,110 @@ const UserProfile = () => {
     }
   };
 
+  const getRoleColor = () => {
+    switch (user?.role?.toUpperCase()) {
+      case USER_ROLES.ADMIN:
+        return "red";
+      case USER_ROLES.MANAGER:
+        return "orange";
+      case USER_ROLES.DOCTOR:
+        return "blue";
+      case USER_ROLES.PATIENT:
+        return "green";
+      case USER_ROLES.CUSTOMER:
+        return "purple";
+      default:
+        return "default";
+    }
+  };
+
   const renderRoleSpecificInfo = () => {
     if (!profile) return null;
 
     switch (user?.role?.toUpperCase()) {
       case USER_ROLES.DOCTOR:
         return (
-          <div className="role-specific-section">
-            <h3>Thông tin chuyên môn</h3>
-            <div className="info-grid">
-              <div className="info-item">
-                <label>Chuyên khoa:</label>
-                <span>{profile.specialty || "Chưa cập nhật"}</span>
-              </div>
-              <div className="info-item">
-                <label>Bằng cấp:</label>
-                <span>{profile.qualification || "Chưa cập nhật"}</span>
-              </div>
-              <div className="info-item">
-                <label>Số năm kinh nghiệm:</label>
-                <span>{profile.experienceYears || "Chưa cập nhật"}</span>
-              </div>
-            </div>
-          </div>
+          <Card
+            title={
+              <Space>
+                <TrophyOutlined />
+                <span>Thông tin chuyên môn</span>
+              </Space>
+            }
+            className="role-specific-card"
+          >
+            <Row gutter={[16, 16]}>
+              <Col xs={24} sm={12}>
+                <Descriptions.Item label="Chuyên khoa">
+                  {profile.specialty || "Chưa cập nhật"}
+                </Descriptions.Item>
+              </Col>
+              <Col xs={24} sm={12}>
+                <Descriptions.Item label="Bằng cấp">
+                  {profile.qualification || "Chưa cập nhật"}
+                </Descriptions.Item>
+              </Col>
+              <Col xs={24} sm={12}>
+                <Descriptions.Item label="Số năm kinh nghiệm">
+                  {profile.experienceYears || "Chưa cập nhật"}
+                </Descriptions.Item>
+              </Col>
+            </Row>
+          </Card>
         );
 
       case USER_ROLES.CUSTOMER:
       case USER_ROLES.PATIENT:
         return (
-          <div className="role-specific-section">
-            <h3>Thông tin sức khỏe</h3>
-            <div className="info-grid">
-              <div className="info-item">
-                <label>Tình trạng hôn nhân:</label>
-                <span>{getMaritalStatusDisplay(profile.maritalStatus)}</span>
-              </div>
-              <div className="info-item">
-                <label>Tiền sử sức khỏe:</label>
-                <span>{profile.healthBackground || "Chưa cập nhật"}</span>
-              </div>
-            </div>
-          </div>
+          <Card
+            title={
+              <Space>
+                <HeartOutlined />
+                <span>Thông tin sức khỏe</span>
+              </Space>
+            }
+            className="role-specific-card"
+          >
+            <Row gutter={[16, 16]}>
+              <Col xs={24} sm={12}>
+                <Descriptions.Item label="Tình trạng hôn nhân">
+                  {getMaritalStatusDisplay(profile.maritalStatus)}
+                </Descriptions.Item>
+              </Col>
+              <Col xs={24} sm={12}>
+                <Descriptions.Item label="Tiền sử sức khỏe">
+                  {profile.healthBackground || "Chưa cập nhật"}
+                </Descriptions.Item>
+              </Col>
+            </Row>
+          </Card>
         );
 
       case USER_ROLES.MANAGER:
       case USER_ROLES.ADMIN:
         return (
-          <div className="role-specific-section">
-            <h3>Thông tin công việc</h3>
-            <div className="info-grid">
-              <div className="info-item">
-                <label>Phòng ban phụ trách:</label>
-                <span>{profile.assignedDepartment || "Chưa cập nhật"}</span>
-              </div>
-              <div className="info-item">
-                <label>Quyền mở rộng:</label>
-                <span>{profile.extraPermissions || "Chưa cập nhật"}</span>
-              </div>
-            </div>
-          </div>
+          <Card
+            title={
+              <Space>
+                <SettingOutlined />
+                <span>Thông tin công việc</span>
+              </Space>
+            }
+            className="role-specific-card"
+          >
+            <Row gutter={[16, 16]}>
+              <Col xs={24} sm={12}>
+                <Descriptions.Item label="Phòng ban phụ trách">
+                  {profile.assignedDepartment || "Chưa cập nhật"}
+                </Descriptions.Item>
+              </Col>
+              <Col xs={24} sm={12}>
+                <Descriptions.Item label="Quyền mở rộng">
+                  {profile.extraPermissions || "Chưa cập nhật"}
+                </Descriptions.Item>
+              </Col>
+            </Row>
+          </Card>
         );
 
       default:
@@ -445,10 +465,10 @@ const UserProfile = () => {
 
   if (loading) {
     return (
-      <div className="profile-container">
-        <div className="loading-state">
-          <div className="loading-spinner"></div>
-          <p>Đang tải thông tin profile...</p>
+      <div style={{ textAlign: "center", padding: "50px" }}>
+        <Spin size="large" />
+        <div style={{ marginTop: "16px" }}>
+          <Text type="secondary">Đang tải thông tin profile...</Text>
         </div>
       </div>
     );
@@ -456,347 +476,369 @@ const UserProfile = () => {
 
   if (error) {
     return (
-      <div className="profile-container">
-        <div className="error-state">
-          <h2>Có lỗi xảy ra</h2>
-          <p>{error}</p>
-          <button
-            onClick={() => fetchProfile().catch(console.error)}
-            className="retry-btn"
-          >
-            Thử lại
-          </button>
-        </div>
-      </div>
+      <Card>
+        <Alert
+          message="Có lỗi xảy ra"
+          description={error}
+          type="error"
+          showIcon
+          action={
+            <Button
+              size="small"
+              onClick={() => fetchProfile().catch(console.error)}
+            >
+              Thử lại
+            </Button>
+          }
+        />
+      </Card>
     );
   }
 
   if (!profile) {
     return (
-      <div className="profile-container">
-        <div className="no-data-state">
-          <h2>Không tìm thấy thông tin profile</h2>
-          <p>Vui lòng liên hệ quản trị viên để được hỗ trợ.</p>
-        </div>
-      </div>
+      <Card>
+        <Alert
+          message="Không tìm thấy thông tin profile"
+          description="Vui lòng liên hệ quản trị viên để được hỗ trợ."
+          type="warning"
+          showIcon
+        />
+      </Card>
     );
   }
 
   return (
-    <div className="profile-container">
-      <div className="profile-header">
-        <div className="profile-avatar">
-          <img
-            src="/src/assets/img/default-avatar.png"
-            alt="Avatar"
-            onError={(e) => {
-              e.target.src = "/src/assets/img/default-avatar.png";
-            }}
-          />
-        </div>
-        <div className="profile-basic-info">
-          <h1>{profile.fullName || "Chưa cập nhật tên"}</h1>
-          <p className="role-badge">{getRoleDisplay()}</p>
-          <p className="email">{profile.email}</p>
-        </div>
-        <div className="profile-actions">
-          <button
-            className="edit-btn"
-            onClick={handleEditToggle}
-            disabled={updateLoading}
-          >
-            {isEditing ? "Hủy" : "Chỉnh sửa"}
-          </button>
-        </div>
-      </div>
-
-      <div className="profile-content">
-        <div className="basic-info-section">
-          <h3>Thông tin cá nhân</h3>
-          <div className="info-grid">
-            <div className="info-item">
-              <label>Họ và tên:</label>
-              <span>{profile.fullName || "Chưa cập nhật"}</span>
-            </div>
-            <div className="info-item">
-              <label>Email:</label>
-              <span>{profile.email || "Chưa cập nhật"}</span>
-            </div>
-            <div className="info-item">
-              <label>Số điện thoại:</label>
-              <span>{profile.phone || "Chưa cập nhật"}</span>
-            </div>
-            <div className="info-item">
-              <label>Giới tính:</label>
-              <span>{getGenderDisplay(profile.gender)}</span>
-            </div>
-            <div className="info-item">
-              <label>Ngày sinh:</label>
-              <span>{formatDate(profile.dateOfBirth)}</span>
-            </div>
-            <div className="info-item">
-              <label>Địa chỉ:</label>
-              <span>{profile.address || "Chưa cập nhật"}</span>
-            </div>
-          </div>
-        </div>
-
-        {renderRoleSpecificInfo()}
-
-        {updateMessage && (
-          <div
-            className={`message ${
-              updateMessage.includes("✅") ? "success" : "error"
-            }`}
-          >
-            {updateMessage}
-          </div>
-        )}
-
-        {isEditing && (
-          <div className="edit-section">
-            <h3>Chỉnh sửa thông tin</h3>
-            <form onSubmit={handleUpdateProfile} className="edit-form">
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="fullName">Họ và tên *</label>
-                  <input
-                    type="text"
-                    id="fullName"
-                    name="fullName"
-                    value={formData.fullName || ""}
-                    onChange={handleInputChange}
-                    className={validationErrors.fullName ? "error" : ""}
-                  />
-                  {validationErrors.fullName && (
-                    <span className="error-text">
-                      {validationErrors.fullName}
-                    </span>
-                  )}
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="email">Email *</label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={formData.email || ""}
-                    onChange={handleInputChange}
-                    className={validationErrors.email ? "error" : ""}
-                    disabled={true}
-                  />
-                  {validationErrors.email && (
-                    <span className="error-text">{validationErrors.email}</span>
-                  )}
-                </div>
+    <>
+      {contextHolder}
+      <div style={{ padding: "24px", maxWidth: "1200px", margin: "0 auto" }}>
+        <Card>
+          {/* Profile Header */}
+          <Row gutter={[24, 24]} align="middle">
+            <Col xs={24} sm={8} md={6}>
+              <div style={{ textAlign: "center" }}>
+                <Avatar
+                  size={120}
+                  src={
+                    profile.avatarUrl || "/src/assets/img/default-avatar.png"
+                  }
+                  icon={<UserOutlined />}
+                />
               </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="phone">Số điện thoại *</label>
-                  <input
-                    type="tel"
-                    id="phone"
-                    name="phone"
-                    value={formData.phone || ""}
-                    onChange={handleInputChange}
-                    className={validationErrors.phone ? "error" : ""}
-                  />
-                  {validationErrors.phone && (
-                    <span className="error-text">{validationErrors.phone}</span>
-                  )}
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="gender">Giới tính</label>
-                  <select
-                    id="gender"
-                    name="gender"
-                    value={formData.gender || ""}
-                    onChange={handleInputChange}
-                  >
-                    <option value="">Chọn giới tính</option>
-                    <option value="male">Nam</option>
-                    <option value="female">Nữ</option>
-                    <option value="other">Khác</option>
-                  </select>
-                </div>
+            </Col>
+            <Col xs={24} sm={16} md={12}>
+              <Title level={2} style={{ marginBottom: "8px" }}>
+                {profile.fullName || "Chưa cập nhật tên"}
+              </Title>
+              <Tag color={getRoleColor()} size="large">
+                {getRoleDisplay()}
+              </Tag>
+              <div style={{ marginTop: "8px" }}>
+                <Text type="secondary">
+                  <MailOutlined /> {profile.email}
+                </Text>
               </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="dateOfBirth">Ngày sinh</label>
-                  <input
-                    type="date"
-                    id="dateOfBirth"
-                    name="dateOfBirth"
-                    value={
-                      formData.dateOfBirth
-                        ? formData.dateOfBirth.split("T")[0]
-                        : ""
-                    }
-                    onChange={handleInputChange}
-                    className={validationErrors.dateOfBirth ? "error" : ""}
-                    min={(() => {
-                      const today = new Date();
-                      return new Date(today.getFullYear() - 50, today.getMonth(), today.getDate()).toISOString().split('T')[0];
-                    })()}
-                    max={(() => {
-                      const today = new Date();
-                      return new Date(today.getFullYear() - 18, today.getMonth(), today.getDate()).toISOString().split('T')[0];
-                    })()}
-                  />
-                  {validationErrors.dateOfBirth && (
-                    <p className="field-error">{validationErrors.dateOfBirth}</p>
-                  )}
-                </div>
-
-                <div className="form-group full-width">
-                  <label htmlFor="address">Địa chỉ</label>
-                  <textarea
-                    id="address"
-                    name="address"
-                    value={formData.address || ""}
-                    onChange={handleInputChange}
-                    rows="3"
-                    placeholder="Nhập địa chỉ đầy đủ..."
-                  />
-                </div>
-              </div>
-
-              {/* Role-specific fields */}
-              {user?.role?.toUpperCase() === USER_ROLES.DOCTOR && (
-                <>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label htmlFor="specialty">Chuyên khoa</label>
-                      <input
-                        type="text"
-                        id="specialty"
-                        name="specialty"
-                        value={formData.specialty || ""}
-                        onChange={handleInputChange}
-                        placeholder="VD: Sản phụ khoa"
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="qualification">Bằng cấp</label>
-                      <input
-                        type="text"
-                        id="qualification"
-                        name="qualification"
-                        value={formData.qualification || ""}
-                        onChange={handleInputChange}
-                        placeholder="VD: Thạc sĩ, Tiến sĩ"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="experienceYears">Số năm kinh nghiệm</label>
-                    <input
-                      type="number"
-                      id="experienceYears"
-                      name="experienceYears"
-                      value={formData.experienceYears || ""}
-                      onChange={handleInputChange}
-                      min="0"
-                      max="50"
-                    />
-                  </div>
-                </>
-              )}
-
-              {(user?.role?.toUpperCase() === USER_ROLES.CUSTOMER ||
-                user?.role?.toUpperCase() === USER_ROLES.PATIENT) && (
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="maritalStatus">Tình trạng hôn nhân</label>
-                    <select
-                      id="maritalStatus"
-                      name="maritalStatus"
-                      value={formData.maritalStatus || ""}
-                      onChange={handleInputChange}
-                    >
-                      <option value="">Chọn tình trạng</option>
-                      <option value="độc thân">Độc thân</option>
-                      <option value="đã kết hôn">Đã kết hôn</option>
-                      <option value="đã ly hôn">Đã ly hôn</option>
-                      <option value="góa">Góa</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="healthBackground">Tiền sử sức khỏe</label>
-                    <textarea
-                      id="healthBackground"
-                      name="healthBackground"
-                      value={formData.healthBackground || ""}
-                      onChange={handleInputChange}
-                      rows="2"
-                      placeholder="Mô tả ngắn về tình trạng sức khỏe..."
-                    />
-                  </div>
-                </div>
-              )}
-
-              {(user?.role?.toUpperCase() === USER_ROLES.MANAGER ||
-                user?.role?.toUpperCase() === USER_ROLES.ADMIN) && (
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="assignedDepartment">
-                      Phòng ban phụ trách
-                    </label>
-                    <input
-                      type="text"
-                      id="assignedDepartment"
-                      name="assignedDepartment"
-                      value={formData.assignedDepartment || ""}
-                      onChange={handleInputChange}
-                      placeholder="VD: Phòng kế hoạch"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="extraPermissions">Quyền mở rộng</label>
-                    <input
-                      type="text"
-                      id="extraPermissions"
-                      name="extraPermissions"
-                      value={formData.extraPermissions || ""}
-                      onChange={handleInputChange}
-                      placeholder="VD: Quản lý hệ thống"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="form-actions">
-                <button
-                  type="button"
-                  className="cancel-btn"
+            </Col>
+            <Col xs={24} sm={24} md={6}>
+              <div style={{ textAlign: "right" }}>
+                <Button
+                  type={isEditing ? "default" : "primary"}
+                  icon={isEditing ? <CloseOutlined /> : <EditOutlined />}
                   onClick={handleEditToggle}
-                  disabled={updateLoading}
+                  loading={updateLoading}
+                  size="large"
                 >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="save-btn"
-                  disabled={updateLoading}
-                >
-                  {updateLoading
-                    ? "🔄 Đang lưu..."
-                    : "💾 Lưu thay đổi"}
-                </button>
+                  {isEditing ? "Hủy" : "Chỉnh sửa"}
+                </Button>
               </div>
-            </form>
-          </div>
-        )}
+            </Col>
+          </Row>
+
+          <Divider />
+
+          {/* Basic Information */}
+          <Card
+            title={
+              <Space>
+                <IdcardOutlined />
+                <span>Thông tin cá nhân</span>
+              </Space>
+            }
+            style={{ marginBottom: "24px" }}
+          >
+            <Row gutter={[24, 16]}>
+              <Col xs={24} sm={12}>
+                <Descriptions.Item label="Họ và tên">
+                  {profile.fullName || "Chưa cập nhật"}
+                </Descriptions.Item>
+              </Col>
+              <Col xs={24} sm={12}>
+                <Descriptions.Item label="Email">
+                  {profile.email || "Chưa cập nhật"}
+                </Descriptions.Item>
+              </Col>
+              <Col xs={24} sm={12}>
+                <Descriptions.Item label="Số điện thoại">
+                  <PhoneOutlined /> {profile.phone || "Chưa cập nhật"}
+                </Descriptions.Item>
+              </Col>
+              <Col xs={24} sm={12}>
+                <Descriptions.Item label="Giới tính">
+                  {getGenderDisplay(profile.gender)}
+                </Descriptions.Item>
+              </Col>
+              <Col xs={24} sm={12}>
+                <Descriptions.Item label="Ngày sinh">
+                  <CalendarOutlined /> {formatDate(profile.dateOfBirth)}
+                </Descriptions.Item>
+              </Col>
+              <Col xs={24} sm={12}>
+                <Descriptions.Item label="Địa chỉ">
+                  <EnvironmentOutlined /> {profile.address || "Chưa cập nhật"}
+                </Descriptions.Item>
+              </Col>
+            </Row>
+          </Card>
+
+          {/* Role-specific Information */}
+          {renderRoleSpecificInfo()}
+
+          {/* Edit Form */}
+          {isEditing && (
+            <Card
+              title={
+                <Space>
+                  <EditOutlined />
+                  <span>Chỉnh sửa thông tin</span>
+                </Space>
+              }
+              style={{ marginTop: "24px" }}
+            >
+              <Form
+                form={form}
+                layout="vertical"
+                onFinish={handleUpdateProfile}
+                initialValues={{
+                  gender: "",
+                  maritalStatus: "",
+                }}
+              >
+                <Row gutter={[16, 16]}>
+                  <Col xs={24} sm={12}>
+                    <Form.Item
+                      name="fullName"
+                      label="Họ và tên"
+                      rules={[
+                        { required: true, message: "Vui lòng nhập họ và tên!" },
+                        {
+                          min: 2,
+                          message: "Họ và tên phải có ít nhất 2 ký tự!",
+                        },
+                      ]}
+                    >
+                      <Input
+                        prefix={<UserOutlined />}
+                        placeholder="Nhập họ và tên"
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={12}>
+                    <Form.Item
+                      name="email"
+                      label="Email"
+                      rules={[
+                        { required: true, message: "Vui lòng nhập email!" },
+                        {
+                          type: "email",
+                          message: "Email không đúng định dạng!",
+                        },
+                      ]}
+                    >
+                      <Input
+                        prefix={<MailOutlined />}
+                        placeholder="Nhập email"
+                        disabled
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={12}>
+                    <Form.Item
+                      name="phone"
+                      label="Số điện thoại"
+                      rules={[
+                        {
+                          required: true,
+                          message: "Vui lòng nhập số điện thoại!",
+                        },
+                        {
+                          pattern: /^[0-9]{10,11}$/,
+                          message: "Số điện thoại không đúng định dạng!",
+                        },
+                      ]}
+                    >
+                      <Input
+                        prefix={<PhoneOutlined />}
+                        placeholder="Nhập số điện thoại"
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={12}>
+                    <Form.Item name="gender" label="Giới tính">
+                      <Select placeholder="Chọn giới tính">
+                        <Option value="male">Nam</Option>
+                        <Option value="female">Nữ</Option>
+                        <Option value="other">Khác</Option>
+                      </Select>
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={12}>
+                    <Form.Item
+                      name="dateOfBirth"
+                      label="Ngày sinh"
+                      rules={[
+                        {
+                          validator: (_, value) => {
+                            if (!value) return Promise.resolve();
+                            const age = dayjs().diff(value, "year");
+                            if (age < 18 || age > 100) {
+                              return Promise.reject(
+                                new Error("Tuổi phải từ 18 đến 100!")
+                              );
+                            }
+                            return Promise.resolve();
+                          },
+                        },
+                      ]}
+                    >
+                      <DatePicker
+                        style={{ width: "100%" }}
+                        placeholder="Chọn ngày sinh"
+                        disabledDate={(current) => {
+                          const age = dayjs().diff(current, "year");
+                          return age < 18 || age > 100;
+                        }}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24}>
+                    <Form.Item name="address" label="Địa chỉ">
+                      <TextArea rows={3} placeholder="Nhập địa chỉ đầy đủ..." />
+                    </Form.Item>
+                  </Col>
+
+                  {/* Role-specific fields */}
+                  {user?.role?.toUpperCase() === USER_ROLES.DOCTOR && (
+                    <>
+                      <Col xs={24} sm={12}>
+                        <Form.Item name="specialty" label="Chuyên khoa">
+                          <Input placeholder="VD: Sản phụ khoa" />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={12}>
+                        <Form.Item name="qualification" label="Bằng cấp">
+                          <Input placeholder="VD: Thạc sĩ, Tiến sĩ" />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          name="experienceYears"
+                          label="Số năm kinh nghiệm"
+                          rules={[
+                            {
+                              type: "number",
+                              min: 0,
+                              max: 50,
+                              message: "Số năm kinh nghiệm phải từ 0-50!",
+                            },
+                          ]}
+                        >
+                          <Input
+                            type="number"
+                            min={0}
+                            max={50}
+                            placeholder="Nhập số năm kinh nghiệm"
+                          />
+                        </Form.Item>
+                      </Col>
+                    </>
+                  )}
+
+                  {(user?.role?.toUpperCase() === USER_ROLES.CUSTOMER ||
+                    user?.role?.toUpperCase() === USER_ROLES.PATIENT) && (
+                    <>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          name="maritalStatus"
+                          label="Tình trạng hôn nhân"
+                        >
+                          <Select placeholder="Chọn tình trạng">
+                            <Option value="độc thân">Độc thân</Option>
+                            <Option value="đã kết hôn">Đã kết hôn</Option>
+                            <Option value="đã ly hôn">Đã ly hôn</Option>
+                            <Option value="góa">Góa</Option>
+                          </Select>
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          name="healthBackground"
+                          label="Tiền sử sức khỏe"
+                        >
+                          <TextArea
+                            rows={2}
+                            placeholder="Mô tả ngắn về tình trạng sức khỏe..."
+                          />
+                        </Form.Item>
+                      </Col>
+                    </>
+                  )}
+
+                  {(user?.role?.toUpperCase() === USER_ROLES.MANAGER ||
+                    user?.role?.toUpperCase() === USER_ROLES.ADMIN) && (
+                    <>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          name="assignedDepartment"
+                          label="Phòng ban phụ trách"
+                        >
+                          <Input placeholder="VD: Phòng kế hoạch" />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          name="extraPermissions"
+                          label="Quyền mở rộng"
+                        >
+                          <Input placeholder="VD: Quản lý hệ thống" />
+                        </Form.Item>
+                      </Col>
+                    </>
+                  )}
+                </Row>
+
+                <Divider />
+
+                <div style={{ textAlign: "right" }}>
+                  <Space>
+                    <Button onClick={handleEditToggle} disabled={updateLoading}>
+                      Hủy
+                    </Button>
+                    <Button
+                      type="primary"
+                      htmlType="submit"
+                      loading={updateLoading}
+                      icon={<SaveOutlined />}
+                    >
+                      {updateLoading ? "Đang lưu..." : "Lưu thay đổi"}
+                    </Button>
+                  </Space>
+                </div>
+              </Form>
+            </Card>
+          )}
+        </Card>
       </div>
-    </div>
+    </>
   );
 };
 

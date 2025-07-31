@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import CustomDatePicker from "./components/CustomDatePicker/CustomDatePicker";
 import axiosClient from "../../../services/axiosClient";
 import { UserContext } from "../../../context/UserContext";
@@ -7,6 +7,7 @@ import "./RegistrationForm.css";
 
 const RegistrationForm = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, isLoggedIn } = useContext(UserContext);
   const [showBackToTop, setShowBackToTop] = useState(false);
 
@@ -109,7 +110,7 @@ const RegistrationForm = () => {
       !formData.appointmentDate
     ) {
       const autoDoctorId = doctors[0].id;
-      
+
       setFormData((prev) => ({ ...prev, doctorId: autoDoctorId }));
 
       try {
@@ -184,8 +185,8 @@ const RegistrationForm = () => {
 
     // Format date to YYYY-MM-DD using local date
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
     const formattedDate = `${year}-${month}-${day}`;
     console.log("[DEBUG] Ngày đã format:", formattedDate);
 
@@ -269,8 +270,8 @@ const RegistrationForm = () => {
     if (!Array.isArray(availableDates)) return false;
     // Sử dụng local date thay vì UTC để tránh lệch timezone
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
     const dateStr = `${year}-${month}-${day}`;
     const isAvailable = availableDates.some((d) => d.date.date === dateStr);
     return isAvailable;
@@ -307,7 +308,9 @@ const RegistrationForm = () => {
     }
 
     // Tạo datetime với timezone local (không chuyển đổi sang UTC)
-    const appointmentDateTime = new Date(`${formData.appointmentDate}T${formData.appointmentTime}:00`);
+    const appointmentDateTime = new Date(
+      `${formData.appointmentDate}T${formData.appointmentTime}:00`
+    );
     // Gửi thời gian local dưới dạng string để tránh lệch timezone
     const appointmentTime = `${formData.appointmentDate}T${formData.appointmentTime}:00`;
 
@@ -462,10 +465,10 @@ const RegistrationForm = () => {
           month: "2-digit",
           year: "numeric",
         });
-        
+
         // Sử dụng thời gian người dùng đã chọn (không phải từ API)
         const timeToDisplay = submittedFormData.appointmentTime;
-        
+
         const result = `${vietnamDate} lúc ${timeToDisplay}`;
         console.log("User's original selection result:", result);
         return result;
@@ -485,15 +488,20 @@ const RegistrationForm = () => {
       // Nếu là time-only format (HH:mm:ss), kết hợp với ngày từ API hoặc localStorage
       if (timeValue.match(/^\d{2}:\d{2}:\d{2}$/)) {
         console.log("API time is time-only format");
-        
+
         // 🆕 Kiểm tra xem có phải thời gian đã bị chuyển đổi timezone không
         // Nếu có submittedFormData, so sánh với thời gian gốc
         if (submittedFormData?.appointmentTime) {
           const originalTime = submittedFormData.appointmentTime;
           const apiTime = timeValue.substring(0, 5);
-          
-          console.log("Comparing times - Original:", originalTime, "API:", apiTime);
-          
+
+          console.log(
+            "Comparing times - Original:",
+            originalTime,
+            "API:",
+            apiTime
+          );
+
           // Nếu thời gian khác nhau, có thể đã bị chuyển đổi timezone
           if (originalTime !== apiTime) {
             console.log("Timezone conversion detected, using original time");
@@ -506,7 +514,7 @@ const RegistrationForm = () => {
             return `${vietnamDate} lúc ${originalTime}`;
           }
         }
-        
+
         // Thử lấy ngày từ localStorage backup
         try {
           const backupData = localStorage.getItem("lastSubmittedData");
@@ -528,7 +536,7 @@ const RegistrationForm = () => {
         } catch (error) {
           console.error("Error reading localStorage backup:", error);
         }
-        
+
         // Fallback: chỉ hiển thị time
         console.log("No date available, showing time only");
         const timeOnly = timeValue.substring(0, 5);
@@ -569,11 +577,13 @@ const RegistrationForm = () => {
 
   return (
     <main className="registration-form-container">
-      {/* Back to Home Button */}
-      <button className="back-to-home-btn" onClick={handleBackToHome}>
-        <span className="back-icon">←</span>
-        <span className="back-text">Trang chủ</span>
-      </button>
+      {/* Back to Home Button - Only show when not on homepage */}
+      {location.pathname !== "/" && (
+        <button className="back-to-home-btn" onClick={handleBackToHome}>
+          <span className="back-icon">←</span>
+          <span className="back-text">Trang chủ</span>
+        </button>
+      )}
 
       {/* Back to Top Button */}
       {showBackToTop && (

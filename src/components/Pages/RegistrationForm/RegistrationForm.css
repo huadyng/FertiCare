@@ -17,7 +17,7 @@
 .back-to-home-btn {
   position: fixed;
   margin-top: 10px;
-  top: 20px;
+  top: 5px;
   left: 20px;
   z-index: 1000;
   background: linear-gradient(135deg, #ff7eb3, #ff758c);
@@ -1076,7 +1076,7 @@ input[type="radio"]:checked::after {
 
   /* Mobile Button Adjustments */
   .back-to-home-btn {
-    top: 15px;
+    top: 3px;
     left: 15px;
     padding: 10px 16px;
     font-size: 13px;
@@ -1169,7 +1169,7 @@ input[type="radio"]:checked::after {
 
   /* Extra Small Mobile Button Adjustments */
   .back-to-home-btn {
-    top: 10px;
+    top: 2px;
     left: 10px;
     padding: 8px 12px;
     font-size: 12px;

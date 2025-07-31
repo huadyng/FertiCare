@@ -88,17 +88,7 @@ const ClinicalResultsList = ({ onSelectResult, selectedResultId }) => {
       sorter: (a, b) =>
         new Date(a.examinationDate) - new Date(b.examinationDate),
     },
-    {
-      title: "Bác sĩ",
-      dataIndex: "doctorId",
-      key: "doctorId",
-      render: (doctorId) => (
-        <Space>
-          <UserOutlined style={{ color: "#ff6b9d" }} />
-          <Text>{doctorId || "-"}</Text>
-        </Space>
-      ),
-    },
+
     {
       title: "Chẩn đoán",
       dataIndex: "diagnosis",

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import "./Services.css";
 
 const Services = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [activeService, setActiveService] = useState(null);
   const [selectedComparison, setSelectedComparison] = useState("overview");
@@ -344,12 +345,15 @@ const Services = () => {
 
   return (
     <div className="services-container">
-      {/* Navigation Buttons */}
-      <button className="back-to-home-btn" onClick={() => navigate("/")}>
-        <span className="back-icon">←</span>
-        <span className="back-text">Trang chủ</span>
-      </button>
+      {/* Back to Home Button - Only show when not on homepage */}
+      {location.pathname !== "/" && (
+        <button className="back-to-home-btn" onClick={() => navigate("/")}>
+          <span className="back-icon">←</span>
+          <span className="back-text">Trang chủ</span>
+        </button>
+      )}
 
+      {/* Back to Top Button */}
       {showBackToTop && (
         <button className="back-to-top-btn" onClick={scrollToTop}>
           <span>⬆️</span>

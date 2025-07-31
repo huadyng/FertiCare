@@ -21,6 +21,9 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   DownloadOutlined,
+  ExperimentOutlined,
+  MedicineBoxOutlined,
+  InfoCircleOutlined,
 } from "@ant-design/icons";
 import clinicalResultsAPI from "../../../api/apiClinicalResults";
 
@@ -121,16 +124,7 @@ const ClinicalResultDetail = ({ resultId, onClose }) => {
                   ? new Date(detail.examinationDate).toLocaleString("vi-VN")
                   : "-"}
               </Descriptions.Item>
-              <Descriptions.Item
-                label={
-                  <Space>
-                    <UserOutlined style={{ color: "#ff6b9d" }} />
-                    <Text strong>Bác sĩ</Text>
-                  </Space>
-                }
-              >
-                {detail.doctorId || "-"}
-              </Descriptions.Item>
+
               <Descriptions.Item
                 label={
                   <Space>
@@ -144,7 +138,7 @@ const ClinicalResultDetail = ({ resultId, onClose }) => {
               <Descriptions.Item
                 label={
                   <Space>
-                    {detail.status === "completed" ? (
+                    {detail.isCompleted ? (
                       <CheckCircleOutlined style={{ color: "#52c41a" }} />
                     ) : (
                       <ClockCircleOutlined style={{ color: "#1890ff" }} />
@@ -153,12 +147,8 @@ const ClinicalResultDetail = ({ resultId, onClose }) => {
                   </Space>
                 }
               >
-                <Tag
-                  color={
-                    detail.status === "completed" ? "success" : "processing"
-                  }
-                >
-                  {detail.status === "completed" ? "Hoàn thành" : "Đang xử lý"}
+                <Tag color={detail.isCompleted ? "success" : "processing"}>
+                  {detail.isCompleted ? "Hoàn thành" : "Đang xử lý"}
                 </Tag>
               </Descriptions.Item>
             </Descriptions>
@@ -244,8 +234,8 @@ const ClinicalResultDetail = ({ resultId, onClose }) => {
             </Descriptions>
           </Card>
 
-          {/* Kết quả xét nghiệm */}
-          <Card title="Kết quả xét nghiệm" size="small">
+          {/* Kết quả xét nghiệm máu */}
+          <Card title="Kết quả xét nghiệm máu" size="small">
             <Descriptions column={2}>
               <Descriptions.Item label="Loại máu">
                 {detail.bloodType || "-"}
@@ -264,6 +254,40 @@ const ClinicalResultDetail = ({ resultId, onClose }) => {
               </Descriptions.Item>
               <Descriptions.Item label="Creatinine">
                 {detail.creatinine ? `${detail.creatinine} mg/dL` : "-"}
+              </Descriptions.Item>
+            </Descriptions>
+          </Card>
+
+          {/* Xét nghiệm nội tiết */}
+          <Card
+            title={
+              <Space>
+                <ExperimentOutlined style={{ color: "#ff6b9d" }} />
+                <Text strong>Xét nghiệm nội tiết</Text>
+              </Space>
+            }
+            size="small"
+          >
+            <Descriptions column={2}>
+              <Descriptions.Item label="FSH">
+                {detail.fshLevel ? `${detail.fshLevel} mIU/mL` : "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="LH">
+                {detail.lhLevel ? `${detail.lhLevel} mIU/mL` : "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Estradiol">
+                {detail.estradiolLevel ? `${detail.estradiolLevel} pg/mL` : "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Testosterone">
+                {detail.testosteroneLevel
+                  ? `${detail.testosteroneLevel} ng/mL`
+                  : "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="AMH">
+                {detail.amhLevel ? `${detail.amhLevel} ng/mL` : "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Prolactin">
+                {detail.prolactinLevel ? `${detail.prolactinLevel} ng/mL` : "-"}
               </Descriptions.Item>
             </Descriptions>
           </Card>
@@ -294,11 +318,47 @@ const ClinicalResultDetail = ({ resultId, onClose }) => {
             </Descriptions>
           </Card>
 
+          {/* Chẩn đoán và đánh giá */}
+          <Card
+            title={
+              <Space>
+                <MedicineBoxOutlined style={{ color: "#ff6b9d" }} />
+                <Text strong>Chẩn đoán và đánh giá</Text>
+              </Space>
+            }
+            size="small"
+          >
+            <Descriptions column={1}>
+              <Descriptions.Item label="Mã chẩn đoán">
+                {detail.diagnosisCode || "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Mức độ nghiêm trọng">
+                {detail.severityLevel || "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Thời gian vô sinh (tháng)">
+                {detail.infertilityDurationMonths
+                  ? `${detail.infertilityDurationMonths} tháng`
+                  : "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Điều trị trước đó">
+                {detail.previousTreatments || "-"}
+              </Descriptions.Item>
+            </Descriptions>
+          </Card>
+
           {/* Khuyến nghị và ghi chú */}
           <Card title="Khuyến nghị và ghi chú" size="small">
             <Descriptions column={1}>
               <Descriptions.Item label="Khuyến nghị">
                 {detail.recommendations || "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Ưu tiên điều trị">
+                {detail.treatmentPriority || "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Lịch hẹn tiếp theo">
+                {detail.nextAppointmentDate
+                  ? new Date(detail.nextAppointmentDate).toLocaleString("vi-VN")
+                  : "-"}
               </Descriptions.Item>
               <Descriptions.Item label="Ghi chú">
                 {detail.notes || "-"}
@@ -307,25 +367,6 @@ const ClinicalResultDetail = ({ resultId, onClose }) => {
                 {detail.completionDate
                   ? new Date(detail.completionDate).toLocaleString("vi-VN")
                   : "-"}
-              </Descriptions.Item>
-              <Descriptions.Item label="File đính kèm">
-                {detail.attachedFileUrl ? (
-                  <Button
-                    type="primary"
-                    icon={<DownloadOutlined />}
-                    href={detail.attachedFileUrl}
-                    target="_blank"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, #ff7eb3 0%, #ff758c 50%, #ff6b9d 100%)",
-                      border: "none",
-                    }}
-                  >
-                    Tải về
-                  </Button>
-                ) : (
-                  "-"
-                )}
               </Descriptions.Item>
             </Descriptions>
           </Card>

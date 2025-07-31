@@ -13,6 +13,7 @@ import ServiceRegistration from "../ServiceRegistration/ServiceRegistration";
 import { UserContext } from "../../../../context/UserContext";
 import AchievementsPreview from "../../Achievement/AchievementPreview";
 import ArticlePreview from "../../News/ArticlesPreview";
+import ContactForm from "../../Contact/ContactForm";
 import { Spin } from "antd";
 
 const HomePage = () => {
@@ -56,13 +57,28 @@ const HomePage = () => {
   return (
     <>
       <HeroSection />
-      <AboutUs />
-      <Service />
+      <div id="about-section">
+        <AboutUs />
+      </div>
+      <div id="services-section">
+        <Service />
+      </div>
       {/* {showServiceRegistration && <ServiceRegistration />} */}
-      <DoctorCarousel />
-      <AchievementsPreview />
-      <ArticlePreview />
-      <FeedbackPage />
+      <div id="doctors-section">
+        <DoctorCarousel />
+      </div>
+      <div id="achievements-section">
+        <AchievementsPreview />
+      </div>
+      <div id="news-section">
+        <ArticlePreview />
+      </div>
+      <div id="feedback-section">
+        <FeedbackPage />
+      </div>
+      <div id="contact-section">
+        <ContactForm />
+      </div>
     </>
   );
 };

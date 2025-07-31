@@ -39,7 +39,7 @@
 .back-to-home-btn {
   position: fixed;
   margin-top: 10px;
-  top: 100px;
+  top: 30px;
   left: 20px;
   z-index: 1000;
   background: linear-gradient(135deg, #ff7eb3, #ff758c);
@@ -593,7 +593,7 @@
   }
 
   .back-to-home-btn {
-    top: 80px;
+    top: 25px;
     left: 15px;
     padding: 10px 15px;
   }
